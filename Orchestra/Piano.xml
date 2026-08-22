@@ -1,0 +1,89 @@
+<Block>
+	<Debug>false</Debug>
+	<ID>1</ID>
+	<Name>Piano</Name>
+	<Mass>0.5</Mass>
+	<SearchKeywords>
+		<Keyword>piano</Keyword>
+		<Keyword>keys</Keyword>
+	</SearchKeywords>
+	<CanFlip>false</CanFlip>
+	<Fallback>Ballast</Fallback>
+
+	<Modules>
+		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059">
+			<Types>
+			<Type name="Grand piano"    engine="sampler" samples="piano_grand_38 piano_grand_60 piano_grand_86" sustains="true" release="0.5" />
+			<Type name="Upright piano"  engine="sampler" samples="piano_upright_34 piano_upright_60 piano_upright_86" sustains="true" release="0.4" />
+			<Type name="Electric piano" engine="sampler" samples="piano_rhodes_38 piano_rhodes_55 piano_rhodes_80" sustains="true" release="0.6" />
+			<Type name="Honky-tonk"     engine="sampler" samples="piano_honky_38 piano_honky_60 piano_honky_86" sustains="true" release="0.4" />
+			</Types>
+			<Extras>
+			<Extra kind="toggle" key="SustainKey" name="Sustain" default="0" />
+			<Extra kind="slider" key="ReleaseKey" name="Release" min="0.05" max="4" default="0.5" />
+			</Extras>
+		</OrchestraMod>
+	</Modules>
+
+	<Mesh name="OrchestraBlock_mesh" >
+		<Position x="0.45" y="-0.45" z="0.0" />
+		<Rotation x="-90.0" y="-90.0" z="-90.0" />
+		<Scale x="1" y="1" z="1" />
+	</Mesh>
+
+	<Texture name="Piano_texture" />
+
+	<Icon>
+		<Position x="-0.15" y="-0.35" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-30.0" y="-30.0" z="0.0" /> <!--left, down, front-->
+		<Scale x="0.5" y="0.5" z="0.5" />
+	</Icon>
+	
+	<FireInteraction burnDuration="5" igniteOnStart="false">
+		<SphereTrigger>
+		<Position x="0" y="0" z="0.3" />
+		<Radius>1</Radius>
+		</SphereTrigger>
+	</FireInteraction>
+
+	<Colliders>
+		<BoxCollider>
+			<Position x="0.0" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Scale x="0.8" y="0.8" z="0.8" />
+		</BoxCollider>
+	</Colliders>
+
+	<BasePoint hasAddingPoint="false">
+		<Stickiness enabled="true" radius="1" />
+		<Motion x="false" y="false" z="false" /> 
+	</BasePoint>
+	
+	<AddingPoints>
+		<AddingPoint> <!--Top-->
+			<Position x="0.0" y="0.0" z="1.0" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Back-->
+			<Position x="0.0" y="-0.5" z="0.5" />
+			<Rotation x="90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Front-->
+			<Position x="0.0" y="0.5" z="0.5" />
+			<Rotation x="-90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Left-->
+			<Position x="0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Right-->
+			<Position x="-0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="-90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+	</AddingPoints>
+</Block>

@@ -1,0 +1,92 @@
+<Block>
+	<Debug>false</Debug>
+	<ID>5</ID>
+	<Name>Brass</Name>
+	<Mass>0.5</Mass>
+	<SearchKeywords>
+		<Keyword>brass</Keyword>
+		<Keyword>trumpet</Keyword>
+		<Keyword>horn</Keyword>
+	</SearchKeywords>
+	<CanFlip>false</CanFlip>
+	<Fallback>Ballast</Fallback>
+
+	<Modules>
+		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059">
+			<Types>
+			<Type name="Trumpet"     engine="sampler" samples="brass_trumpet_58 brass_trumpet_64 brass_trumpet_78" loops="7627-7721 7602-7669 9333-9363" sustains="true" attack="0.03" release="0.2" />
+			<Type name="Trombone"    engine="sampler" samples="brass_trombone_37 brass_trombone_52 brass_trombone_62" loops="7625-7942 5194-5328 4333-4408" sustains="true" attack="0.04" release="0.25" />
+			<Type name="French horn" engine="sampler" samples="brass_horn_63 brass_horn_70" loops="9278-19785 9075-14860" sustains="true" attack="0.05" release="0.3" />
+			<Type name="Tuba"        engine="sampler" samples="brass_tuba_30 brass_tuba_38 brass_tuba_46" loops="5105-5582 5960-6260 6255-6444" sustains="true" attack="0.05" release="0.3" />
+			<Type name="Section"     engine="sampler" samples="brass_section_60 brass_section_72" loops="13012-50212 6235-37782" sustains="true" attack="0.04" release="0.3" />
+			</Types>
+			<Extras>
+			<Extra kind="toggle" key="MuteKey" name="Mute" default="0" />
+			<Extra kind="slider" key="AttackKey" name="Attack" min="0.005" max="0.3" default="0.03" />
+			<Extra kind="slider" key="VibratoKey" name="Vibrato" min="0" max="1" default="0.2" />
+			</Extras>
+		</OrchestraMod>
+	</Modules>
+
+	<Mesh name="OrchestraBlock_mesh" >
+		<Position x="0.45" y="-0.45" z="0.0" />
+		<Rotation x="-90.0" y="-90.0" z="-90.0" />
+		<Scale x="1" y="1" z="1" />
+	</Mesh>
+
+	<Texture name="Brass_texture" />
+
+	<Icon>
+		<Position x="-0.15" y="-0.35" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-30.0" y="-30.0" z="0.0" /> <!--left, down, front-->
+		<Scale x="0.5" y="0.5" z="0.5" />
+	</Icon>
+	
+	<FireInteraction burnDuration="5" igniteOnStart="false">
+		<SphereTrigger>
+		<Position x="0" y="0" z="0.3" />
+		<Radius>1</Radius>
+		</SphereTrigger>
+	</FireInteraction>
+
+	<Colliders>
+		<BoxCollider>
+			<Position x="0.0" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Scale x="0.8" y="0.8" z="0.8" />
+		</BoxCollider>
+	</Colliders>
+
+	<BasePoint hasAddingPoint="false">
+		<Stickiness enabled="true" radius="1" />
+		<Motion x="false" y="false" z="false" /> 
+	</BasePoint>
+	
+	<AddingPoints>
+		<AddingPoint> <!--Top-->
+			<Position x="0.0" y="0.0" z="1.0" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Back-->
+			<Position x="0.0" y="-0.5" z="0.5" />
+			<Rotation x="90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Front-->
+			<Position x="0.0" y="0.5" z="0.5" />
+			<Rotation x="-90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Left-->
+			<Position x="0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Right-->
+			<Position x="-0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="-90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+	</AddingPoints>
+</Block>

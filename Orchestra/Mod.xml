@@ -1,0 +1,138 @@
+﻿<Mod>
+	<Name>Orchestra</Name>
+	<Author>wizz6rd</Author>
+	<Version>0.1.0</Version>
+
+	<Description>
+	Nine instrument blocks: piano, guitar, bass, strings, brass, woodwind,
+	mallets, drums and cymbals. Each plays a note on a key, heard where it is.
+	</Description>
+
+	<Icon name="Orchestra_icon" />
+	<Debug>false</Debug>
+	<MultiplayerCompatible>true</MultiplayerCompatible>
+
+	<Assemblies>
+		<Assembly path="Orchestra.dll" />
+	</Assemblies>
+
+	<Blocks>
+		<Block path="Piano.xml" />
+		<Block path="Guitar.xml" />
+		<Block path="Bass.xml" />
+		<Block path="Strings.xml" />
+		<Block path="Brass.xml" />
+		<Block path="Woodwind.xml" />
+		<Block path="Mallets.xml" />
+		<Block path="Drums.xml" />
+		<Block path="Cymbals.xml" />
+	</Blocks>
+
+	<Resources>
+		<Mesh name="OrchestraBlock_mesh" path="OrchestraBlock\OrchestraBlock.obj" />
+		<Texture name="Piano_texture" path="OrchestraBlock\Piano.png" />
+		<Texture name="Guitar_texture" path="OrchestraBlock\Guitar.png" />
+		<Texture name="Bass_texture" path="OrchestraBlock\Bass.png" />
+		<Texture name="Strings_texture" path="OrchestraBlock\Strings.png" />
+		<Texture name="Brass_texture" path="OrchestraBlock\Brass.png" />
+		<Texture name="Woodwind_texture" path="OrchestraBlock\Woodwind.png" />
+		<Texture name="Mallets_texture" path="OrchestraBlock\Mallets.png" />
+		<Texture name="Drums_texture" path="OrchestraBlock\Drums.png" />
+		<Texture name="Cymbals_texture" path="OrchestraBlock\Cymbals.png" />
+		<Texture name="Orchestra_icon" path="Orchestra.png" />
+
+		<!-- Sampled instruments, cut by tools/extract-samples.py; see
+		     docs/SAMPLES.md. The synthesised blocks (Mallets, Drums, Cymbals)
+		     need none of this. The trailing number is the MIDI note each was
+		     recorded at, which is how SampleBank builds its key map. -->
+		<AudioClip name="bass_acoustic_36" path="Samples\bass_acoustic_36.ogg" />
+		<AudioClip name="bass_acoustic_64" path="Samples\bass_acoustic_64.ogg" />
+		<AudioClip name="bass_finger_54" path="Samples\bass_finger_54.ogg" />
+		<AudioClip name="bass_finger_64" path="Samples\bass_finger_64.ogg" />
+		<AudioClip name="bass_finger_69" path="Samples\bass_finger_69.ogg" />
+		<AudioClip name="bass_fretless_32" path="Samples\bass_fretless_32.ogg" />
+		<AudioClip name="bass_fretless_50" path="Samples\bass_fretless_50.ogg" />
+		<AudioClip name="bass_fretless_44" path="Samples\bass_fretless_44.ogg" />
+		<AudioClip name="bass_pick_42" path="Samples\bass_pick_42.ogg" />
+		<AudioClip name="bass_pick_52" path="Samples\bass_pick_52.ogg" />
+		<AudioClip name="bass_pick_57" path="Samples\bass_pick_57.ogg" />
+		<AudioClip name="bass_synth_33" path="Samples\bass_synth_33.ogg" />
+		<AudioClip name="bass_synth_39" path="Samples\bass_synth_39.ogg" />
+		<AudioClip name="bass_synth_51" path="Samples\bass_synth_51.ogg" />
+		<AudioClip name="brass_horn_63" path="Samples\brass_horn_63.ogg" />
+		<AudioClip name="brass_horn_70" path="Samples\brass_horn_70.ogg" />
+		<AudioClip name="brass_section_60" path="Samples\brass_section_60.ogg" />
+		<AudioClip name="brass_section_72" path="Samples\brass_section_72.ogg" />
+		<AudioClip name="brass_trombone_37" path="Samples\brass_trombone_37.ogg" />
+		<AudioClip name="brass_trombone_52" path="Samples\brass_trombone_52.ogg" />
+		<AudioClip name="brass_trombone_62" path="Samples\brass_trombone_62.ogg" />
+		<AudioClip name="brass_trumpet_58" path="Samples\brass_trumpet_58.ogg" />
+		<AudioClip name="brass_trumpet_64" path="Samples\brass_trumpet_64.ogg" />
+		<AudioClip name="brass_trumpet_78" path="Samples\brass_trumpet_78.ogg" />
+		<AudioClip name="brass_tuba_30" path="Samples\brass_tuba_30.ogg" />
+		<AudioClip name="brass_tuba_38" path="Samples\brass_tuba_38.ogg" />
+		<AudioClip name="brass_tuba_46" path="Samples\brass_tuba_46.ogg" />
+		<AudioClip name="guitar_clean_40" path="Samples\guitar_clean_40.ogg" />
+		<AudioClip name="guitar_clean_50" path="Samples\guitar_clean_50.ogg" />
+		<AudioClip name="guitar_clean_64" path="Samples\guitar_clean_64.ogg" />
+		<AudioClip name="guitar_drive_40" path="Samples\guitar_drive_40.ogg" />
+		<AudioClip name="guitar_drive_52" path="Samples\guitar_drive_52.ogg" />
+		<AudioClip name="guitar_drive_62" path="Samples\guitar_drive_62.ogg" />
+		<AudioClip name="guitar_jazz_40" path="Samples\guitar_jazz_40.ogg" />
+		<AudioClip name="guitar_jazz_53" path="Samples\guitar_jazz_53.ogg" />
+		<AudioClip name="guitar_jazz_63" path="Samples\guitar_jazz_63.ogg" />
+		<AudioClip name="guitar_nylon_53" path="Samples\guitar_nylon_53.ogg" />
+		<AudioClip name="guitar_nylon_63" path="Samples\guitar_nylon_63.ogg" />
+		<AudioClip name="guitar_nylon_76" path="Samples\guitar_nylon_76.ogg" />
+		<AudioClip name="guitar_steel_40" path="Samples\guitar_steel_40.ogg" />
+		<AudioClip name="guitar_steel_50" path="Samples\guitar_steel_50.ogg" />
+		<AudioClip name="guitar_steel_64" path="Samples\guitar_steel_64.ogg" />
+		<AudioClip name="piano_grand_38" path="Samples\piano_grand_38.ogg" />
+		<AudioClip name="piano_grand_60" path="Samples\piano_grand_60.ogg" />
+		<AudioClip name="piano_grand_86" path="Samples\piano_grand_86.ogg" />
+		<AudioClip name="piano_honky_38" path="Samples\piano_honky_38.ogg" />
+		<AudioClip name="piano_honky_60" path="Samples\piano_honky_60.ogg" />
+		<AudioClip name="piano_honky_86" path="Samples\piano_honky_86.ogg" />
+		<AudioClip name="piano_rhodes_38" path="Samples\piano_rhodes_38.ogg" />
+		<AudioClip name="piano_rhodes_55" path="Samples\piano_rhodes_55.ogg" />
+		<AudioClip name="piano_rhodes_80" path="Samples\piano_rhodes_80.ogg" />
+		<AudioClip name="piano_upright_34" path="Samples\piano_upright_34.ogg" />
+		<AudioClip name="piano_upright_60" path="Samples\piano_upright_60.ogg" />
+		<AudioClip name="piano_upright_86" path="Samples\piano_upright_86.ogg" />
+		<AudioClip name="strings_cello_37" path="Samples\strings_cello_37.ogg" />
+		<AudioClip name="strings_cello_47" path="Samples\strings_cello_47.ogg" />
+		<AudioClip name="strings_cello_59" path="Samples\strings_cello_59.ogg" />
+		<AudioClip name="strings_dbass_31" path="Samples\strings_dbass_31.ogg" />
+		<AudioClip name="strings_dbass_39" path="Samples\strings_dbass_39.ogg" />
+		<AudioClip name="strings_dbass_50" path="Samples\strings_dbass_50.ogg" />
+		<AudioClip name="strings_ens_48" path="Samples\strings_ens_48.ogg" />
+		<AudioClip name="strings_ens_60" path="Samples\strings_ens_60.ogg" />
+		<AudioClip name="strings_ens_72" path="Samples\strings_ens_72.ogg" />
+		<AudioClip name="strings_viola_49" path="Samples\strings_viola_49.ogg" />
+		<AudioClip name="strings_viola_60" path="Samples\strings_viola_60.ogg" />
+		<AudioClip name="strings_viola_72" path="Samples\strings_viola_72.ogg" />
+		<AudioClip name="strings_violin_56" path="Samples\strings_violin_56.ogg" />
+		<AudioClip name="strings_violin_66" path="Samples\strings_violin_66.ogg" />
+		<AudioClip name="strings_violin_77" path="Samples\strings_violin_77.ogg" />
+		<AudioClip name="wind_bassoon_36" path="Samples\wind_bassoon_36.ogg" />
+		<AudioClip name="wind_bassoon_48" path="Samples\wind_bassoon_48.ogg" />
+		<AudioClip name="wind_bassoon_58" path="Samples\wind_bassoon_58.ogg" />
+		<AudioClip name="wind_clarinet_53" path="Samples\wind_clarinet_53.ogg" />
+		<AudioClip name="wind_clarinet_64" path="Samples\wind_clarinet_64.ogg" />
+		<AudioClip name="wind_clarinet_76" path="Samples\wind_clarinet_76.ogg" />
+		<AudioClip name="wind_flute_61" path="Samples\wind_flute_61.ogg" />
+		<AudioClip name="wind_flute_70" path="Samples\wind_flute_70.ogg" />
+		<AudioClip name="wind_flute_82" path="Samples\wind_flute_82.ogg" />
+		<AudioClip name="wind_oboe_61" path="Samples\wind_oboe_61.ogg" />
+		<AudioClip name="wind_oboe_70" path="Samples\wind_oboe_70.ogg" />
+		<AudioClip name="wind_oboe_81" path="Samples\wind_oboe_81.ogg" />
+		<AudioClip name="wind_sax_53" path="Samples\wind_sax_53.ogg" />
+		<AudioClip name="wind_sax_62" path="Samples\wind_sax_62.ogg" />
+		<AudioClip name="wind_sax_72" path="Samples\wind_sax_72.ogg" />
+	</Resources>
+
+
+
+<!-- This value is automatically generated. Do not change it or you may break machine&level save files. -->
+<ID>aca735ea-a614-4aef-9676-67ec1edd5059</ID>
+</Mod>
