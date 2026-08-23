@@ -123,6 +123,25 @@ namespace OrchestraMod
         private const float SwellRise = 0.05f;
         private const float SwellFall = 0.22f;
 
+        /// <summary>
+        /// How far a held note swells, and how long one breath takes. Half the
+        /// depth of a strike and slow enough to read as breathing rather than as a
+        /// wobble: this runs for as long as the note is held, and anything faster
+        /// would be a machine full of blocks buzzing.
+        /// </summary>
+        private const float BreathDepth = 0.06f;
+        private const float BreathPeriod = 1.3f;
+
+        /// <summary>Seconds for the breathing to come in, and to go away once the
+        /// note is let go. Without it the block would drop to its own size in the
+        /// middle of a breath.</summary>
+        private const float BreathFade = 0.3f;
+
+        /// <summary>Seconds into the current breath, and how much of the breathing
+        /// is being shown -- 1 while the note is held, sliding to 0 after.</summary>
+        private float breathAt;
+        private float breathLevel;
+
         /// <summary>What the block shows, and the scale each part was built at.</summary>
         private Transform[] visuals;
         private Vector3[] visualScales;
@@ -159,7 +178,15 @@ namespace OrchestraMod
             NoteSlider = AddSlider("Note", "NoteKey", 60f, 21f, 108f);
             VolumeSlider = AddSlider("Volume", "VolumeKey", 0.7f, 0f, 1f);
             RangeSlider = AddSlider("Range", "RangeKey", 120f, 5f, 500f);
-            PushToggle = AddToggle("Toggle", "ToggleKey", false);
+            if (Sustains)
+            {
+                // Only where holding the key means something. A bowed or blown note
+                // goes on for as long as it is asked for, so latching it is a note
+                // that plays until it is switched off; a struck one dies on its own
+                // whatever the key does, and the toggle would be a control that
+                // changes nothing anybody can hear.
+                PushToggle = AddToggle("Toggle", "ToggleKey", false);
+            }
 
             if (Module.Extras != null)
             {
@@ -231,6 +258,31 @@ namespace OrchestraMod
         // ---- what the panel needs -------------------------------------------
         //
         // The panel builds itself from these rather than from a list of its own, so
+        /// <summary>
+        /// Whether any of this block's types goes on for as long as the key is
+        /// down. Read from the XML rather than listed here: the six blocks without
+        /// a Toggle are exactly the six whose every type is struck or plucked, and
+        /// a tenth block would sort itself.
+        /// </summary>
+        public bool Sustains
+        {
+            get
+            {
+                if (Module.Types == null)
+                {
+                    return false;
+                }
+                for (int i = 0; i < Module.Types.Length; i++)
+                {
+                    if (Module.Types[i].Holds)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
         // declaring an Extra in a block's XML is enough to give it a row.
 
         public MMenu Types { get { return TypeMenu; } }
@@ -518,7 +570,7 @@ namespace OrchestraMod
             bool held = PlayKey.IsHeld || emulatedDown;
             emulatedPressPending = false;
 
-            if (PushToggle.IsActive)
+            if (PushToggle != null && PushToggle.IsActive)
             {
                 if (pressed)
                 {
@@ -539,7 +591,10 @@ namespace OrchestraMod
                 gateOpen = held;
             }
 
-            Swell(Time.deltaTime);
+            // Only a block that can hold a note breathes -- which is exactly the
+            // set that has a Toggle, both being "does this instrument go on for as
+            // long as it is asked to".
+            Swell(Time.deltaTime, Sustains && gateOpen);
         }
 
         private void PushSettings()
@@ -680,44 +735,78 @@ namespace OrchestraMod
                 return;
             }
             swellAt = 0f;
+            // The breath starts at its trough, so it rises as the strike falls
+            // instead of stepping in at whatever size it had reached.
+            breathAt = 0f;
         }
 
         /// <summary>
         /// Grows the instrument and lets it back down, once a frame while a note is
         /// being shown. On game time rather than unscaled, so a machine watched in
         /// slow motion moves in slow motion with the rest of it.
+        ///
+        /// Two movements, added rather than switched between: the strike, which
+        /// every note gets, and the breathing, which a note that is still being
+        /// held goes on with. The second starts at nothing and swells in as the
+        /// first dies away, so a bowed note is one continuous movement from the bow
+        /// landing to the bow leaving.
         /// </summary>
-        private void Swell(float step)
+        /// <param name="holding">The note is still being asked for -- the key is
+        /// down, or the Toggle is latched on.</param>
+        private void Swell(float step, bool holding)
         {
-            if (swellAt < 0f)
+            float wanted = holding ? 1f : 0f;
+            if (swellAt < 0f && breathLevel <= 0f && wanted <= 0f)
             {
+                // Sitting still: a block nobody is playing is one this does not
+                // write a scale to at all.
                 return;
             }
             if (visuals == null)
             {
                 FindVisuals();
             }
-            swellAt += step;
 
-            float shape;
-            if (swellAt < SwellRise)
+            float grow = 0f;
+            if (swellAt >= 0f)
             {
-                shape = swellAt / SwellRise;
-            }
-            else
-            {
-                float fallen = (swellAt - SwellRise) / SwellFall;
-                shape = fallen >= 1f ? 0f : (1f - fallen) * (1f - fallen);
-                if (shape <= 0f)
+                swellAt += step;
+                if (swellAt < SwellRise)
                 {
-                    // Back where it started. The scale is still written this once,
-                    // so the block lands exactly on the size it was built at rather
-                    // than a fraction above it.
-                    swellAt = -1f;
+                    grow = SwellDepth * (swellAt / SwellRise);
+                }
+                else
+                {
+                    float fallen = (swellAt - SwellRise) / SwellFall;
+                    if (fallen >= 1f)
+                    {
+                        swellAt = -1f;
+                    }
+                    else
+                    {
+                        grow = SwellDepth * (1f - fallen) * (1f - fallen);
+                    }
                 }
             }
 
-            float size = 1f + SwellDepth * shape;
+            breathLevel = Mathf.MoveTowards(breathLevel, wanted, step / BreathFade);
+            if (breathLevel > 0f)
+            {
+                breathAt += step;
+                // A cosine measured from its trough: nought at the moment the note
+                // starts, so there is no step when the breathing takes over.
+                float wave = 0.5f * (1f - Mathf.Cos(2f * Mathf.PI * breathAt / BreathPeriod));
+                grow += BreathDepth * breathLevel * wave;
+            }
+            else
+            {
+                breathAt = 0f;
+            }
+
+            // Written even when `grow` has come back to nought, once: that is the
+            // frame the block lands exactly on the size it was built at, rather
+            // than a fraction above it.
+            float size = 1f + grow;
             for (int i = 0; i < visuals.Length; i++)
             {
                 if (visuals[i] != null)
@@ -731,6 +820,8 @@ namespace OrchestraMod
         private void Settle()
         {
             swellAt = -1f;
+            breathAt = 0f;
+            breathLevel = 0f;
             if (visuals == null)
             {
                 return;

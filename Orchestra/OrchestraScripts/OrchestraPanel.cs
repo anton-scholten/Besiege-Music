@@ -275,7 +275,7 @@ namespace OrchestraMod
         private bool SameShape()
         {
             return rows.Count == 3 + block.ExtraSliders.Count
-                && switches.Count == 1 + block.ExtraToggles.Count;
+                && switches.Count == (block.Latch == null ? 0 : 1) + block.ExtraToggles.Count;
         }
 
         private void Teardown()
@@ -643,7 +643,13 @@ namespace OrchestraMod
         private float BuildSwitches(float y)
         {
             List<MToggle> all = new List<MToggle>();
-            all.Add(block.Latch);
+            if (block.Latch != null)
+            {
+                // A struck instrument has no Toggle: nothing to hold. The row is
+                // not built rather than built dead, so the window is the shape of
+                // what the block can actually do.
+                all.Add(block.Latch);
+            }
             for (int i = 0; i < block.ExtraToggles.Count; i++)
             {
                 all.Add(block.ExtraToggles[i]);
@@ -716,7 +722,10 @@ namespace OrchestraMod
             }
 
             int s = 0;
-            switches[s++].Bound = block.Latch;
+            if (block.Latch != null && s < switches.Count)
+            {
+                switches[s++].Bound = block.Latch;
+            }
             for (int e = 0; e < block.ExtraToggles.Count && s < switches.Count; e++)
             {
                 switches[s++].Bound = block.ExtraToggles[e];

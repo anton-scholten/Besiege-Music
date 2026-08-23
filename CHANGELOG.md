@@ -11,6 +11,20 @@
   colliders stay on the block's own transform, so a machine does not turn springy
   because it is playing. During a run only, and on game time, so a machine watched
   in slow motion swells in slow motion.
+- A note still being held goes on breathing: half the depth of the strike, one
+  breath every 1.3 seconds, swelling in from nothing as the strike dies away and
+  easing back out over a third of a second when the note is let go, so a bowed
+  note is one movement from the bow landing to the bow leaving. Only the blocks
+  that can hold a note do it, which is the same set that has a Toggle.
+
+**Changed**
+
+- The Toggle is gone from the piano, both guitars, the xylophone, the drum and the
+  cymbal. It latches the key down, which is worth having on something bowed or
+  blown and means nothing on something struck: those notes die on their own
+  whatever the key is doing, so the control was one that changed nothing anybody
+  could hear. Which blocks get it is read from their own XML -- a block whose every
+  type is struck has no Toggle -- rather than listed in code.
 
 **Fixed**
 

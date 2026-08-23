@@ -43,6 +43,14 @@ load at once and looked exactly like a broken assembly.
 nine took Sound Blocks' collider and adding points wholesale; only the mesh is
 their own.
 
+* **What a block can do is read from its own XML, not listed in code.** The
+  Toggle -- which latches the key down -- exists only where some type carries
+  `holds="true"`, because latching a struck note changes nothing that can be
+  heard; the same test decides whether the block breathes while a note is held.
+  Both come out of `InstrumentBehaviour.Sustains`, so a tenth block sorts itself.
+  The panel has to cope with the control being absent: `SameShape` counts it
+  conditionally, or a window built for a violin would be handed to a piano.
+
 * **A block's visual is not its transform.** `BlockBehaviour.VisualController`
   lists the renderers, and their transforms are children carrying the `<Mesh>`
   offset and scale; the block's own transform is the physics body the colliders
