@@ -91,6 +91,24 @@ too many, and rebinding needs Besiege's own key capture. Without UI Factory the
 mapper keeps everything, which is what makes it a fallback rather than a second
 copy.
 
+## Playing a song
+
+`tools/make-song.py` turns a MIDI file into a machine that plays it:
+
+```sh
+./tools/make-song.py travelers.mid --instrument "Piano:Grand piano" --install
+```
+
+One instrument block per pitch, one timer block per note, joined by Besiege's
+variable system and laid out in a grid. No dependencies — the MIDI parser is in
+the tool.
+
+MIDI rather than a YouTube link on purpose: a recording has to be transcribed
+before anything can play it, which is a research problem and a 100 MB neural
+network away, while a score already *is* the notes. MuseScore exports MIDI from
+anything in its library. See [docs/SONGS.md](docs/SONGS.md) for the options, the
+percussion mapping, and why repeated notes need a gap.
+
 ## One block, one note
 
 A block plays a single note, and a tune is a row of blocks each triggered by its

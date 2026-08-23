@@ -11,7 +11,7 @@ Orchestra/            the folder Besiege loads, and what goes to the Workshop
   Piano.xml ...       one per block, each declaring its own types and controls
   OrchestraScripts/   sources; the built Orchestra.dll sits beside them
   Resources/          mesh, texture, icon, and Samples/ once cut
-tools/                build, install, and the sample extractor
+tools/                build, install, the sample extractor, the song maker
 docs/                 sample cutting, design notes, and modding notes
 ```
 

@@ -13,3 +13,8 @@ __pycache__/
 # kept -- docs/something.png -- is not caught by this.
 [0-9]*_[0-9].jpg
 [0-9]*_[0-9].png
+
+# Machines built by tools/make-song.py, which are output rather than source: a
+# .bsg is a few hundred kilobytes of generated XML and the MIDI it came from is
+# not ours to keep.
+*.bsg

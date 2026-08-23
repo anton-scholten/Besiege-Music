@@ -129,6 +129,37 @@ Do not ask "is UI Factory here?" every frame: while it is absent the answer cost
 a caught `TypeLoadException`, and one of those per block per frame is a bill for
 nothing. Ask on a timer until the answer is yes, then stop.
 
+## Driving blocks from a save: timers and variables
+
+Besiege's **Timer** block is `BlockType.Timer` = **66**, and its mapper keys are
+`activate`, `emulate`, `automatic`, `hold-to-activate`, `can-stop`, `loop`,
+`wait` and `emulation-time` (so `bmt-wait` and the rest in a `.bsg`). With
+`automatic` on it starts with the simulation, waits `wait` seconds, and holds
+`emulate` down for `emulation-time`.
+
+Both sliders are declared with `AddSliderUnclamped`, so a value past their 60 s
+maximum survives a save and a load — a note four minutes into a song is one
+timer, not a chain of them.
+
+**Variables are how one block drives another.** An `MKey` serialises as a
+`StringArray`: one entry per keycode, then optionally `Ignored=True`,
+`Message=<names joined by ';'>` and `Use=True`. `KeyInputController` keeps
+`usedMessages`, a table from name to the keys registered under it, so an
+emulating key with `Message=foo` presses every key that names `foo`. Unlimited
+names, and they cost no keyboard.
+
+**An emulated key is reference counted.** `MKey.UpdateEmulation` adds one on
+press and takes one away on release; `Emulating` is "the count is above nought",
+and a press is the nought-to-one edge. So a second emulator firing while the
+first still holds the same name raises **no press at all**, and the key does not
+come up until the last one lets go. Anything generating a stream of events onto
+one key has to leave a gap between them — `tools/make-song.py` uses 60 ms.
+
+A modded block is written with `modId` and `localId`, and the loader
+(`XmlLoader.HandleMod`) recomputes the numeric `id` from those two through
+`ModIds.GetEffectiveBlockId`, so the `id` attribute in the file is not what
+resolves it. `fallback` is the vanilla block shown when the mod is absent.
+
 ## Moving a block's visual without moving the block
 
 `BlockBehaviour.VisualController.renderers` is the block's own list of

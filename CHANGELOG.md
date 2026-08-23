@@ -4,6 +4,16 @@
 
 **Added**
 
+- `tools/make-song.py` builds a machine that plays a MIDI file: an instrument
+  block per pitch, a timer block per note, joined by Besiege's variables and laid
+  out in a grid. No dependencies -- the MIDI parser is in the tool, and
+  `--self-test` builds a scale and checks the result without the game. MIDI
+  rather than audio because a recording has to be transcribed first, which is a
+  research problem and a neural network away, and a score already is the notes.
+  The one thing that is not obvious: an emulated key is reference counted, so a
+  repeat that starts while the same name is still held raises no press at all --
+  the tool cuts every note short of the next on its own block. See
+  [docs/SONGS.md](docs/SONGS.md).
 - A block swells when it plays: 12% larger over 50 ms, back to its own size over
   the next 220 ms, restarted by every note so a repeated key beats rather than
   sits still. It is the visual that moves and not the block -- the swell is
