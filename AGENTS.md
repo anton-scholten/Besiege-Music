@@ -43,6 +43,12 @@ load at once and looked exactly like a broken assembly.
 nine took Sound Blocks' collider and adding points wholesale; only the mesh is
 their own.
 
+* **A block's visual is not its transform.** `BlockBehaviour.VisualController`
+  lists the renderers, and their transforms are children carrying the `<Mesh>`
+  offset and scale; the block's own transform is the physics body the colliders
+  are placed against. Anything that moves a block for show -- the swell it plays
+  with -- writes to the former and must not touch the latter.
+
 ### The block meshes
 
 `tools/make-block-meshes.py` fetches nine low-poly instruments from Poly Pizza

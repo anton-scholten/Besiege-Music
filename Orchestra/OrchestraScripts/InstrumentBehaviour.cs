@@ -114,6 +114,24 @@ namespace OrchestraMod
         /// <summary>Unscaled time the panel's audition releases at, or 0 for none.</summary>
         private float auditionUntil;
 
+        /// <summary>How much bigger the instrument gets at the top of a note.</summary>
+        private const float SwellDepth = 0.12f;
+
+        /// <summary>Seconds to grow, and seconds to settle back. Short and not
+        /// equal: a struck thing moves at once and comes back at its leisure, and a
+        /// swell slow enough to notice as an animation reads as lag.</summary>
+        private const float SwellRise = 0.05f;
+        private const float SwellFall = 0.22f;
+
+        /// <summary>What the block shows, and the scale each part was built at.</summary>
+        private Transform[] visuals;
+        private Vector3[] visualScales;
+
+        /// <summary>Seconds into the swell, or -1 when the block is sitting still.
+        /// Nothing writes a scale while it is -1, so a block nobody is playing is a
+        /// block this code does not touch.</summary>
+        private float swellAt = -1f;
+
         /// <summary>The audio thread saying it has not reached silence yet, so the
         /// source is held up for a note's release rather than cut off at the gate.</summary>
         private volatile bool sounding;
@@ -462,6 +480,7 @@ namespace OrchestraMod
             }
             PushSettings();
             Place();
+            Settle();
             heldLeft = wantLeft;
             heldRight = wantRight;
             source.Play();
@@ -471,6 +490,7 @@ namespace OrchestraMod
         {
             gateOpen = false;
             sounding = false;
+            Settle();
             source.Stop();
         }
 
@@ -518,6 +538,8 @@ namespace OrchestraMod
                 }
                 gateOpen = held;
             }
+
+            Swell(Time.deltaTime);
         }
 
         private void PushSettings()
@@ -590,9 +612,145 @@ namespace OrchestraMod
             wantRight = gain * Mathf.Min(1f, 1f + pan);
         }
 
+        // ---- the block moving when it is played -------------------------------
+
+        /// <summary>
+        /// The block's visible parts, and the scale each was built at.
+        ///
+        /// They hang *off* the block rather than on it. The XML's &lt;Mesh&gt; carries
+        /// its own position and scale, which have to live on something that is not
+        /// the block's own transform -- that one is the physics body, and the
+        /// colliders are placed against it. So a swell moves what is seen and
+        /// nothing that is touched: a machine does not become springy because it is
+        /// playing.
+        ///
+        /// The block keeps the list itself, in its visual controller, which is the
+        /// one place that knows what a block looks like -- a search of the children
+        /// is the fallback, for a block whose controller a run has taken away.
+        ///
+        /// Read on the first note rather than in SafeAwake: a simulation runs on a
+        /// clone, and it is the clone's own parts that are on screen.
+        /// </summary>
+        private void FindVisuals()
+        {
+            List<Transform> parts = new List<Transform>();
+            MeshRenderer[] found = null;
+            BlockVisualController controller =
+                BlockBehaviour == null ? null : BlockBehaviour.VisualController;
+            if (controller != null)
+            {
+                found = controller.renderers;
+            }
+            if (found == null || found.Length == 0)
+            {
+                found = GetComponentsInChildren<MeshRenderer>(true);
+            }
+            for (int i = 0; i < found.Length; i++)
+            {
+                if (found[i] != null && found[i].transform != transform)
+                {
+                    parts.Add(found[i].transform);
+                }
+            }
+            if (parts.Count == 0)
+            {
+                // Every renderer this block has is on the block's own transform,
+                // which is the physics body: growing that would grow the colliders
+                // with it. The note still plays; it just does not show.
+                Log.Warn("Orchestra: " + Module.Family + " has no visual of its own to swell.");
+            }
+            visuals = parts.ToArray();
+            visualScales = new Vector3[visuals.Length];
+            for (int i = 0; i < visuals.Length; i++)
+            {
+                visualScales[i] = visuals[i].localScale;
+            }
+        }
+
+        /// <summary>
+        /// Starts the swell over, so a block struck twice in quick succession moves
+        /// twice rather than halfway. Only during a run: outside one the panel's
+        /// LISTEN plays the same note through the same queue, and nothing is
+        /// advancing the swell there -- a block left grown would stay grown.
+        /// </summary>
+        private void Strike()
+        {
+            if (!StatMaster.levelSimulating)
+            {
+                return;
+            }
+            swellAt = 0f;
+        }
+
+        /// <summary>
+        /// Grows the instrument and lets it back down, once a frame while a note is
+        /// being shown. On game time rather than unscaled, so a machine watched in
+        /// slow motion moves in slow motion with the rest of it.
+        /// </summary>
+        private void Swell(float step)
+        {
+            if (swellAt < 0f)
+            {
+                return;
+            }
+            if (visuals == null)
+            {
+                FindVisuals();
+            }
+            swellAt += step;
+
+            float shape;
+            if (swellAt < SwellRise)
+            {
+                shape = swellAt / SwellRise;
+            }
+            else
+            {
+                float fallen = (swellAt - SwellRise) / SwellFall;
+                shape = fallen >= 1f ? 0f : (1f - fallen) * (1f - fallen);
+                if (shape <= 0f)
+                {
+                    // Back where it started. The scale is still written this once,
+                    // so the block lands exactly on the size it was built at rather
+                    // than a fraction above it.
+                    swellAt = -1f;
+                }
+            }
+
+            float size = 1f + SwellDepth * shape;
+            for (int i = 0; i < visuals.Length; i++)
+            {
+                if (visuals[i] != null)
+                {
+                    visuals[i].localScale = visualScales[i] * size;
+                }
+            }
+        }
+
+        /// <summary>Puts every part back to the size it was built at.</summary>
+        private void Settle()
+        {
+            swellAt = -1f;
+            if (visuals == null)
+            {
+                return;
+            }
+            for (int i = 0; i < visuals.Length; i++)
+            {
+                if (visuals[i] != null)
+                {
+                    visuals[i].localScale = visualScales[i];
+                }
+            }
+        }
+
         /// <summary>1 is a note on, 0 a note off. Dropped if the queue is full.</summary>
         private void Push(int message)
         {
+            if (message == 1)
+            {
+                Strike();
+            }
             int next = (queueWrite + 1) % QueueSize;
             if (next == queueRead)
             {

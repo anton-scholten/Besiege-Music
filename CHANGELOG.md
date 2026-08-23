@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+**Added**
+
+- A block swells when it plays: 12% larger over 50 ms, back to its own size over
+  the next 220 ms, restarted by every note so a repeated key beats rather than
+  sits still. It is the visual that moves and not the block -- the swell is
+  written to the transforms the block's visual controller lists, while the
+  colliders stay on the block's own transform, so a machine does not turn springy
+  because it is playing. During a run only, and on game time, so a machine watched
+  in slow motion swells in slow motion.
+
 **Fixed**
 
 - Every block answered its key late. The sound was fed to Unity through a
