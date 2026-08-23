@@ -98,9 +98,12 @@ number is the MIDI note each was recorded at.
 ![the panel](docs/panel.jpg)
 
 With UI Factory installed, opening a block's mapper brings up a panel in
-Besiege's own interface: the instruments as buttons with the chosen one lit, the
-note shown as a note name and snapping to semitones, and a row for every control
-the block declared — so a new instrument gets its panel for nothing.
+Besiege's own interface: the instrument in the game's own `< Grand piano >`
+selector, the note shown as a note name and snapping to semitones, and a row for
+every control the block declared — so a new instrument gets its panel for
+nothing. The speaker in the corner plays the block where it stands, with the
+settings as they are, so an instrument can be chosen by ear without starting the
+machine. The panel opens where it was last closed.
 
 The key is shown but not editable there. Rebinding needs Besiege's own key
 capture, which lives in the mapper open behind the window, so that is where it
@@ -108,16 +111,20 @@ stays.
 
 ## Notes
 
-The nine blocks share one mesh, tinted a different colour per family — warm for
-the struck and plucked, cool for the bowed and blown, gold for the metal. Real
-models are still to come.
+Each block wears its own instrument: low-poly models from
+[Poly Pizza](https://poly.pizza), converted and stood upright by
+`tools/make-block-meshes.py`. They carry no textures of their own, only a flat
+colour per material, so the tool gathers those into a small palette and points
+each triangle at its own patch — which is why a block's texture is a few dozen
+bytes.
 
 
-Sound is generated into a streaming `AudioClip` through a PCM reader callback,
-which Unity pulls *before* spatialising — so distance, doppler and stereo
-position come from the engine rather than being faked. `OnAudioFilterRead`, the
-obvious alternative, hands back a buffer that is already spatialised and forces
-the mod to pan by hand.
+Sound is generated in `OnAudioFilterRead`, which the mixer calls on the buffer it
+is about to play, so a note starts when the key does. The obvious alternative, a
+streaming `AudioClip` fed through a PCM reader callback, is read well ahead of
+being heard and answers the key late — it buys Unity's spatialisation at the cost
+of the thing the block is for. So each block places itself instead: a gain per
+ear, worked out each frame from where it stands relative to the listener.
 
 That callback runs on the audio thread, where nothing may touch Unity, allocate,
 or lock. Settings cross over as plain volatile fields and note events through a
@@ -126,6 +133,25 @@ single-producer ring buffer.
 Details land in `Player.log` and in the in-game console with `show_logs true`.
 
 AI agent? see [AGENTS.md](AGENTS.md) for layout, build, and any relevant info.
+
+## Credits
+
+The block models are Creative Commons Attribution (CC-BY 3.0), from Poly Pizza:
+
+| Block | Model | By |
+| --- | --- | --- |
+| Piano | [Piano](https://poly.pizza/m/7U-93vxPOER) | jeremy |
+| Guitar | [Electric guitar](https://poly.pizza/m/0hg94uOO-sS) | jeremy |
+| Bass | [Acoustic guitar](https://poly.pizza/m/afr6GCpce_I) | jeremy |
+| Strings | [Violin](https://poly.pizza/m/fhj0GK-0kJu) | jeremy |
+| Brass | [Trumpet](https://poly.pizza/m/0Mj5XgeGtKJ) | jeremy |
+| Woodwind | [Saxophone](https://poly.pizza/m/6A2UAKdCNy7) | jeremy |
+| Drums | [Drum](https://poly.pizza/m/5Wp2emwd7xw) | jeremy |
+| Mallets | [Xylophone](https://poly.pizza/m/a-OYg3WVXfV) | Daniel Melchior |
+| Cymbals | [Cymbal](https://poly.pizza/m/f8SdBE98BXE) | Poly by Google |
+
+Sampled instruments are cut from [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS),
+which is permissively licensed; only the cut samples are redistributed.
 
 ## Licence
 

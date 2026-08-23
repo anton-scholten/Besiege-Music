@@ -41,13 +41,47 @@ namespace OrchestraMod
 
         private GameObject window;
         private RectTransform windowRect;
+
+        /// <summary>Where the rows are put: the Window prefab's own scroll content,
+        /// or the window itself if this UI Factory has none.</summary>
+        private Transform host;
+
+        /// <summary>The scroll content, when that is what <see cref="host"/> is.</summary>
+        private RectTransform content;
+
         private ClickShield shield;
         private Text title;
+
+        /// <summary>The picture on the title bar's speaker, lit while it sounds.</summary>
+        private Image listenFace;
+
+        /// <summary>
+        /// Where the window's top-left corner was last left, in canvas units from
+        /// the middle of the screen -- and whether it has ever been anywhere.
+        ///
+        /// The corner rather than the middle, because the panel is as tall as the
+        /// block it opened on has controls: holding the middle would move the window
+        /// under the pointer every time an instrument with one more row was opened.
+        /// One panel serves all nine blocks, so this carries across them, and
+        /// <see cref="Prefs"/> carries it across sessions.
+        /// </summary>
+        private Vector2 corner;
+        private bool placed;
+
+        /// <summary>The corner has moved since it was last written out.</summary>
+        private bool moved;
 
         private class Row
         {
             public UnityEngine.UI.Slider Control;
+            public Text Caption;
+
+            /// <summary>The number at the end of the row, which can be typed into.
+            /// Value is the label inside it -- or the whole of it, on a UI Factory
+            /// with no text box to borrow.</summary>
+            public UnityEngine.UI.InputField Box;
             public Text Value;
+
             public MSlider Bound;
             public bool Note;       // shown as a note name rather than a number
         }
@@ -82,11 +116,13 @@ namespace OrchestraMod
 
         private void Start()
         {
+            placed = Prefs.Corner(out corner);
             Hook();
         }
 
         private void OnDestroy()
         {
+            Remember();
             Unhook();
         }
 
@@ -163,13 +199,32 @@ namespace OrchestraMod
                 return;
             }
             window.SetActive(true);
+            // A window built for a block with different controls is a new window, in
+            // the middle of the screen; one reused is wherever it was left. Either
+            // way the corner the player last chose is where it goes.
+            if (placed)
+            {
+                PlaceCorner(corner);
+            }
+            else
+            {
+                corner = Corner();
+                placed = true;
+            }
             ReadFromBlock();
         }
 
         private void Hide()
         {
+            if (block != null)
+            {
+                // Leaving a note ringing behind a closed panel is not something the
+                // player has any way to stop.
+                block.StopAudition();
+            }
             block = null;
             CommitPending();
+            Remember();
             if (window != null)
             {
                 window.SetActive(false);
@@ -228,6 +283,9 @@ namespace OrchestraMod
             rows.Clear();
             switches.Clear();
             typeOption = null;
+            host = null;
+            content = null;
+            listenFace = null;
             if (window != null)
             {
                 Destroy(window);
@@ -271,7 +329,7 @@ namespace OrchestraMod
             windowRect.pivot = new Vector2(0.5f, 0.5f);
 
             RectTransform bar = window.transform.FindChild("TopBar") as RectTransform;
-            float y = Margin;
+            float barHeight = 0f;
             if (bar != null)
             {
                 title = bar.GetComponentInChildren<Text>(true);
@@ -281,7 +339,7 @@ namespace OrchestraMod
                     title.alignment = TextAnchor.MiddleCenter;
                     title.raycastTarget = false;
                 }
-                Transform close = bar.FindChild("CloseButton");
+                RectTransform close = bar.FindChild("CloseButton") as RectTransform;
                 if (close != null)
                 {
                     Button button = close.GetComponent<Button>();
@@ -292,7 +350,8 @@ namespace OrchestraMod
                         button.onClick.AddListener(CloseMapper);
                     }
                 }
-                y = bar.rect.height + Margin;
+                BuildListen(bar, close);
+                barHeight = bar.rect.height;
             }
 
             shield = gameObject.GetComponent<ClickShield>();
@@ -302,17 +361,114 @@ namespace OrchestraMod
             }
             shield.Guard(windowRect);
 
-            // Besiege zooms the level on the mouse wheel, and a panel that let it
-            // through would zoom the world whenever you meant to scroll the panel.
-            // UI Factory's own behaviour, which knows the game's zoom.
-            UIF.StopZoom(window);
+            // The rows go in the scroll view the Window prefab ships with, which is
+            // where a window's contents are meant to go. Putting them on the window
+            // instead left that scroll view holding the prefab's own 500-unit
+            // placeholder, taller than any panel -- and a scroll view whose contents
+            // do not fit shows a scrollbar, which is the one this panel had. Besiege's
+            // scroll view hides both bars for contents that fit, so filling it
+            // properly is also what takes the bar away.
+            //
+            // The window itself already carries StopsZoomWhenHovered, so the wheel
+            // over the panel does not zoom the level.
+            content = ScrollContent();
+            host = content != null ? (Transform)content : window.transform;
 
+            // Inside the content the rows start at the top; on the bare window they
+            // have to clear the title bar themselves.
+            float y = content != null ? Margin : barHeight + Margin;
             y = BuildTypes(y);
             y = BuildSliders(y);
             y = BuildSwitches(y);
             y = BuildKeyLine(y);
+            y += Margin;
 
-            windowRect.sizeDelta = new Vector2(Width, y + Margin);
+            if (content != null)
+            {
+                content.sizeDelta = new Vector2(content.sizeDelta.x, y);
+                windowRect.sizeDelta = new Vector2(Width, barHeight + y);
+            }
+            else
+            {
+                windowRect.sizeDelta = new Vector2(Width, y);
+            }
+
+            // So the canvas has a size before the window is placed against it, and
+            // the scroll view has measured what it now holds.
+            Canvas.ForceUpdateCanvases();
+        }
+
+        /// <summary>
+        /// The Window prefab's own scroll content, which is what its rows belong in.
+        /// Null if this UI Factory's window has no scroll view, in which case they go
+        /// straight on the window and nothing is lost but the scrolling.
+        /// </summary>
+        private RectTransform ScrollContent()
+        {
+            ScrollRect scroll = window.GetComponentInChildren<ScrollRect>(true);
+            if (scroll == null || scroll.content == null)
+            {
+                Log.Warn("UI Factory's Window prefab has no scroll view; the panel's "
+                         + "rows go straight on the window.");
+                return null;
+            }
+            return scroll.content;
+        }
+
+        /// <summary>
+        /// The speaker beside the close cross: plays the block's note as it is set,
+        /// so an instrument can be chosen by ear while the machine is being built.
+        ///
+        /// UI Factory's Icon Button, which is the same control the cross itself is,
+        /// squared against the bar the same way and one place along -- a pair of
+        /// buttons in a corner only look deliberate if they are the same control at
+        /// the same size. The picture is drawn rather than asked for: UI Factory's
+        /// sprite set cannot be listed, so naming a speaker in it would be a guess.
+        /// </summary>
+        private void BuildListen(RectTransform bar, RectTransform close)
+        {
+            GameObject button = UIF.Spawn(UIF.IconButtonPrefab, bar);
+            if (button == null)
+            {
+                return;
+            }
+            button.name = "Listen";
+
+            RectTransform rect = button.transform as RectTransform;
+            if (rect == null)
+            {
+                return;
+            }
+            float side = close != null ? close.sizeDelta.x : bar.rect.height;
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 0.5f);
+            rect.sizeDelta = new Vector2(side, 0f);
+            rect.anchoredPosition = new Vector2(-side, 0f);
+            // Last in the bar, so the title -- which is drawn across the whole of it
+            // -- is not over the button taking the pointer first.
+            rect.SetAsLastSibling();
+
+            Transform icon = button.transform.FindChild("Icon");
+            listenFace = icon == null ? null : icon.GetComponent<Image>();
+            if (listenFace == null)
+            {
+                listenFace = button.GetComponentInChildren<Image>(true);
+            }
+            if (listenFace != null)
+            {
+                listenFace.sprite = IconArt.Speaker();
+                listenFace.color = UIF.QuietInk;
+                // The drawing is inset within its own square, so the picture is the
+                // right size while the whole button stays the thing that is clicked.
+                listenFace.preserveAspect = false;
+            }
+
+            Button click = button.GetComponent<Button>();
+            if (click != null)
+            {
+                click.onClick.AddListener(Listen);
+            }
         }
 
         /// <summary>
@@ -328,7 +484,7 @@ namespace OrchestraMod
             Label("INSTRUMENT", Margin, y, LabelWidth, RowHeight, 13,
                   TextAnchor.MiddleLeft, UIF.QuietInk);
 
-            typeOption = UIF.Spawn(UIF.OptionPrefab, window.transform);
+            typeOption = UIF.Spawn(UIF.OptionPrefab, host);
             if (typeOption == null)
             {
                 return y + RowHeight + RowGap;
@@ -345,24 +501,35 @@ namespace OrchestraMod
             return y + RowHeight + RowGap * 2f;
         }
 
+        /// <summary>
+        /// Every row's caption is its control's own name, the fixed three included,
+        /// because that is what lets <see cref="ReadFromBlock"/> write them all again
+        /// from the block when a window is reused for another instrument.
+        /// </summary>
         private float BuildSliders(float y)
         {
-            y = AddSlider(y, "NOTE", block.Note, true);
-            y = AddSlider(y, "VOLUME", block.Volume, false);
-            y = AddSlider(y, "RANGE", block.Range, false);
+            y = AddSlider(y, Caption(block.Note), block.Note, true);
+            y = AddSlider(y, Caption(block.Volume), block.Volume, false);
+            y = AddSlider(y, Caption(block.Range), block.Range, false);
             for (int i = 0; i < block.ExtraSliders.Count; i++)
             {
-                MSlider s = block.ExtraSliders[i];
-                y = AddSlider(y, s.DisplayName.ToUpper(), s, false);
+                y = AddSlider(y, Caption(block.ExtraSliders[i]), block.ExtraSliders[i], false);
             }
             return y + RowGap;
         }
 
+        /// <summary>What a control is called, as the panel writes it.</summary>
+        private static string Caption(MapperType control)
+        {
+            return control == null ? "" : control.DisplayName.ToUpper();
+        }
+
         private float AddSlider(float y, string caption, MSlider bound, bool isNote)
         {
-            Label(caption, Margin, y, LabelWidth, RowHeight, 13, TextAnchor.MiddleLeft, UIF.QuietInk);
+            Text label = Label(caption, Margin, y, LabelWidth, RowHeight, 13,
+                               TextAnchor.MiddleLeft, UIF.QuietInk);
 
-            GameObject go = UIF.Spawn(UIF.SliderPrefab, window.transform);
+            GameObject go = UIF.Spawn(UIF.SliderPrefab, host);
             if (go == null)
             {
                 return y + RowHeight + RowGap;
@@ -378,10 +545,10 @@ namespace OrchestraMod
             }
             Row row = new Row();
             row.Control = control;
+            row.Caption = label;
             row.Bound = bound;
             row.Note = isNote;
-            row.Value = Label("", Width - Margin - ValueWidth, y, ValueWidth, RowHeight,
-                              13, TextAnchor.MiddleRight, Color.white);
+            AddValue(row, Width - Margin - ValueWidth, y);
             if (control != null)
             {
                 control.minValue = bound.Min;
@@ -394,6 +561,82 @@ namespace OrchestraMod
             }
             rows.Add(row);
             return y + RowHeight + RowGap;
+        }
+
+        /// <summary>
+        /// The number at the end of a row: Besiege's own text box, so a setting can
+        /// be typed exactly rather than found by dragging.
+        ///
+        /// UI Factory's Input Field, which brings the game's own look and -- the part
+        /// that matters -- the behaviour that stops Besiege's hotkeys firing at what
+        /// is being typed. Without that prefab the number is a plain label again, and
+        /// the slider is the only way to set it.
+        /// </summary>
+        private void AddValue(Row row, float x, float y)
+        {
+            GameObject go = UIF.Spawn(UIF.InputPrefab, host);
+            if (go == null)
+            {
+                row.Value = Label("", x, y, ValueWidth, RowHeight, 13,
+                                  TextAnchor.MiddleRight, Color.white);
+                return;
+            }
+            Place(go, x, y, ValueWidth, RowHeight);
+
+            UnityEngine.UI.InputField field =
+                go.GetComponent<UnityEngine.UI.InputField>();
+            if (field == null)
+            {
+                field = go.GetComponentInChildren<UnityEngine.UI.InputField>(true);
+            }
+            if (field == null)
+            {
+                return;
+            }
+
+            row.Box = field;
+            row.Value = Style(field.textComponent, TextAnchor.MiddleRight, Color.white);
+            // The prefab's placeholder is a word in whatever language the game is in;
+            // an empty box that says nothing is what a number wants.
+            Text ghost = field.placeholder as Text;
+            if (ghost != null)
+            {
+                UIF.Untranslate(ghost);
+                ghost.text = "";
+            }
+            field.lineType = UnityEngine.UI.InputField.LineType.SingleLine;
+            field.characterLimit = 8;
+
+            Row captured = row;
+            field.onEndEdit.AddListener(delegate(string typed) { Typed(captured, typed); });
+        }
+
+        /// <summary>
+        /// Squares one of the prefab's own labels up to the box it is in: the padding
+        /// it was authored with is for a box of the size UI Factory drew, and these
+        /// are a row high and hold six characters.
+        /// </summary>
+        private static Text Style(Text label, TextAnchor align, Color ink)
+        {
+            if (label == null)
+            {
+                return null;
+            }
+            RectTransform rect = label.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(4f, 0f);
+            rect.offsetMax = new Vector2(-4f, 0f);
+            label.alignment = align;
+            label.color = ink;
+            label.fontSize = 13;
+            label.resizeTextForBestFit = false;
+            // A field edits plain text, and a number that does not fit is better read
+            // over the edge of its box than wrapped out of sight.
+            label.supportRichText = false;
+            label.horizontalOverflow = HorizontalWrapMode.Overflow;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
+            return label;
         }
 
         /// <summary>The block's own toggles, two to a row, lit when on.</summary>
@@ -413,7 +656,7 @@ namespace OrchestraMod
                 int line = i / TypeColumns;
                 // UI Factory's Text Toggle is Besiege's own, so the tick and its
                 // states come from the game rather than being painted here.
-                GameObject go = UIF.Spawn(UIF.TogglePrefab, window.transform);
+                GameObject go = UIF.Spawn(UIF.TogglePrefab, host);
                 if (go == null)
                 {
                     continue;
@@ -434,7 +677,6 @@ namespace OrchestraMod
                 if (item.Caption != null)
                 {
                     UIF.Untranslate(item.Caption);
-                    item.Caption.text = all[i].DisplayName.ToUpper();
                 }
                 if (item.Control != null)
                 {
@@ -492,7 +734,7 @@ namespace OrchestraMod
 
             if (title != null)
             {
-                title.text = block.SelectedTypeName.ToUpper();
+                title.text = TitleFor();
             }
 
             for (int i = 0; i < rows.Count; i++)
@@ -501,6 +743,14 @@ namespace OrchestraMod
                 if (row.Bound == null)
                 {
                     continue;
+                }
+                if (row.Caption != null)
+                {
+                    // Written every time, not once when the row was made: a window
+                    // is kept for the next block with the same shape, and that block
+                    // calls its extras something else -- which is how a piano came to
+                    // have a PALM MUTE where its SUSTAIN is.
+                    row.Caption.text = Caption(row.Bound);
                 }
                 if (row.Control != null)
                 {
@@ -529,18 +779,144 @@ namespace OrchestraMod
                 keyLine.text = "PLAY  " + block.KeyDescription
                              + "   —  rebind in the mapper behind";
             }
+            ShowListen();
             filling = false;
+        }
+
+        /// <summary>
+        /// The window's name: the block and the instrument in it, "PIANO - GRAND".
+        ///
+        /// A type that ends in the block's own name loses that half, because the
+        /// title has already said it -- "Grand piano" in a Piano block is "Grand",
+        /// while "Section" in a Brass one is left alone.
+        /// </summary>
+        private string TitleFor()
+        {
+            string type = block.SelectedTypeName;
+            string name = block.BlockName;
+            if (string.IsNullOrEmpty(name))
+            {
+                return type.ToUpper();
+            }
+            string tail = " " + name.ToLower();
+            if (type.Length > tail.Length && type.ToLower().EndsWith(tail))
+            {
+                type = type.Substring(0, type.Length - tail.Length);
+            }
+            return (name + " - " + type).ToUpper();
         }
 
         private void Write(Row row)
         {
-            if (row.Value == null || row.Bound == null)
+            if (row.Bound == null)
             {
                 return;
             }
-            row.Value.text = row.Note
+            string shown = row.Note
                 ? NoteName(Mathf.RoundToInt(row.Bound.Value))
                 : row.Bound.Value.ToString("0.00");
+            if (row.Box != null)
+            {
+                // Not while it is being typed in: the box is the player's until they
+                // are finished with it, and a drag elsewhere must not take the caret
+                // out from under them.
+                if (!row.Box.isFocused)
+                {
+                    row.Box.text = shown;
+                }
+                return;
+            }
+            if (row.Value != null)
+            {
+                row.Value.text = shown;
+            }
+        }
+
+        /// <summary>
+        /// A number was typed. Unlike a drag this is a finished edit, so it commits
+        /// at once rather than waiting for a mouse button that was never held.
+        /// Anything unreadable leaves the setting alone, and the box goes back to
+        /// showing what it is.
+        /// </summary>
+        private void Typed(Row row, string text)
+        {
+            if (block != null && row.Bound != null && !filling)
+            {
+                float value;
+                if (Read(row, text, out value))
+                {
+                    if (row.Note)
+                    {
+                        value = Mathf.Round(value);
+                    }
+                    value = Mathf.Clamp(value, row.Bound.Min, row.Bound.Max);
+                    row.Bound.Value = value;
+                    if (row.Control != null)
+                    {
+                        // The slider's own change event would only write back what
+                        // was just written, and queue a commit this does itself.
+                        filling = true;
+                        row.Control.value = value;
+                        filling = false;
+                    }
+                    Commit(row.Bound);
+                }
+            }
+            Write(row);
+        }
+
+        /// <summary>
+        /// Reads back what <see cref="Write"/> puts out, and what someone would type
+        /// instead of it: a note as a name or as a number, and a bare number anywhere.
+        /// </summary>
+        private static bool Read(Row row, string text, out float value)
+        {
+            value = 0f;
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+            text = text.Trim();
+            if (float.TryParse(text, out value))
+            {
+                return true;
+            }
+            return row.Note && NoteNumber(text, out value);
+        }
+
+        /// <summary>
+        /// "C4", "F#3", "Bb5" as the MIDI number the slider holds. C4 is middle C,
+        /// which is what <see cref="NoteName"/> writes.
+        /// </summary>
+        private static bool NoteNumber(string text, out float value)
+        {
+            value = 0f;
+            // C  D  E  F  G  A  B
+            int[] steps = new int[] { 9, 11, 0, 2, 4, 5, 7 };
+            char letter = char.ToUpper(text[0]);
+            if (letter < 'A' || letter > 'G')
+            {
+                return false;
+            }
+            int semitone = steps[letter - 'A'];
+            int at = 1;
+            if (at < text.Length && (text[at] == '#' || text[at] == 's'))
+            {
+                semitone++;
+                at++;
+            }
+            else if (at < text.Length && (text[at] == 'b' || text[at] == 'B'))
+            {
+                semitone--;
+                at++;
+            }
+            int octave;
+            if (at >= text.Length || !int.TryParse(text.Substring(at), out octave))
+            {
+                return false;
+            }
+            value = (octave + 1) * 12 + semitone;
+            return true;
         }
 
         /// <summary>C4 is middle C, which is the convention Besiege's players use.</summary>
@@ -569,6 +945,8 @@ namespace OrchestraMod
             }
             if (item.Caption != null)
             {
+                // Rewritten rather than set once, for the reason in ReadFromBlock.
+                item.Caption.text = Caption(item.Bound);
                 item.Caption.color = item.Bound.IsActive ? Color.white : UIF.QuietInk;
             }
         }
@@ -595,6 +973,7 @@ namespace OrchestraMod
                 return;
             }
             item.Bound.IsActive = on;
+            Paint(item);
             Queue(item.Bound);
         }
 
@@ -617,8 +996,30 @@ namespace OrchestraMod
             Queue(block.Types);
             if (title != null)
             {
-                title.text = block.SelectedTypeName.ToUpper();
+                title.text = TitleFor();
             }
+        }
+
+        /// <summary>The speaker: audition the block, and light the button while it
+        /// is sounding.</summary>
+        private void Listen()
+        {
+            if (block == null)
+            {
+                return;
+            }
+            block.Audition();
+            ShowListen();
+        }
+
+        private void ShowListen()
+        {
+            if (listenFace == null)
+            {
+                return;
+            }
+            bool on = block != null && block.IsAuditioning;
+            listenFace.color = on ? Color.white : UIF.QuietInk;
         }
 
         private void Queue(MapperType changed)
@@ -634,6 +1035,10 @@ namespace OrchestraMod
             if (block != null && built)
             {
                 WatchType();
+                NotePosition();
+                // The audition ends on its own, so the light on the button is polled
+                // rather than switched off by whatever ended it.
+                ShowListen();
             }
 
             // Committed when the mouse comes up rather than on every change: each
@@ -701,9 +1106,115 @@ namespace OrchestraMod
             }
         }
 
+        // ---- where the window sits -------------------------------------------
+
+        /// <summary>
+        /// How much of the window has to stay on screen: enough of the title bar to
+        /// take hold of, and enough across to be worth aiming at.
+        /// </summary>
+        private const float HeldWidth = 120f;
+        private const float HeldHeight = 34f;
+
+        /// <summary>
+        /// The window's top-left corner, in canvas units from the middle of the
+        /// screen. The rect is anchored and pivoted in the middle, so the corner is
+        /// half a window away from where it is placed.
+        /// </summary>
+        private Vector2 Corner()
+        {
+            Vector2 size = windowRect.sizeDelta;
+            Vector2 at = windowRect.anchoredPosition;
+            return new Vector2(at.x - size.x * 0.5f, at.y + size.y * 0.5f);
+        }
+
+        /// <summary>Puts that corner back, whatever this window's size is.</summary>
+        private void PlaceCorner(Vector2 at)
+        {
+            Vector2 size = windowRect.sizeDelta;
+            at = Fit(at, size);
+            windowRect.anchoredPosition =
+                new Vector2(at.x + size.x * 0.5f, at.y - size.y * 0.5f);
+        }
+
+        /// <summary>
+        /// Keeps a corner where the window can still be taken hold of.
+        ///
+        /// A window is dragged by its title bar, so one dragged out past the edge
+        /// takes the only thing that could bring it back with it -- and the position
+        /// is remembered, so it would be out there again next time. Across, enough of
+        /// the window has to overlap the screen to aim at, from either side. Down,
+        /// the top is what is kept rather than the bottom: a window whose bar is
+        /// below the screen cannot be reached at all. Up, the bar may not go past the
+        /// top edge, for the same reason.
+        /// </summary>
+        private Vector2 Fit(Vector2 at, Vector2 size)
+        {
+            RectTransform canvas = windowRect.parent as RectTransform;
+            if (canvas == null || canvas.rect.width <= 0f)
+            {
+                return at;
+            }
+            Rect screen = canvas.rect;
+            float wide = Mathf.Min(size.x, HeldWidth);
+            float high = Mathf.Min(size.y, HeldHeight);
+            return new Vector2(
+                Mathf.Clamp(at.x, screen.xMin - size.x + wide, screen.xMax - wide),
+                Mathf.Clamp(at.y, screen.yMin + high, screen.yMax));
+        }
+
+        /// <summary>
+        /// Notices the window being dragged. Polled rather than hooked: the drag is
+        /// UI Factory's own and reports nothing, so where the rect ended up is the
+        /// only account of it there is.
+        ///
+        /// Every frame rather than only on the way out, because the mapper can be
+        /// moved from one block to another without closing -- and the window that
+        /// then rebuilds would otherwise be put back where the last *closed* one
+        /// stood, undoing the drag.
+        /// </summary>
+        private void NotePosition()
+        {
+            if (window == null || !window.activeSelf || windowRect == null)
+            {
+                return;
+            }
+            Vector2 now = Corner();
+            Vector2 held = Fit(now, windowRect.sizeDelta);
+            if ((held - now).sqrMagnitude > 0.0001f)
+            {
+                // Dragged past what it may be dragged to: pulled back, this frame,
+                // so the bar never leaves the screen in the first place.
+                PlaceCorner(held);
+                now = held;
+            }
+            if (placed && (now - corner).sqrMagnitude < 0.01f)
+            {
+                return;
+            }
+            corner = now;
+            placed = true;
+            moved = true;
+        }
+
+        /// <summary>
+        /// Puts the corner on disk, if it has moved since it was last put there.
+        /// Called when the panel closes: a drag moves it many times a second, and
+        /// each write is a file.
+        /// </summary>
+        private void Remember()
+        {
+            NotePosition();
+            if (!moved)
+            {
+                return;
+            }
+            moved = false;
+            Prefs.SetCorner(corner);
+        }
+
         // ---- helpers ---------------------------------------------------------
 
-        /// <summary>Places a rect from the window's top-left, in UI Factory's units.</summary>
+        /// <summary>Places a rect from its parent's top-left, in UI Factory's units.</summary>
         private void Place(GameObject go, float x, float y, float w, float h)
         {
             RectTransform rect = go.transform as RectTransform;
@@ -721,7 +1232,7 @@ namespace OrchestraMod
         private Text Label(string text, float x, float y, float w, float h,
                            int size, TextAnchor align, Color ink)
         {
-            GameObject go = UIF.Spawn(UIF.TextPrefab, window.transform);
+            GameObject go = UIF.Spawn(UIF.TextPrefab, host);
             if (go == null)
             {
                 return null;

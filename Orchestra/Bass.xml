@@ -10,13 +10,13 @@
 	<Fallback>Ballast</Fallback>
 
 	<Modules>
-		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059">
+		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Bass">
 			<Types>
-			<Type name="Acoustic" engine="sampler" samples="bass_acoustic_36 bass_acoustic_64" />
-			<Type name="Fingered" engine="sampler" samples="bass_finger_54 bass_finger_64 bass_finger_69" />
-			<Type name="Picked"   engine="sampler" samples="bass_pick_42 bass_pick_52 bass_pick_57" />
-			<Type name="Fretless" engine="sampler" samples="bass_fretless_32 bass_fretless_50 bass_fretless_44" />
-			<Type name="Synth"    engine="sampler" samples="bass_synth_33 bass_synth_39 bass_synth_51" />
+			<Type name="Acoustic" engine="sampler" samples="bass_acoustic_36 bass_acoustic_64" loops="6568-6906 4272-4340" decay="1.6" />
+			<Type name="Fingered" engine="sampler" samples="bass_finger_54 bass_finger_64 bass_finger_69" loops="5150-5270 5114-5182 5074-5125" decay="1.4" />
+			<Type name="Picked"   engine="sampler" samples="bass_pick_42 bass_pick_52 bass_pick_57" loops="9765-10007 8856-8992 8873-8975" decay="1.3" />
+			<Type name="Fretless" engine="sampler" samples="bass_fretless_32 bass_fretless_50 bass_fretless_44" loops="14200-14624 13929-14080 14855-15068" decay="1.8" />
+			<Type name="Synth"    engine="sampler" samples="bass_synth_33 bass_synth_39 bass_synth_51" loops="400-801 294-588 147-294" decay="1.2" />
 			</Types>
 			<Extras>
 			<Extra kind="toggle" key="SlapKey" name="Slap" default="0" />
@@ -24,17 +24,17 @@
 		</OrchestraMod>
 	</Modules>
 
-	<Mesh name="OrchestraBlock_mesh" >
-		<Position x="0.45" y="-0.45" z="0.0" />
-		<Rotation x="-90.0" y="-90.0" z="-90.0" />
-		<Scale x="1" y="1" z="1" />
+	<Mesh name="Bass_mesh">
+		<Position x="0.0" y="0.0" z="0.5" />
+		<Rotation x="0.0" y="0.0" z="0.0" />
+		<Scale x="0.5" y="0.5" z="0.5" />
 	</Mesh>
 
 	<Texture name="Bass_texture" />
 
 	<Icon>
-		<Position x="-0.15" y="-0.35" z="-1.5" /> <!--right, up, front-->
-		<Rotation x="-30.0" y="-30.0" z="0.0" /> <!--left, down, front-->
+		<Position x="0.0" y="0.0" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-115.0" y="210.0" z="0.0" /> <!--stands the block up, turns its face to the camera, three-quarters-->
 		<Scale x="0.5" y="0.5" z="0.5" />
 	</Icon>
 	

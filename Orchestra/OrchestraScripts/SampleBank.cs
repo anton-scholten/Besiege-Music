@@ -29,7 +29,60 @@ namespace OrchestraMod
             /// <summary>Loop bounds in samples, or -1 for a sample that does not loop.</summary>
             public int LoopStart = -1;
             public int LoopEnd = -1;
+
+            /// <summary>
+            /// The window at the end that a struck note rings on with, or -1 where
+            /// there is none. See <see cref="FindTail"/>.
+            /// </summary>
+            public int TailStart = -1;
+            public int TailEnd = -1;
+
+            /// <summary>
+            /// What the ring-out is turned down by each time round that window, which
+            /// is how much the recording itself falls across it. Without it the level
+            /// would step back up at every turn.
+            /// </summary>
+            public float TailGain = 1f;
         }
+
+        /// <summary>How much of the end of a recording the ring-out plays round.</summary>
+        private const float TailSeconds = 0.15f;
+
+        /// <summary>
+        /// What `extract-samples.py` fades out at the end of an unlooped cut,
+        /// measured off the shipped samples rather than read off the script -- what
+        /// arrives back through Ogg is nearer thirty milliseconds than the ten it
+        /// asks for. The ring-out has to stop short of it: a fade to nothing inside
+        /// the window would be heard as a dip on every turn.
+        /// </summary>
+        private const float FadeSeconds = 0.03f;
+
+        /// <summary>
+        /// How much quieter the end of the window may be than its start. A window the
+        /// recording falls a long way across is one that steps the level up every
+        /// time it turns round, so it is halved until it is level enough.
+        /// </summary>
+        private const float Steady = 0.8f;
+
+        /// <summary>
+        /// How far either side of the nominal window length the seam is searched
+        /// for. A sample is not filed under exactly the pitch it was recorded at --
+        /// fonts carry a correction -- and over a hundred periods a fraction of a
+        /// percent is half a wavelength out.
+        /// </summary>
+        private const float Spread = 0.06f;
+
+        /// <summary>
+        /// Every bank read so far, by the samples it was asked for.
+        ///
+        /// A bank is a few hundred kilobytes of immutable float, and `LoadBanks` runs
+        /// for every block placed -- twenty pianos would otherwise read the same
+        /// twelve clips twenty times, and now search each of them for its ring-out as
+        /// well. Shared rather than copied: nothing writes to an entry after it is
+        /// made.
+        /// </summary>
+        private static readonly Dictionary<string, SampleBank> banks =
+            new Dictionary<string, SampleBank>();
 
         private readonly List<Entry> entries = new List<Entry>();
 
@@ -42,7 +95,14 @@ namespace OrchestraMod
         /// </summary>
         public static SampleBank Load(string names, string loops)
         {
-            SampleBank bank = new SampleBank();
+            SampleBank bank;
+            string key = names + "|" + loops;
+            if (banks.TryGetValue(key, out bank))
+            {
+                return bank;
+            }
+            bank = new SampleBank();
+            banks[key] = bank;
             if (string.IsNullOrEmpty(names))
             {
                 return bank;
@@ -95,6 +155,7 @@ namespace OrchestraMod
                 entry.Note = note;
                 entry.Rate = clip.frequency;
                 ReadLoop(entry, loopParts, loopIndex, data.Length);
+                FindTail(entry);
                 bank.entries.Add(entry);
             }
             return bank;
@@ -123,12 +184,148 @@ namespace OrchestraMod
             {
                 return;
             }
-            if (start < 0 || end <= start || end > length)
+            // Three samples short of the end: the interpolation reads that far
+            // ahead, so a voice stops there, and a loop that ends any later would
+            // never be reached to turn round in.
+            int usable = length - 3;
+            if (end > usable)
+            {
+                // Vorbis does not hand back quite the number of samples it was
+                // given, and the extractor's numbers are the encoder's. Trimmed
+                // rather than thrown away: a loop a few samples shorter is a note
+                // that still sustains, and no loop at all is one that stops.
+                int shift = end - usable;
+                start -= shift;
+                end -= shift;
+            }
+            if (start < 0 || end - start < 16)
             {
                 return;
             }
             entry.LoopStart = start;
             entry.LoopEnd = end;
+        }
+
+        /// <summary>
+        /// Finds a window at the end of an unlooped recording that can be played
+        /// round and round while it fades, so a struck note rings out instead of
+        /// stopping where the cut was made.
+        ///
+        /// It has to: the recordings end at two seconds or wherever the font's own
+        /// sample did, and a guitar or a piano is nowhere near silent by then --
+        /// the shortest of these is still at two thirds of its body level when it
+        /// runs out, which is heard as a note that stops rather than one that ends.
+        ///
+        /// The window is a whole number of periods of the note the sample *is*, so
+        /// what it wraps onto is the same part of the same waveform, and the seam is
+        /// not heard. Sustaining instruments are left alone -- they have a real loop,
+        /// and the playhead never reaches the end.
+        /// </summary>
+        private static void FindTail(Entry entry)
+        {
+            if (entry.LoopEnd > entry.LoopStart || entry.Rate <= 0)
+            {
+                return;
+            }
+            int end = entry.Data.Length - (int)(entry.Rate * FadeSeconds) - 3;
+            if (end <= 0)
+            {
+                return;
+            }
+            float hz = 440f * Mathf.Pow(2f, (entry.Note - 69f) / 12f);
+            float period = entry.Rate / hz;
+            if (period < 2f)
+            {
+                return;
+            }
+
+            // As many periods as make up the wanted window, halved until what is
+            // left of the recording holds it and the note does not fall too far
+            // across it.
+            int cycles = Mathf.Max(2, Mathf.RoundToInt(TailSeconds * entry.Rate / period));
+            int window = 0;
+            int compare = 0;
+            while (true)
+            {
+                window = Mathf.RoundToInt(cycles * period);
+                compare = Mathf.Min((int)(2f * period) + 1, window);
+                if (window >= 32 && window <= end / 2 && end - window >= compare)
+                {
+                    float near = Loudness(entry.Data, end, compare);
+                    float far = Loudness(entry.Data, end - window, compare);
+                    if (far <= 0f)
+                    {
+                        return;
+                    }
+                    if (near / far >= Steady)
+                    {
+                        break;
+                    }
+                }
+                if (cycles <= 2)
+                {
+                    // Nothing left to shorten: this recording is too short to ring
+                    // on, and stops where it stops as it always did.
+                    return;
+                }
+                cycles = Mathf.Max(2, cycles / 2);
+            }
+
+            entry.TailStart = end - Seam(entry.Data, end, window, compare);
+            entry.TailEnd = end;
+            entry.TailGain = Mathf.Min(1f, Loudness(entry.Data, end, compare)
+                                         / Mathf.Max(1e-9f, Loudness(entry.Data, entry.TailStart, compare)));
+        }
+
+        /// <summary>
+        /// The window length whose end matches what comes before the wrap best, near
+        /// the whole number of periods asked for. Correlation rather than difference,
+        /// so a quieter stretch cannot win by being quiet.
+        /// </summary>
+        private static int Seam(float[] data, int end, int window, int compare)
+        {
+            int low = Mathf.Max(32, (int)(window * (1f - Spread)));
+            int high = Mathf.Min((int)(window * (1f + Spread)), end - compare - 1);
+            float best = -2f;
+            int found = window;
+            for (int w = low; w <= high; w++)
+            {
+                float sum = 0f, here = 0f, there = 0f;
+                for (int k = 1; k <= compare; k++)
+                {
+                    float a = data[end - k];
+                    float b = data[end - w - k];
+                    sum += a * b;
+                    here += a * a;
+                    there += b * b;
+                }
+                if (here <= 0f || there <= 0f)
+                {
+                    continue;
+                }
+                float score = sum / Mathf.Sqrt(here * there);
+                if (score > best)
+                {
+                    best = score;
+                    found = w;
+                }
+            }
+            return found;
+        }
+
+        /// <summary>RMS of the samples ending at <paramref name="at"/>.</summary>
+        private static float Loudness(float[] data, int at, int count)
+        {
+            if (count <= 0 || at - count < 0 || at > data.Length)
+            {
+                return 0f;
+            }
+            float sum = 0f;
+            for (int k = 1; k <= count; k++)
+            {
+                sum += data[at - k] * data[at - k];
+            }
+            return Mathf.Sqrt(sum / count);
         }
 
         /// <summary>The recorded note closest to the one asked for.</summary>

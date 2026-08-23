@@ -13,7 +13,7 @@
 	<Fallback>Ballast</Fallback>
 
 	<Modules>
-		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059">
+		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Cymbals">
 			<Types>
 			<Type name="Crash"  engine="modal" decay="4.5" brightness="0.85" inharmonicity="1.75" noise="0.85" />
 			<Type name="Ride"   engine="modal" decay="5.5" brightness="0.65" inharmonicity="1.62" noise="0.55" />
@@ -28,17 +28,17 @@
 		</OrchestraMod>
 	</Modules>
 
-	<Mesh name="OrchestraBlock_mesh" >
-		<Position x="0.45" y="-0.45" z="0.0" />
-		<Rotation x="-90.0" y="-90.0" z="-90.0" />
-		<Scale x="1" y="1" z="1" />
+	<Mesh name="Cymbals_mesh">
+		<Position x="0.0" y="0.0" z="0.5" />
+		<Rotation x="0.0" y="0.0" z="0.0" />
+		<Scale x="0.5" y="0.5" z="0.5" />
 	</Mesh>
 
 	<Texture name="Cymbals_texture" />
 
 	<Icon>
-		<Position x="-0.15" y="-0.35" z="-1.5" /> <!--right, up, front-->
-		<Rotation x="-30.0" y="-30.0" z="0.0" /> <!--left, down, front-->
+		<Position x="0.0" y="0.0" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-115.0" y="210.0" z="0.0" /> <!--stands the block up, turns its face to the camera, three-quarters-->
 		<Scale x="0.5" y="0.5" z="0.5" />
 	</Icon>
 	

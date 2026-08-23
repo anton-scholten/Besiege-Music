@@ -32,6 +32,19 @@ namespace OrchestraMod
     [XmlRoot("OrchestraMod")]
     public class OrchestraModule : BlockModule
     {
+        /// <summary>
+        /// What the family is called, for the panel's title: "Piano", "Brass".
+        ///
+        /// Declared here rather than read from the game. `BlockPrefabInfo.Name` is
+        /// the only name the modding API offers for a block and it is the owning
+        /// mod's id -- a title bar reading ACA735EA-A614-... is what asking for it
+        /// gets you. The block's own &lt;Name&gt; element is right there in the same
+        /// file, and `XmlCheck` holds this to it, so the two cannot drift.
+        /// </summary>
+        [XmlAttribute("block")]
+        [DefaultValue("")]
+        public string Family = "";
+
         /// <summary>The entries in the block's Type menu, in order.</summary>
         [XmlArray("Types")]
         [XmlArrayItem("Type")]
@@ -116,10 +129,29 @@ namespace OrchestraMod
         [DefaultValue(0.25f)]
         public float Release = 0.25f;
 
-        /// <summary>Sustaining instruments hold while the key is down.</summary>
-        [XmlAttribute("sustains")]
+        /// <summary>
+        /// Letting the key go damps the note, over <see cref="Release"/>. True of a
+        /// piano, whose dampers fall back on the strings, and of anything bowed or
+        /// blown, which stops when the player does. False of a guitar: taking your
+        /// hand off a plucked string does not stop it.
+        /// </summary>
+        [XmlAttribute("damped")]
         [DefaultValue(false)]
-        public bool Sustains = false;
+        public bool Damped = false;
+
+        /// <summary>
+        /// The loop is a sustain: the note goes on for as long as the key is down,
+        /// rather than fading through the loop over <see cref="Decay"/>.
+        ///
+        /// This is the difference between a bow and a hammer. Both kinds of sample
+        /// carry loop points -- most of the font's are only a few milliseconds long
+        /// -- and what separates them is whether the instrument puts energy in
+        /// continuously. A violin does; a piano does not, and neither does a guitar,
+        /// so their loops are what the note rings on with while it dies.
+        /// </summary>
+        [XmlAttribute("holds")]
+        [DefaultValue(false)]
+        public bool Holds = false;
 
         // ---- set by the block's controls, not by the XML --------------------
         //
@@ -148,7 +180,8 @@ namespace OrchestraMod
         [XmlIgnore]
         public float Comb = 0f;
 
-        /// <summary>Struck rather than held: no loop, and a short tail.</summary>
+        /// <summary>Struck rather than bowed or blown: the loop stops being a
+        /// sustain and becomes a short ring-out. Pizzicato, palm mute.</summary>
         [XmlIgnore]
         public bool Struck = false;
     }

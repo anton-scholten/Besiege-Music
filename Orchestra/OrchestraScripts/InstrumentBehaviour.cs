@@ -22,6 +22,18 @@ namespace OrchestraMod
         private const int VoiceCount = 8;
         private const int QueueSize = 32;
 
+        /// <summary>Within this many metres the block is at full volume, as the
+        /// source's own minDistance used to say.</summary>
+        private const float NearDistance = 1f;
+
+        /// <summary>How long the panel's LISTEN holds the note down. Long enough to
+        /// hear what a bowed note settles into, short enough not to be waited out.</summary>
+        private const float AuditionSeconds = 1.2f;
+
+        /// <summary>Seconds a damped string rings on for: a hand on it is what took
+        /// the rest of the note away.</summary>
+        private const float MutedRing = 0.25f;
+
         private MKey PlayKey;
         private MMenu TypeMenu;
         private MSlider NoteSlider;
@@ -51,6 +63,21 @@ namespace OrchestraMod
         private SampleBank[] banks;
         private int sampleRate;
 
+        /// <summary>
+        /// What every instrument block's AudioSource plays: one sample of silence,
+        /// looped. It is never heard -- <see cref="OnAudioFilterRead"/> writes over
+        /// it -- but a source has to be playing something for there to be a filter
+        /// chain to write into.
+        /// </summary>
+        private static AudioClip silence;
+
+        /// <summary>
+        /// The listener the block is heard from. Re-found rather than held, because
+        /// Besiege swaps cameras between building and running and the listener goes
+        /// with them.
+        /// </summary>
+        private AudioListener ear;
+
         private Voice[] modal;
         private Voice[] drums;
         private SamplerVoice[] samplers;
@@ -61,6 +88,16 @@ namespace OrchestraMod
         private volatile int wantType;
         private volatile float wantNote = 60f;
         private volatile float wantVolume = 0.7f;
+
+        // Where the block stands, as a gain in each ear. Worked out on the game
+        // thread by Place, because a transform may not be read from the audio one.
+        private volatile float wantLeft = 1f;
+        private volatile float wantRight = 1f;
+
+        // Audio thread only: the gains the last buffer ended on, so the next one
+        // slides onto the new pair rather than stepping onto it.
+        private float heldLeft = 1f;
+        private float heldRight = 1f;
 
         // Single producer, single consumer. The game thread pushes note-ons and
         // note-offs; the audio thread drains them at the head of each buffer, so a
@@ -73,6 +110,13 @@ namespace OrchestraMod
         private bool emulatedPressPending;
         private bool emulatedDown;
         private bool gateOpen;
+
+        /// <summary>Unscaled time the panel's audition releases at, or 0 for none.</summary>
+        private float auditionUntil;
+
+        /// <summary>The audio thread saying it has not reached silence yet, so the
+        /// source is held up for a note's release rather than cut off at the gate.</summary>
+        private volatile bool sounding;
 
         public override void SafeAwake()
         {
@@ -203,6 +247,111 @@ namespace OrchestraMod
             get { return TypeCount > 0 ? TypeName(SelectedType) : "Instrument"; }
         }
 
+        /// <summary>
+        /// What the block is called -- "Piano", "Brass" -- for the panel's title,
+        /// as its own XML declares. See OrchestraModule.Family for why it is not
+        /// asked of the game.
+        /// </summary>
+        public string BlockName
+        {
+            get { return Module.Family == null ? "" : Module.Family; }
+        }
+
+        /// <summary>True while the panel's LISTEN is holding a note down.</summary>
+        public bool IsAuditioning { get { return auditionUntil > 0f; } }
+
+        /// <summary>
+        /// The panel's LISTEN: plays the block's note where it stands, with the
+        /// settings as they are, while the machine is being built.
+        ///
+        /// A run owns the block, so this does nothing during one -- the key is what
+        /// plays it there. Pressed again while a note is sounding it retriggers,
+        /// which is what a key does and what auditioning a setting wants.
+        /// </summary>
+        public void Audition()
+        {
+            if (source == null || StatMaster.levelSimulating)
+            {
+                return;
+            }
+            PushSettings();
+            Place();
+            if (!source.isPlaying)
+            {
+                heldLeft = wantLeft;
+                heldRight = wantRight;
+                source.Play();
+            }
+            Push(1);
+            auditionUntil = Time.unscaledTime + AuditionSeconds;
+        }
+
+        /// <summary>Lets an audition go, leaving the note its release.</summary>
+        public void StopAudition()
+        {
+            if (auditionUntil <= 0f)
+            {
+                return;
+            }
+            auditionUntil = 0f;
+            Push(0);
+        }
+
+        /// <summary>
+        /// The one rule outside a run: the source plays while the panel is
+        /// auditioning or a voice is still sounding, and is stopped otherwise.
+        ///
+        /// Re-checked every frame rather than switched from the callbacks that change
+        /// it, because a simulation runs on a *clone* of the machine: OnSimulateStart
+        /// and OnSimulateStop land on that copy, never on the block the panel edits.
+        /// The clone takes the early return here and keeps the source those two gave
+        /// it.
+        /// </summary>
+        private void Update()
+        {
+            if (source == null)
+            {
+                return;
+            }
+            if (StatMaster.levelSimulating)
+            {
+                // A run owns the block: OnSimulateStart and OnSimulateStop hold the
+                // source there, and nothing here may fight them. An audition caught
+                // by the start of a run is let go rather than dropped, so its note
+                // releases instead of hanging. The clone never had one to let go.
+                StopAudition();
+                return;
+            }
+
+            if (auditionUntil > 0f)
+            {
+                // So a slider moved while the note rings is heard as it moves.
+                PushSettings();
+                Place();
+                if (Time.unscaledTime >= auditionUntil)
+                {
+                    StopAudition();
+                }
+            }
+
+            // The source outlives the gate: releasing the note and stopping the
+            // source in the same breath is what would cut the release off. The
+            // sounding term only *keeps* a playing source up -- a stale one, left
+            // true by the last buffer of a run that has since been stopped, must not
+            // be able to start it again.
+            bool wanted = auditionUntil > 0f || (sounding && source.isPlaying);
+            if (wanted != source.isPlaying)
+            {
+                if (wanted) { source.Play(); } else { source.Stop(); }
+            }
+            if (!source.isPlaying)
+            {
+                // Nothing is driving the audio callback now, so it cannot clear this
+                // itself.
+                sounding = false;
+            }
+        }
+
         /// <summary>The keys bound to Play, for the panel's read-only line.</summary>
         public string KeyDescription
         {
@@ -254,19 +403,24 @@ namespace OrchestraMod
                 drums[i] = new DrumVoice(sampleRate);
                 samplers[i] = new SamplerVoice(sampleRate);
             }
-            mix = new float[2048];
+            // Sized for the largest buffer Unity asks a filter for, so the audio
+            // thread never has to grow it under a running note.
+            mix = new float[4096];
         }
 
         /// <summary>
-        /// A streaming mono clip fed by <see cref="ReadPcm"/>, on a fully 3D
-        /// source.
+        /// A 2D source playing silence, whose filter chain is where the notes are
+        /// written -- see <see cref="OnAudioFilterRead"/>.
         ///
-        /// This is what makes the block a point source. The alternative,
-        /// OnAudioFilterRead, sits in the source's filter chain and hands back a
-        /// buffer that is already spatialised, so writing into it destroys the
-        /// panning and the mod has to pan by hand. A PCM reader callback is pulled
-        /// *before* spatialisation: Unity takes mono samples and then applies
-        /// distance, doppler and stereo position itself.
+        /// The obvious alternative is a streaming clip with a PCM reader callback,
+        /// which is fed *before* Unity's 3D stage and so gets distance, doppler and
+        /// panning for free. It costs the stream's read-ahead: that callback runs
+        /// well before the samples it fills are heard, so a note queued by a keypress
+        /// is rendered into audio that does not reach the speakers for some way yet,
+        /// and the block answers the key late. A filter runs in the mixer, on the
+        /// buffer about to be played.
+        ///
+        /// So the source is 2D and the block places itself; see <see cref="Place"/>.
         /// </summary>
         private void BuildSource()
         {
@@ -275,15 +429,22 @@ namespace OrchestraMod
             {
                 source = gameObject.AddComponent<AudioSource>();
             }
-            AudioClip clip = AudioClip.Create("OrchestraVoice", sampleRate, 1, sampleRate,
-                true, new AudioClip.PCMReaderCallback(ReadPcm));
-            source.clip = clip;
+            source.clip = Silence(sampleRate);
             source.loop = true;
             source.playOnAwake = false;
-            source.spatialBlend = 1f;
-            source.rolloffMode = AudioRolloffMode.Linear;
-            source.minDistance = 1f;
-            source.dopplerLevel = 0.5f;
+            source.spatialBlend = 0f;
+        }
+
+        private static AudioClip Silence(int rate)
+        {
+            if (silence == null)
+            {
+                silence = AudioClip.Create("OrchestraSilence", 1, 1, rate, false);
+                // Out of the scene and out of UnloadUnusedAssets' reach: the only
+                // thing referencing it is this static field.
+                silence.hideFlags = HideFlags.HideAndDontSave;
+            }
+            return silence;
         }
 
         public override void OnSimulateStart()
@@ -291,6 +452,7 @@ namespace OrchestraMod
             emulatedPressPending = false;
             emulatedDown = false;
             gateOpen = false;
+            auditionUntil = 0f;
             queueRead = queueWrite;
             for (int i = 0; i < VoiceCount; i++)
             {
@@ -299,12 +461,16 @@ namespace OrchestraMod
                 samplers[i].Active = false;
             }
             PushSettings();
+            Place();
+            heldLeft = wantLeft;
+            heldRight = wantRight;
             source.Play();
         }
 
         public override void OnSimulateStop()
         {
             gateOpen = false;
+            sounding = false;
             source.Stop();
         }
 
@@ -326,6 +492,7 @@ namespace OrchestraMod
         public override void SimulateUpdateAlways()
         {
             PushSettings();
+            Place();
 
             bool pressed = PlayKey.IsPressed || emulatedPressPending;
             bool held = PlayKey.IsHeld || emulatedDown;
@@ -358,7 +525,6 @@ namespace OrchestraMod
             wantType = TypeMenu.Value;
             wantNote = NoteSlider.Value;
             wantVolume = VolumeSlider.Value;
-            source.maxDistance = RangeSlider.Value;
 
             int k = 0;
             for (int i = 0; i < extraSliders.Count; i++)
@@ -369,6 +535,59 @@ namespace OrchestraMod
             {
                 extraValues[k++] = extraToggles[i].IsActive ? 1f : 0f;
             }
+        }
+
+        /// <summary>
+        /// How loud the block is in each ear, from where it stands relative to the
+        /// listener. Unity's job normally, but its 3D stage runs before the filter
+        /// that makes the sound, so the block does it itself.
+        ///
+        /// The falloff is the one the source used to be given: full volume within a
+        /// metre, silent at RANGE, straight line between. Panned by how far round
+        /// the listener the block sits. Doppler is the one thing not reproduced --
+        /// it was Unity's resampling, and there is nothing here to resample.
+        ///
+        /// Game thread only: a transform may not be touched from the audio thread.
+        /// </summary>
+        private void Place()
+        {
+            if (ear == null || !ear.isActiveAndEnabled)
+            {
+                // Besiege swaps cameras between building and running, and the
+                // listener goes with them, so a held one goes stale rather than null.
+                ear = (AudioListener)UnityEngine.Object.FindObjectOfType(typeof(AudioListener));
+                if (ear == null)
+                {
+                    wantLeft = 1f;
+                    wantRight = 1f;
+                    return;
+                }
+            }
+
+            Transform head = ear.transform;
+            Vector3 delta = transform.position - head.position;
+            float distance = delta.magnitude;
+
+            float far = RangeSlider.Value;
+            if (far < NearDistance + 0.01f)
+            {
+                far = NearDistance + 0.01f;
+            }
+            float gain;
+            if (distance <= NearDistance) { gain = 1f; }
+            else if (distance >= far) { gain = 0f; }
+            else { gain = (far - distance) / (far - NearDistance); }
+
+            // -1 hard left, +1 hard right. Each ear keeps full gain until the block
+            // crosses to the other side, so a block straight ahead is as loud as it
+            // was before any of this.
+            float pan = 0f;
+            if (distance > 0.001f)
+            {
+                pan = Vector3.Dot(head.right, delta / distance);
+            }
+            wantLeft = gain * Mathf.Min(1f, 1f - pan);
+            wantRight = gain * Mathf.Min(1f, 1f + pan);
         }
 
         /// <summary>1 is a note on, 0 a note off. Dropped if the queue is full.</summary>
@@ -386,18 +605,39 @@ namespace OrchestraMod
         // ---- audio thread ----------------------------------------------------
 
         /// <summary>
-        /// Fills the streaming clip. Runs on Unity's audio thread: no Unity calls,
-        /// no allocation, no locks.
+        /// Renders the block into the buffer the mixer is about to play. Runs on
+        /// Unity's audio thread: no Unity calls, no allocation, no locks.
+        ///
+        /// The queue is drained at the head of the buffer, so a key pressed this
+        /// frame is heard in the next block of samples rather than after whatever a
+        /// streaming clip had already read ahead.
+        ///
+        /// The source plays silence and is 2D, so this writes over the buffer rather
+        /// than adding to it, and applies the block's own placement while it does.
         /// </summary>
-        private void ReadPcm(float[] data)
+        private void OnAudioFilterRead(float[] data, int channels)
         {
-            int frames = data.Length;
+            if (channels <= 0)
+            {
+                return;
+            }
+            int frames = data.Length / channels;
+            if (mix == null || mix.Length < frames)
+            {
+                // Sized for the largest buffer Unity asks for, in BuildVoices; this
+                // is the standing order for an unusual one, and costs a collection
+                // exactly once.
+                mix = new float[frames];
+            }
             for (int i = 0; i < frames; i++)
             {
-                data[i] = 0f;
+                mix[i] = 0f;
             }
-            if (mix == null || Module.Types == null || Module.Types.Length == 0)
+
+            if (Module.Types == null || Module.Types.Length == 0)
             {
+                sounding = false;
+                Silent(data, frames, channels);
                 return;
             }
 
@@ -423,7 +663,7 @@ namespace OrchestraMod
             }
 
             Voice[] pool = PoolFor(type);
-            float volume = wantVolume;
+            bool live = false;
             for (int v = 0; v < pool.Length; v++)
             {
                 if (!pool[v].Active)
@@ -431,19 +671,63 @@ namespace OrchestraMod
                     continue;
                 }
                 pool[v].Age++;
-                pool[v].Render(data, frames);
+                pool[v].Render(mix, frames);
+                // Read after rendering: a voice that reached silence in this buffer
+                // has just switched itself off, and the source can go with it.
+                live = live || pool[v].Active;
             }
+            sounding = live;
+
+            // The placement is a frame old and moves in steps; slide onto it across
+            // the buffer, or a turning camera is heard as a staircase.
+            float leftTo = wantLeft;
+            float rightTo = wantRight;
+            float left = heldLeft;
+            float right = heldRight;
+            float leftStep = (leftTo - left) / frames;
+            float rightStep = (rightTo - right) / frames;
+            float volume = wantVolume;
 
             for (int i = 0; i < frames; i++)
             {
-                float s = data[i] * volume;
+                float s = mix[i] * volume;
                 // The tanh knee keeps eight voices at once from clipping hard.
                 if (s > 0.7f || s < -0.7f)
                 {
                     s = s > 0f ? 0.7f + 0.3f * (1f - 1f / (1f + (s - 0.7f) * 3f))
                                : -0.7f - 0.3f * (1f - 1f / (1f - (s + 0.7f) * 3f));
                 }
-                data[i] = s;
+
+                left += leftStep;
+                right += rightStep;
+
+                int at = i * channels;
+                if (channels == 1)
+                {
+                    data[at] = s * (left + right) * 0.5f;
+                    continue;
+                }
+                data[at] = s * left;
+                data[at + 1] = s * right;
+                for (int c = 2; c < channels; c++)
+                {
+                    // Anything past the front pair gets the mono sum, which is what
+                    // a centre or a rear channel should hear from one small block.
+                    data[at + c] = s * (left + right) * 0.5f;
+                }
+            }
+            heldLeft = leftTo;
+            heldRight = rightTo;
+        }
+
+        /// <summary>Leaves the mixer's buffer empty. The source's own clip is
+        /// silence, so this is only about not passing anything else on.</summary>
+        private static void Silent(float[] data, int frames, int channels)
+        {
+            int n = frames * channels;
+            for (int i = 0; i < n; i++)
+            {
+                data[i] = 0f;
             }
         }
 
@@ -517,7 +801,8 @@ namespace OrchestraMod
             scratch.PitchDrop = type.PitchDrop;
             scratch.Attack = type.Attack;
             scratch.Release = type.Release;
-            scratch.Sustains = type.Sustains;
+            scratch.Damped = type.Damped;
+            scratch.Holds = type.Holds;
             scratch.Tremolo = 0f;
             scratch.Vibrato = 0f;
             scratch.Damping = 0f;
@@ -562,8 +847,9 @@ namespace OrchestraMod
 
                 if (iSustain >= 0 && Extra(iSustain, 0f) > 0.5f)
                 {
-                    // Pedal down: the note is not released with the key.
-                    scratch.Sustains = false;
+                    // Pedal down: the dampers stay off the strings, so the key no
+                    // longer stops the note -- it rings on and dies by itself.
+                    scratch.Damped = false;
                 }
 
                 // Pizzicato: the recording is bowed, so this drops the loop and
@@ -574,6 +860,7 @@ namespace OrchestraMod
                     scratch.Release = 0.12f;
                     scratch.Attack = 0.001f;
                     scratch.Comb = 0.5f;
+                    scratch.Decay = MutedRing;
                 }
 
                 // A palm on the strings and a mute in a bell are the same thing to
@@ -581,7 +868,7 @@ namespace OrchestraMod
                 if (iMute >= 0 && Extra(iMute, 0f) > 0.5f)
                 {
                     scratch.Damping = 0.7f;
-                    if (type.Sustains)
+                    if (type.Holds)
                     {
                         scratch.Edge = 0.05f;   // a muted horn still buzzes
                     }
@@ -589,6 +876,7 @@ namespace OrchestraMod
                     {
                         scratch.Struck = true;  // palm mute also kills the ring
                         scratch.Release = 0.15f;
+                        scratch.Decay = MutedRing;
                     }
                 }
 

@@ -12,13 +12,13 @@
 	<Fallback>Ballast</Fallback>
 
 	<Modules>
-		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059">
+		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Woodwind">
 			<Types>
-			<Type name="Flute"    engine="sampler" samples="wind_flute_61 wind_flute_70 wind_flute_82" loops="12004-20422 12718-20536 14760-22336" sustains="true" attack="0.05" release="0.2" />
-			<Type name="Clarinet" engine="sampler" samples="wind_clarinet_53 wind_clarinet_64 wind_clarinet_76" loops="3337-5593 3337-5520 3336-5534" sustains="true" attack="0.04" release="0.2" />
-			<Type name="Oboe"     engine="sampler" samples="wind_oboe_61 wind_oboe_70 wind_oboe_81" loops="22139-27004 14521-19121 19301-23560" sustains="true" attack="0.04" release="0.2" />
-			<Type name="Bassoon"  engine="sampler" samples="wind_bassoon_36 wind_bassoon_48 wind_bassoon_58" loops="3634-3969 4474-4644 4034-4129" sustains="true" attack="0.05" release="0.25" />
-			<Type name="Sax"      engine="sampler" samples="wind_sax_53 wind_sax_62 wind_sax_72" loops="10731-10857 7278-15597 6320-6445" sustains="true" attack="0.04" release="0.25" />
+			<Type name="Flute"    engine="sampler" samples="wind_flute_61 wind_flute_70 wind_flute_82" loops="12004-20422 12718-20536 14760-22336" damped="true" holds="true" attack="0.05" release="0.2" />
+			<Type name="Clarinet" engine="sampler" samples="wind_clarinet_53 wind_clarinet_64 wind_clarinet_76" loops="3337-5593 3337-5520 3336-5534" damped="true" holds="true" attack="0.04" release="0.2" />
+			<Type name="Oboe"     engine="sampler" samples="wind_oboe_61 wind_oboe_70 wind_oboe_81" loops="22139-27004 14521-19121 19301-23560" damped="true" holds="true" attack="0.04" release="0.2" />
+			<Type name="Bassoon"  engine="sampler" samples="wind_bassoon_36 wind_bassoon_48 wind_bassoon_58" loops="3634-3969 4474-4644 4034-4129" damped="true" holds="true" attack="0.05" release="0.25" />
+			<Type name="Sax"      engine="sampler" samples="wind_sax_53 wind_sax_62 wind_sax_72" loops="10731-10857 7278-15597 6320-6445" damped="true" holds="true" attack="0.04" release="0.25" />
 			</Types>
 			<Extras>
 			<Extra kind="slider" key="BreathKey" name="Breath" min="0" max="1" default="0.2" />
@@ -27,17 +27,17 @@
 		</OrchestraMod>
 	</Modules>
 
-	<Mesh name="OrchestraBlock_mesh" >
-		<Position x="0.45" y="-0.45" z="0.0" />
-		<Rotation x="-90.0" y="-90.0" z="-90.0" />
-		<Scale x="1" y="1" z="1" />
+	<Mesh name="Woodwind_mesh">
+		<Position x="0.0" y="0.0" z="0.5" />
+		<Rotation x="0.0" y="0.0" z="0.0" />
+		<Scale x="0.5" y="0.5" z="0.5" />
 	</Mesh>
 
 	<Texture name="Woodwind_texture" />
 
 	<Icon>
-		<Position x="-0.15" y="-0.35" z="-1.5" /> <!--right, up, front-->
-		<Rotation x="-30.0" y="-30.0" z="0.0" /> <!--left, down, front-->
+		<Position x="0.0" y="0.0" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-115.0" y="210.0" z="0.0" /> <!--stands the block up, turns its face to the camera, three-quarters-->
 		<Scale x="0.5" y="0.5" z="0.5" />
 	</Icon>
 	

@@ -8,7 +8,7 @@ namespace OrchestraMod
     /// </summary>
     public static class Log
     {
-        private const string Prefix = "[BraidsSynth] ";
+        private const string Prefix = "[Orchestra] ";
 
         public static void Info(string message)
         {

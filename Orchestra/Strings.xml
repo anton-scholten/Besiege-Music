@@ -12,13 +12,13 @@
 	<Fallback>Ballast</Fallback>
 
 	<Modules>
-		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059">
+		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Strings">
 			<Types>
-			<Type name="Violin"      engine="sampler" samples="strings_violin_56 strings_violin_66 strings_violin_77" loops="18615-29695 16462-28616 18575-30234" sustains="true" attack="0.06" release="0.3" />
-			<Type name="Viola"       engine="sampler" samples="strings_viola_49 strings_viola_60 strings_viola_72" loops="17635-21775 17698-21567 18741-22151" sustains="true" attack="0.06" release="0.3" />
-			<Type name="Cello"       engine="sampler" samples="strings_cello_37 strings_cello_47 strings_cello_59" loops="24938-29733 19852-24504 22779-26975" sustains="true" attack="0.07" release="0.35" />
-			<Type name="Double bass" engine="sampler" samples="strings_dbass_31 strings_dbass_39 strings_dbass_50" loops="5131-9408 8781-13359 8356-12819" sustains="true" attack="0.08" release="0.4" />
-			<Type name="Ensemble"    engine="sampler" samples="strings_ens_48 strings_ens_60 strings_ens_72" loops="12501-61643 13023-39042 11089-36245" sustains="true" attack="0.12" release="0.6" />
+			<Type name="Violin"      engine="sampler" samples="strings_violin_56 strings_violin_66 strings_violin_77" loops="18615-29695 16462-28616 18575-30234" damped="true" holds="true" attack="0.06" release="0.3" />
+			<Type name="Viola"       engine="sampler" samples="strings_viola_49 strings_viola_60 strings_viola_72" loops="17635-21775 17698-21567 18741-22151" damped="true" holds="true" attack="0.06" release="0.3" />
+			<Type name="Cello"       engine="sampler" samples="strings_cello_37 strings_cello_47 strings_cello_59" loops="24938-29733 19852-24504 22779-26975" damped="true" holds="true" attack="0.07" release="0.35" />
+			<Type name="Double bass" engine="sampler" samples="strings_dbass_31 strings_dbass_39 strings_dbass_50" loops="5131-9408 8781-13359 8356-12819" damped="true" holds="true" attack="0.08" release="0.4" />
+			<Type name="Ensemble"    engine="sampler" samples="strings_ens_48 strings_ens_60 strings_ens_72" loops="12501-61643 13023-39042 11089-36245" damped="true" holds="true" attack="0.12" release="0.6" />
 			</Types>
 			<Extras>
 			<Extra kind="toggle" key="PizzKey" name="Pizzicato" default="0" />
@@ -27,17 +27,17 @@
 		</OrchestraMod>
 	</Modules>
 
-	<Mesh name="OrchestraBlock_mesh" >
-		<Position x="0.45" y="-0.45" z="0.0" />
-		<Rotation x="-90.0" y="-90.0" z="-90.0" />
-		<Scale x="1" y="1" z="1" />
+	<Mesh name="Strings_mesh">
+		<Position x="0.0" y="0.0" z="0.5" />
+		<Rotation x="0.0" y="0.0" z="0.0" />
+		<Scale x="0.5" y="0.5" z="0.5" />
 	</Mesh>
 
 	<Texture name="Strings_texture" />
 
 	<Icon>
-		<Position x="-0.15" y="-0.35" z="-1.5" /> <!--right, up, front-->
-		<Rotation x="-30.0" y="-30.0" z="0.0" /> <!--left, down, front-->
+		<Position x="0.0" y="0.0" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-115.0" y="210.0" z="0.0" /> <!--stands the block up, turns its face to the camera, three-quarters-->
 		<Scale x="0.5" y="0.5" z="0.5" />
 	</Icon>
 	

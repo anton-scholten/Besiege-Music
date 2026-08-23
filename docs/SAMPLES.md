@@ -49,9 +49,20 @@ are named by the note they actually sound, not the note that was asked for.
 `--list` prints every preset in a font, and `--only <stem>` cuts a single
 instrument.
 
-**Loops.** Strings, brass and woodwind are cut *through* their loop point rather
-than to a fixed two seconds, and are not faded — the loop is the sustain. The
+**Loops.** Every sample is cut *through* its loop point rather than to a fixed two
+seconds, and is not faded — the loop is what the note goes on sounding with. The
 points are rewritten as offsets into the cut and scaled to the output rate, then
 emitted as a `loops="start-end ..."` attribute running parallel to `samples`.
-Everything else is left unlooped on purpose: a piano decays by itself, and
-looping one would hold a note that should be dying.
+
+What the game does with them is the block XML's business, not the extractor's.
+`holds="true"` on a type — strings, brass, woodwind — means the loop is a sustain,
+held for as long as the key is down. Without it the loop is a ring-out: the note
+fades through it over the type's `decay`, which is how the font itself builds a
+guitar or a piano. It is also what makes the short recordings usable at all: this
+font's synth bass is fourteen milliseconds of audio, and the loop is what turns
+that into a note.
+
+**The encoder is checked, not trusted.** Vorbis hands back a slightly different
+number of samples than it was given, and a loop that ends past the end of the
+decoded clip is one the game throws away. Each Ogg is read back after it is
+written and the pair is moved down to fit, keeping its length.

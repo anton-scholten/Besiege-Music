@@ -63,9 +63,12 @@ INSTRUMENTS = {
 RATE = 22050        # plenty for these ranges, half the size of 44.1k
 SECONDS = 2.0
 
-# Families whose note holds for as long as you hold the key. These are cut
-# through their loop point and looped in the game; everything else -- piano,
-# guitar, bass -- decays on its own, and looping it would be wrong.
+# Families whose note holds for as long as you hold the key, rather than dying
+# on its own. Both kinds are cut through their loop point and carry it into the
+# game; what differs is what the game does with it -- a sustaining instrument
+# goes round it for as long as the key is down, a struck one goes round it while
+# it fades, which is how the font itself builds a guitar or a piano. Every one of
+# these presets loops, most of them over the last few milliseconds.
 SUSTAINED = ("strings_", "brass_", "wind_")
 QUALITY = "2"       # ffmpeg libvorbis -q
 
@@ -209,6 +212,31 @@ class SoundFont(object):
         return struct.unpack_from("<%dh" % count, self.data, first), header["rate"]
 
 
+def decoded_loop(ogg, loop):
+    """The loop points against what actually comes back out of the Ogg.
+
+    Vorbis does not hand back the number of samples it was given -- a quarter of a
+    second of a second is the usual difference -- and a loop that ends past the end
+    of the decoded clip is one the game throws away, which is a note that does not
+    sustain. So the file is read back and the pair moved down to fit, keeping its
+    length: the loop is a few milliseconds earlier in a region that is repeating
+    anyway.
+    """
+    pcm = subprocess.check_output(
+        ["ffmpeg", "-v", "error", "-i", ogg, "-f", "s16le", "-ac", "1", "-"])
+    length = len(pcm) // 2
+    start, end = loop
+    if end <= length:
+        return loop
+    shift = end - length
+    start -= shift
+    end -= shift
+    if start < 0 or end - start < 16:
+        print("      loop does not survive the encode; left unlooped")
+        return None
+    return (start, end)
+
+
 def write_wav(path, frames, rate):
     body = struct.pack("<%dh" % len(frames), *frames)
     with open(path, "wb") as f:
@@ -257,10 +285,9 @@ def main():
             # relative to the cut, and at the output rate rather than the font's.
             scale = RATE / float(rate)
             loop = None
-            sustained = any(stem.startswith(f) for f in SUSTAINED)
             ls = header["loop_start"] - header["start"]
             le = header["loop_end"] - header["start"]
-            if sustained and 0 <= ls < le <= len(frames):
+            if 0 <= ls < le <= len(frames):
                 keep = le
                 loop = (int(ls * scale), int(le * scale))
             else:
@@ -270,7 +297,8 @@ def main():
             if loop is None:
                 # A hard cut is a click; ten milliseconds of fade is not audible
                 # as anything but the end of the note. A looped sample must not
-                # be faded -- the loop is the sustain.
+                # be faded -- the loop is what the note goes on sounding with,
+                # whether it is being held or dying away.
                 fade = min(int(rate * 0.01), keep)
                 for i in range(fade):
                     frames[keep - fade + i] = int(frames[keep - fade + i] * (1.0 - i / float(fade)))
@@ -288,6 +316,9 @@ def main():
                 ["ffmpeg", "-y", "-loglevel", "error", "-i", wav,
                  "-ar", str(RATE), "-ac", "1", "-c:a", "libvorbis", "-q:a", QUALITY, ogg])
             os.remove(wav)
+
+            if loop is not None:
+                loop = decoded_loop(ogg, loop)
 
             size = os.path.getsize(ogg)
             total += size

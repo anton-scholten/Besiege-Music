@@ -1,0 +1,15 @@
+# Source material, not the mod: `tools/make-block-meshes.py` fetches the models
+# it converts into here, and writes its previews beside them. The block meshes it
+# produces are what ships; these are the third-party files they came from, and
+# they stay with their own licences at their own source.
+tools/models/
+
+# Python's own leavings from the scripts in tools/.
+__pycache__/
+
+# Besiege's screenshots, which is how a problem gets described in this repo:
+# they are dropped in the working copy, looked at, and are of no use afterwards.
+# Named by the game as <yyyymmddhhmmss>_<n>.jpg, so a picture that is meant to be
+# kept -- docs/something.png -- is not caught by this.
+[0-9]*_[0-9].jpg
+[0-9]*_[0-9].png

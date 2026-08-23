@@ -40,7 +40,48 @@ from the toolbar. Nine blocks written from scratch, without one, all failed to
 load at once and looked exactly like a broken assembly.
 
 **Copy the geometry from a block that works** rather than writing it out. These
-nine take Sound Blocks' wholesale, because they share its mesh.
+nine took Sound Blocks' collider and adding points wholesale; only the mesh is
+their own.
+
+### The block meshes
+
+`tools/make-block-meshes.py` fetches nine low-poly instruments from Poly Pizza
+and converts them. The models are not in the repository — they are third-party
+CC-BY work and the script re-downloads what is missing — and `tools/models/` is
+ignored.
+
+Three things it has to get right, and the reasons are worth keeping:
+
+* **A block mesh is Z-up, centred on the origin, worn at half scale from
+  `z = 0.5`.** glTF is Y-up and right-handed, so the axes are swapped *and* one is
+  negated, which keeps the winding as it was. The convention is the synth block's,
+  whose own generator says it in as many words.
+* **These models have no texture, only a flat colour per material.** A Besiege
+  block wants a texture, so the colours go into a palette a few pixels across and
+  every triangle points at the middle of its own patch. A block's texture is
+  therefore about eighty bytes.
+* **The toolbar icon looks down the block's up axis**, not at its front: at
+  `<Icon>` rotation zero the block's +z points at the camera, +y is up and +x is
+  right, which is why Sound Blocks' inherited `-30,-30,0` photographed these
+  instruments from overhead. The nine now use `-115,210,0`, which is four things
+  in two numbers: -90 stands the block up, the further -25 lifts the camera above
+  it rather than below, 180 brings round the side the instruments face, and the
+  last 30 carries it round for the three-quarter view Besiege draws its own blocks
+  in. Get the sign of the tilt wrong and the icon is a view of the block's
+  underside, which is easy to miss and obvious once seen.
+
+* **The instruments face the block's +y**, which is the side a machine is looked
+  at from while it is built. Both preview views look from there, so what they show
+  is what the toolbar and the placed block show. `ICON_ROTATION` in the tool is the
+  same rotation the block XMLs give the icon; it is duplicated so the preview can
+  be honest, and the two have to move together.
+
+* **Check a preview against the game before believing it.** `--preview` renders
+  each mesh from a fixed angle with a z-buffer and flat shading, and its first
+  version built the camera's up vector as `eye x right` rather than `right x eye`
+  -- so it drew every block upside down, five of them were "corrected" on the
+  strength of it, and they shipped standing on their heads. The models were right
+  as they came. The `POSE` table is for real changes of pose, and it is empty.
 
 `tools/tests/XmlCheck.cs` now asserts the required elements as well as parsing,
 so this fails the build rather than the game.
@@ -96,21 +137,39 @@ cannot call Unity.
 have no variable selector. That is why a block plays one note: a note slider
 could never be automated. A tune is a row of blocks.
 
-**The audio thread is not the game thread.** `ReadPcm` may not touch Unity,
-allocate, or lock. Settings cross as volatile primitives; note events cross
+**The audio thread is not the game thread.** `OnAudioFilterRead` may not touch
+Unity, allocate, or lock. Settings cross as volatile primitives; note events cross
 through a single-producer, single-consumer ring buffer. Voices are pooled and
 pre-allocated — a collection during playback is an audible click.
 
-## Point-source audio
+## Where the sound is made, and where it is placed
 
-`AudioClip.Create(name, length, 1, rate, stream: true, PCMReaderCallback)` on a
-source with `spatialBlend = 1`. Unity pulls **mono** samples from the callback
-and spatialises afterwards, so distance, doppler and stereo position are the
-engine's job.
+`OnAudioFilterRead` on an AudioSource looping **one sample of silence**, at
+`spatialBlend = 0`. A filter runs in the mixer, on the buffer that is about to be
+played, so a note queued by a keypress this frame is heard in the next block of
+samples.
 
-Do not use `OnAudioFilterRead` here. It sits inside the source's filter chain and
-hands back a buffer that is already spatialised, so writing into it destroys the
-panning — which is why the Braids synth pans by hand at `spatialBlend = 0`.
+**Do not go back to a streaming `AudioClip` with a `PCMReaderCallback.`** It is
+fed *before* Unity's 3D stage, which is tempting — distance, doppler and panning
+all become the engine's job — and it costs the stream's read-ahead: that callback
+runs well before what it fills is heard, so every block answered its key late.
+That was the whole of the delay the piano was reported for, and it was never the
+piano's: the nine share one audio path, and the sampled attacks (2 ms on piano,
+guitar and bass; 30–120 ms on brass, strings and woodwind, which is the swell of
+a bowed or blown note) are as they were.
+
+The price is that Unity's 3D stage no longer runs at all, so `Place` does it:
+each frame, on the game thread, the block works out a gain for each ear from
+where it stands relative to the `AudioListener` — full volume within a metre,
+silent at RANGE, straight line between, which is exactly the linear rolloff the
+source used to be given — and the filter slides onto that pair across the buffer,
+or a turning camera is heard as a staircase. Keep the placement on the game
+thread; a transform may not be read from the audio one. Keep re-finding the
+listener, because Besiege swaps cameras between building and running and the held
+one goes stale rather than null. Doppler is the one thing not reproduced: it was
+Unity resampling the clip, and there is no clip here to resample.
+
+The same reasoning, and the same shape of answer, is in the Braids synth.
 
 ## Key emulation
 
@@ -145,9 +204,21 @@ list of prefab names is in `Besiege.UI.Mod.OnLoad`: Window, Panel, Text, Text
 Button, Text Toggle, Text Dropdown, Icon, Icon Button, Icon Toggle, Input Field,
 Slider, Options, Scroll View, Mask, Blur.
 
-`Besiege.UI.Bridge.Behaviours.StopsZoomWhenHovered` is likewise theirs, and stops
-the wheel zooming the level over the panel — the same problem Sound Blocks had to
-solve by hand against `stopCamZoom`.
+**The Window prefab is more than a frame, and what it already carries does not
+need adding.** It is `Window` (Image, `StopsZoomWhenHovered`) with three children:
+`Blur`, `TopBar` (Image, `Drag` already targeting the window, holding `Text` and
+`CloseButton`), and `ScrollView` — a full `ScrollRect` over `Viewport/Content`
+with both scrollbars, set to hide them when what it holds fits.
+
+So the panel adds no `Drag` and no `StopsZoomWhenHovered`, and it builds its rows
+**into `ScrollRect.content`**. Building them onto the window instead left that
+scroll view holding the prefab's own 500-unit placeholder — taller than any panel,
+so the scrollbar was permanently up beside an empty scroll area. Size the content
+to what was built and the bar goes away by itself.
+
+(The prefab is an asset bundle, so this was read out of
+`UIFactory/Resources/besiege-ui-prefabs` rather than guessed at: a `UnityFS`
+container, one LZMA block, a version-15 serialized file with type trees.)
 
 `Option.options` is a `List<string>`, not an array, and its `onValueChanged` is UI
 Factory's own event type — so `UIF.OptionIndex` polls the index instead of binding
@@ -156,6 +227,49 @@ to a signature that may change.
 **Besiege declares its own `Slider` in the global namespace**, so `using
 UnityEngine.UI` does not win and `UnityEngine.UI.Slider` has to be spelled out.
 `Text`, `Image` and `Button` are fine.
+
+**LISTEN plays the block in the build scene**, which is a second owner for the
+AudioSource. The rule is re-checked in `Update` rather than switched from the
+callbacks that change it, because a simulation runs on a *clone* of the machine:
+`OnSimulateStart` and `OnSimulateStop` land on that copy and never on the block
+the panel edits. The clone takes the early return on `StatMaster.levelSimulating`
+and keeps the source those two gave it. The audition releases itself after a
+second or so, and the source is held up past that for as long as the audio thread
+says a voice is still sounding — stopping it at the note-off is what would cut
+the release. The speaker mark is drawn by `IconArt`, because UI Factory's sprite
+set is Besiege's HUD sprites and cannot be listed: naming one would be a guess.
+
+**A row's number is UI Factory's Input Field**, so a setting can be typed as well
+as dragged. That prefab is the one that carries
+`StopsHotkeysWhenInputFieldFocused`, which is what keeps Besiege from acting on
+what is being typed; a hand-built box would have to solve that itself. A field is
+not written to while it `isFocused`, or a drag elsewhere would take the caret out
+from under whoever is typing.
+
+**Everything a row shows must be written from the block on every open, not once
+when the row was made.** A window is kept and rebound when the next block has the
+same *shape* — the same number of sliders and toggles — and a block with the same
+shape still calls its extras something else, which is how a piano came to have a
+PALM MUTE where its SUSTAIN is. Captions therefore come from `MapperType.
+DisplayName` for every row, the fixed three included, and are rewritten in
+`ReadFromBlock` and `Paint` beside the values, the ranges, the type list and the
+title.
+
+**A window dragged off the screen takes the bar that drags it with it**, and the
+position is remembered, so it would be out there again next time. `Fit` is
+therefore applied every frame, not only when the panel opens: across, enough of
+the window has to overlap the screen to aim at, from either side; the bar may go
+neither above the top edge nor below the bottom one. Same policy as Git-view's
+`KeepOnScreen`.
+
+**Where the panel was left is remembered by its top-left corner**, not its middle:
+one panel serves all nine blocks and is as tall as the block it opened on has
+controls, so holding the middle would slide the window under the pointer whenever
+an instrument with one more row was opened. `Prefs` keeps it across sessions in
+`Modding.Configuration.GetData()`, which is Besiege's own store — PlayerPrefs
+would work but would leave the setting in the game's options file after the mod
+was uninstalled. UI Factory's drag reports nothing, so where the rect ended up is
+the only account of it there is; it is read when the panel closes.
 
 **Committing a setting is not the same as setting it.** A mapper value is stored
 twice — the live one, and the one the block loads from. Assigning
@@ -178,11 +292,45 @@ filtered noise for the skin.
 (linear costs audible high end when shifting down), ADSR. Sustaining types hold
 while the key is down; struck ones ignore the release.
 
+**A sample with no loop points ends where it was cut, not where the note
+finished.** Nothing shipped is in that position any more -- the font loops
+everything -- but a clip dropped in by hand can be, and the
+recordings stop at two seconds or wherever the font's own sample did, and a
+guitar is at two thirds of its body level by then — the overdriven one is at full
+level — so the note stopped rather than ended. `SampleBank.FindTail` picks a
+window at the end for the voice to turn round in while it fades: a whole number of
+periods of the note the sample *is*, searched ±6% because a font's root key is
+not exactly its recorded pitch, halved until the recording does not fall too far
+across it, and kept clear of the fade the extractor leaves (about thirty
+milliseconds by the time it comes back through Ogg, not the ten the script asks
+for). `TailGain` puts back what the recording falls across that window, so the
+level does not step up on every turn and the note goes on decaying at the rate it
+already was. For a sampler type, `decay` is how long the rest of that note takes.
+
+Two sample sets are past helping this way and want re-cutting from the font:
+`bass_synth` is 14–37 ms and `piano_rhodes_80` is 59 ms — they are font samples
+meant to be *looped*, and the extractor only takes loop points for strings, brass
+and woodwind.
+
 Loop points travel in a `loops="start-end ..."` attribute parallel to `samples`,
 because there is nowhere else to put them: a sidecar file would need `System.IO`.
 They are offsets into the *cut*, at the *output* rate — the font's own indices are
 absolute into its sample block and at its own rate, and `extract-samples.py`
-converts. Only strings, brass and woodwind are looped; a piano decays by itself.
+converts. **Every** preset in the font loops, and every sample carries its points
+now: what differs is what the game does with them. `holds="true"` — bowed, blown —
+means the loop is the sustain and the note goes round it for as long as the key is
+down. Without it the loop is a ring-out: the note fades through it over `decay`,
+which is how a font builds a guitar or a piano, and it is the only reason a
+14-millisecond synth bass sample is a note at all rather than a click. `damped` is
+the separate question of whether letting the key go stops the note, and is true of
+a piano as well as of anything bowed.
+
+**Vorbis does not hand back the number of samples it was given.** Nine of the
+shipped loops pointed past the end of their decoded clip — the tuba's middle note
+among them, which had therefore never sustained. The extractor now decodes each
+Ogg it writes and moves the pair down to fit, and `ReadLoop` trims rather than
+discards, three samples clear of the end so the interpolation's own guard cannot
+stop the voice before the wrap.
 
 Adding an engine means a `Voice` subclass and a branch in `PoolFor` and
 `NoteOn`. Adding an *instrument* means XML only.

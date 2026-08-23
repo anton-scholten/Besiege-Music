@@ -257,11 +257,25 @@ namespace OrchestraMod
     /// </summary>
     public class SamplerVoice : Voice
     {
+        /// <summary>ln(1000): the exponent that takes a ring-out to -60 dB in the
+        /// decay it is given, so `decay` reads as "seconds to silence".</summary>
+        private const float ToSilence = 6.9077553f;
+
         private float[] data;
         private double position;
         private double increment;
         private double loopStart = -1.0;
         private double loopEnd = -1.0;
+
+        // The ring-out: where the recording stops being played forwards, the window
+        // it turns round in, and the fade that carries it away. See SampleBank.FindTail.
+        private double stopAt;
+        private double tailStart = -1.0;
+        private double tailEnd = -1.0;
+        private float tailGain = 1f;
+        private float ring;
+        private float ringDamp;
+        private bool ringing;
 
         // Articulations. All of them are cheap per-sample work, which is what lets
         // eight voices run without a mixer thread.
@@ -279,7 +293,10 @@ namespace OrchestraMod
         private float attackPerSample;
         private float releasePerSample;
         private bool releasing;
-        private bool sustains;
+        private bool damped;
+
+        /// <summary>The loop is a sustain rather than something to fade through.</summary>
+        private bool holds;
         private float velocity;
 
         public SamplerVoice(int sampleRate) : base(sampleRate) { }
@@ -295,6 +312,9 @@ namespace OrchestraMod
             increment = Mathf.Pow(2f, (note - entry.Note) / 12f) * (entry.Rate / rate);
             loopStart = entry.LoopStart;
             loopEnd = entry.LoopEnd;
+            tailStart = entry.TailStart;
+            tailEnd = entry.TailEnd;
+            tailGain = entry.TailGain;
             return true;
         }
 
@@ -304,16 +324,21 @@ namespace OrchestraMod
             velocity = vel;
             level = 0f;
             releasing = false;
-            sustains = type.Sustains && !type.Struck;
+            damped = type.Damped && !type.Struck;
+            // Pizzicato and palm mute: the recording is of a bowed or open note, so
+            // what was its sustain becomes a ring-out, and a short one -- the block
+            // sets `decay` down to match. Nothing is dropped: a string plucked
+            // rather than bowed is the same string.
+            holds = type.Holds && !type.Struck;
 
-            if (type.Struck)
-            {
-                // Pizzicato: the recording is a bowed note, so the loop has to go
-                // and the tail has to be short, or a plucked string rings like a
-                // sustained one.
-                loopStart = -1.0;
-                loopEnd = -1.0;
-            }
+            // Where the recording stops being played forwards: short of the fade the
+            // extractor put on the end, if there is a ring-out to turn round in.
+            ring = 1f;
+            ringing = false;
+            stopAt = tailEnd > tailStart ? tailEnd : data.Length - 3;
+            // Decay is what the recording does not have: it is cut while the note is
+            // still sounding, so this is how long the rest of that note takes to go.
+            ringDamp = Mathf.Exp(-ToSilence / (Mathf.Max(0.05f, type.Decay) * rate));
 
             vibratoDepth = Mathf.Clamp01(type.Vibrato);
             vibratoPhase = 0f;
@@ -342,7 +367,7 @@ namespace OrchestraMod
         public override void Release()
         {
             Held = false;
-            if (sustains)
+            if (damped)
             {
                 releasing = true;
             }
@@ -356,15 +381,50 @@ namespace OrchestraMod
                 // Sustaining instruments hold by looping the middle of the
                 // recording, which is what the SoundFont's loop points mark: a
                 // violin's bow stroke is a second of audio and a held note is that
-                // second going round. Struck instruments have no loop and simply
-                // run out.
+                // second going round.
                 if (loopEnd > loopStart && position >= loopEnd)
                 {
                     position -= loopEnd - loopStart;
+                    // A bow or a breath holds the note up round that loop. A hammer
+                    // or a plectrum does not: the loop is what is left of the note,
+                    // and it fades from here.
+                    if (!holds)
+                    {
+                        ringing = true;
+                    }
+                }
+
+                // A struck one has no such loop: it plays its recording and reaches
+                // the end of it, which is where the cut was made rather than where
+                // the note finished. From there the last few periods go round while
+                // the ring fades, so a plucked string rings on instead of stopping.
+                if (position >= stopAt)
+                {
+                    if (tailEnd <= tailStart)
+                    {
+                        Active = false;
+                        return;
+                    }
+                    position -= tailEnd - tailStart;
+                    ringing = true;
+                    // The recording is quieter at the end of that window than at its
+                    // start, so turning round would step the level back up. This is
+                    // how much it fell, put back -- which also carries the note on
+                    // decaying at the rate it was already decaying at.
+                    ring *= tailGain;
+                }
+                if (ringing)
+                {
+                    ring *= ringDamp;
+                    if (ring < 0.001f)
+                    {
+                        Active = false;
+                        return;
+                    }
                 }
 
                 int i = (int)position;
-                if (i >= last)
+                if (i >= last || i < 0)
                 {
                     Active = false;
                     return;
@@ -432,7 +492,7 @@ namespace OrchestraMod
                     s -= delayed * combDepth * 0.6f;
                 }
 
-                buffer[n] += s * level * velocity;
+                buffer[n] += s * level * velocity * ring;
 
                 if (vibratoDepth > 0.001f)
                 {

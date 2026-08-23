@@ -45,6 +45,7 @@ static class XmlCheck
     {
         int bad = 0;
         string modId = ModId(args);
+        Dictionary<string, string> resources = Resources(args);
         Schema schema = Schema.Read(args);
         int checkedFiles = 0;
 
@@ -82,6 +83,13 @@ static class XmlCheck
                 }
             }
 
+            // A block wears a mesh and a texture by name, and Besiege answers a
+            // name it does not know with a block that has no shape. The names are
+            // in one file and the resources in another, so they are checked
+            // against each other here rather than in the game.
+            bad += Wears(root, "Mesh", resources, args[i]);
+            bad += Wears(root, "Texture", resources, args[i]);
+
             XmlNode modules = root.SelectSingleNode("Modules");
             if (modules != null && modId != null)
             {
@@ -102,6 +110,20 @@ static class XmlCheck
                             + modId + "\"");
                         bad++;
                     }
+
+                    // The panel's title says which block this is, and it says it
+                    // from here: the modding API's only name for a block is the id
+                    // of the mod that owns it. Two places, so they are checked
+                    // against one another rather than trusted.
+                    XmlNode named = root.SelectSingleNode("Name");
+                    string family = module.GetAttribute("block");
+                    if (named != null && family != named.InnerText.Trim())
+                    {
+                        Console.Error.WriteLine("  " + args[i] + ": <" + module.Name
+                            + "> has block=\"" + family + "\", but the block is called \""
+                            + named.InnerText.Trim() + "\"");
+                        bad++;
+                    }
                 }
             }
         }
@@ -112,6 +134,77 @@ static class XmlCheck
         Console.WriteLine("XML check: " + checkedFiles + " file(s) parse, blocks complete"
                           + schema.Summary() + ".");
         return 0;
+    }
+
+    /// <summary>
+    /// Checks that what a block says it wears is declared in Mod.xml, and that the
+    /// file behind it is really there.
+    /// </summary>
+    static int Wears(XmlElement root, string kind,
+                     Dictionary<string, string> resources, string path)
+    {
+        XmlElement worn = root.SelectSingleNode(kind) as XmlElement;
+        if (worn == null)
+        {
+            return 0;                       // the missing-element check has it
+        }
+        string name = worn.GetAttribute("name");
+        string file;
+        if (!resources.TryGetValue(kind + ":" + name, out file))
+        {
+            Console.Error.WriteLine("  " + path + ": <" + kind + " name=\"" + name
+                + "\"> is not a " + kind + " Mod.xml declares");
+            return 1;
+        }
+        // Mod.xml's paths are relative to the mod's Resources folder, not to the
+        // manifest beside it.
+        string here = Path.Combine(
+            Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)), "Resources"),
+            file.Replace('\\', Path.DirectorySeparatorChar));
+        if (!File.Exists(here))
+        {
+            Console.Error.WriteLine("  " + path + ": " + kind + " \"" + name
+                                    + "\" points at " + file + ", which is not there");
+            return 1;
+        }
+        return 0;
+    }
+
+    /// <summary>Every mesh and texture Mod.xml declares, as kind:name -> path.</summary>
+    static Dictionary<string, string> Resources(string[] args)
+    {
+        Dictionary<string, string> found = new Dictionary<string, string>();
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (!args[i].EndsWith("Mod.xml"))
+            {
+                continue;
+            }
+            try
+            {
+                XmlDocument doc = new XmlDocument();
+                doc.Load(args[i]);
+                XmlNode list = doc.DocumentElement.SelectSingleNode("Resources");
+                if (list == null)
+                {
+                    continue;
+                }
+                foreach (XmlNode node in list.ChildNodes)
+                {
+                    XmlElement res = node as XmlElement;
+                    if (res == null || (res.Name != "Mesh" && res.Name != "Texture"))
+                    {
+                        continue;
+                    }
+                    found[res.Name + ":" + res.GetAttribute("name")] = res.GetAttribute("path");
+                }
+            }
+            catch (Exception)
+            {
+                // The parse check above reports it.
+            }
+        }
+        return found;
     }
 
     /// <summary>The mod's own ID, or null before the game has written one.</summary>

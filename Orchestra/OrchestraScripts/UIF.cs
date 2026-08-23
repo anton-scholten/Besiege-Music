@@ -26,12 +26,11 @@ namespace OrchestraMod
         /// <summary>The name UI Factory registers its own prefabs under.</summary>
         public const string Package = "UIFactory3";
 
-        // Prefab names, as registered by UI Factory's Mod.OnAllResourcesLoaded.
+        // Prefab names, as registered by UI Factory's Mod.OnAllResourcesLoaded. The
+        // full list is in Besiege.UI.Mod.OnLoad; these are the ones drawn here.
         public const string WindowPrefab = "Window";
         public const string TextPrefab = "Text";
-        public const string ButtonPrefab = "Text Button";
         public const string SliderPrefab = "Slider";
-        public const string PanelPrefab = "Panel";
 
         /// <summary>Besiege's own `&lt; choice &gt;` selector, as the mapper uses.</summary>
         public const string OptionPrefab = "Options";
@@ -39,21 +38,18 @@ namespace OrchestraMod
         /// <summary>A real toggle, rather than a button painted to look like one.</summary>
         public const string TogglePrefab = "Text Toggle";
 
-        /// <summary>
-        /// Besiege's red, which is what the game paints the option in force. Kept
+        /// <summary>The square picture button a title bar's corner is made of; the
+        /// window's own close cross is one.</summary>
+        public const string IconButtonPrefab = "Icon Button";
+
+        /// <summary>Besiege's own text box. It carries the behaviour that stops the
+        /// game's hotkeys firing at whatever is being typed into it.</summary>
+        public const string InputPrefab = "Input Field";
+
+        /// <summary>The lettering colour for anything that is not the answer. Kept
         /// here rather than read from <c>Besiege.UI.Consts</c> so that the panel's
-        /// colours are not another thing that has to resolve before it can draw.
-        /// </summary>
-        public static readonly Color Selected = new Color(0.92f, 0.13f, 0.29f, 1f);
-
-        /// <summary>The game's panel black, at the alpha it uses.</summary>
-        public static readonly Color PanelBlack = new Color(0.03f, 0.03f, 0.044f, 0.2f);
-
-        /// <summary>The lettering colour for anything that is not the answer.</summary>
+        /// one colour is not another thing that has to resolve before it can draw.</summary>
         public static readonly Color QuietInk = new Color(0.72f, 0.72f, 0.74f, 1f);
-
-        /// <summary>The cyan Besiege uses for a reset, and here for the trace.</summary>
-        public static readonly Color Trace = new Color(0.012f, 1f, 0.847f, 1f);
 
         private static bool asked;
         private static bool available;
@@ -105,22 +101,6 @@ namespace OrchestraMod
             {
                 Log.Warn("UI Factory could not supply the prefab '" + prefab + "': " + e.Message);
                 return null;
-            }
-        }
-
-        /// <summary>Besiege's own UI font, as UI Factory resolved it from the game.</summary>
-        public static Font Font
-        {
-            get
-            {
-                try
-                {
-                    return Besiege.UI.Make.Font;
-                }
-                catch (Exception)
-                {
-                    return null;
-                }
             }
         }
 
@@ -228,59 +208,6 @@ namespace OrchestraMod
             catch (Exception)
             {
                 return -1;
-            }
-        }
-
-        /// <summary>
-        /// Stops the mouse wheel reaching the camera while the pointer is over a
-        /// control. Besiege zooms the level on the wheel, and a panel that let that
-        /// through would zoom the world every time you meant to scroll it.
-        ///
-        /// UI Factory's own behaviour, rather than the hand-rolled equivalent: it
-        /// knows the game's zoom the way an outside mod cannot.
-        /// </summary>
-        public static void StopZoom(GameObject control)
-        {
-            if (control == null)
-            {
-                return;
-            }
-            try
-            {
-                if (control.GetComponent<Besiege.UI.Bridge.Behaviours.StopsZoomWhenHovered>() == null)
-                {
-                    control.AddComponent<Besiege.UI.Bridge.Behaviours.StopsZoomWhenHovered>();
-                }
-            }
-            catch (Exception)
-            {
-                // An older UI Factory without it: the wheel zooms, which is no
-                // worse than it was.
-            }
-        }
-
-        /// <summary>
-        /// Makes any rect a drag handle for <paramref name="target"/>. UI Factory
-        /// puts one of these on the window's top bar and nowhere else.
-        ///
-        /// Target is set in the same breath as the component, because Drag.Start
-        /// fills a null one in with its own transform -- which would drag the handle
-        /// out of the window rather than moving the window.
-        /// </summary>
-        public static void Draggable(GameObject handle, RectTransform target)
-        {
-            if (handle == null || target == null)
-            {
-                return;
-            }
-            try
-            {
-                Besiege.UI.Bridge.Drag drag = handle.AddComponent<Besiege.UI.Bridge.Drag>();
-                drag.Target = target;
-            }
-            catch (Exception)
-            {
-                // Without it the window simply stays where it is put.
             }
         }
     }

@@ -81,25 +81,26 @@ continuously, which suits a machine that revs.
 
 ## Point-source audio
 
-The blocks must be heard where they are, in stereo, as the machine moves. That
-means `spatialBlend = 1` and letting Unity spatialise.
-
-This changes how generated audio is produced. `OnAudioFilterRead`, which the
-Braids synth uses today, sits in the source's filter chain and forces the mod to
-pan by hand — which is exactly why that block carries `wantLeft`/`wantRight` and
-sets `spatialBlend = 0`. The right mechanism here is instead:
+The blocks must be heard where they are, in stereo, as the machine moves. The
+tempting way to get that is `spatialBlend = 1` and a streaming `AudioClip` fed by
+a PCM reader callback:
 
 ```csharp
 AudioClip.Create(name, length, 1, rate, stream: true, PCMReaderCallback)
 ```
 
-Unity pulls mono samples from the callback and then spatialises the source
-normally, so distance, doppler and stereo position all come free from the engine.
-Sampled playback needs nothing special — an AudioClip on a 3D source already
-behaves.
+Unity pulls mono samples from that callback *before* its 3D stage, so distance,
+doppler and stereo position all come free from the engine. **This was built, and
+then taken out again.** A stream is read well ahead of being heard: the callback
+that drains the note queue runs long before the samples it fills reach the
+speakers, so every block answered its key late, which is worse than any amount of
+free spatialisation is worth.
 
-Worth doing regardless: the same change would let the Braids synth drop its
-manual panning.
+So the blocks do what the Braids synth already does: `OnAudioFilterRead` on a 2D
+source looping one sample of silence — a filter runs in the mixer, on the buffer
+about to be played — and `wantLeft`/`wantRight`, a gain per ear worked out each
+frame on the game thread from where the block stands relative to the listener.
+Doppler is what that costs, and it is the only thing.
 
 ## Blocks
 

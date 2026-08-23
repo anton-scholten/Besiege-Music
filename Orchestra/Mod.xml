@@ -6,6 +6,9 @@
 	<Description>
 	Nine instrument blocks: piano, guitar, bass, strings, brass, woodwind,
 	mallets, drums and cymbals. Each plays a note on a key, heard where it is.
+
+	Block models by jeremy, Daniel Melchior and Poly by Google, from Poly Pizza,
+	under CC-BY 3.0. Sampled instruments cut from GeneralUser GS.
 	</Description>
 
 	<Icon name="Orchestra_icon" />
@@ -29,16 +32,24 @@
 	</Blocks>
 
 	<Resources>
-		<Mesh name="OrchestraBlock_mesh" path="OrchestraBlock\OrchestraBlock.obj" />
-		<Texture name="Piano_texture" path="OrchestraBlock\Piano.png" />
-		<Texture name="Guitar_texture" path="OrchestraBlock\Guitar.png" />
-		<Texture name="Bass_texture" path="OrchestraBlock\Bass.png" />
-		<Texture name="Strings_texture" path="OrchestraBlock\Strings.png" />
-		<Texture name="Brass_texture" path="OrchestraBlock\Brass.png" />
-		<Texture name="Woodwind_texture" path="OrchestraBlock\Woodwind.png" />
-		<Texture name="Mallets_texture" path="OrchestraBlock\Mallets.png" />
-		<Texture name="Drums_texture" path="OrchestraBlock\Drums.png" />
-		<Texture name="Cymbals_texture" path="OrchestraBlock\Cymbals.png" />
+		<Mesh name="Piano_mesh" path="Instruments\Piano.obj" />
+		<Mesh name="Guitar_mesh" path="Instruments\Guitar.obj" />
+		<Mesh name="Bass_mesh" path="Instruments\Bass.obj" />
+		<Mesh name="Strings_mesh" path="Instruments\Strings.obj" />
+		<Mesh name="Brass_mesh" path="Instruments\Brass.obj" />
+		<Mesh name="Woodwind_mesh" path="Instruments\Woodwind.obj" />
+		<Mesh name="Mallets_mesh" path="Instruments\Mallets.obj" />
+		<Mesh name="Drums_mesh" path="Instruments\Drums.obj" />
+		<Mesh name="Cymbals_mesh" path="Instruments\Cymbals.obj" />
+		<Texture name="Piano_texture" path="Instruments\Piano.png" />
+		<Texture name="Guitar_texture" path="Instruments\Guitar.png" />
+		<Texture name="Bass_texture" path="Instruments\Bass.png" />
+		<Texture name="Strings_texture" path="Instruments\Strings.png" />
+		<Texture name="Brass_texture" path="Instruments\Brass.png" />
+		<Texture name="Woodwind_texture" path="Instruments\Woodwind.png" />
+		<Texture name="Mallets_texture" path="Instruments\Mallets.png" />
+		<Texture name="Drums_texture" path="Instruments\Drums.png" />
+		<Texture name="Cymbals_texture" path="Instruments\Cymbals.png" />
 		<Texture name="Orchestra_icon" path="Orchestra.png" />
 
 		<!-- Sampled instruments, cut by tools/extract-samples.py; see
