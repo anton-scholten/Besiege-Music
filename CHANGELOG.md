@@ -19,6 +19,14 @@
 
 **Changed**
 
+- `docs/MODDING-NOTES.md`: what this mod had to work out about Besiege's modding
+  API, written for whoever needs the same thing next -- how to dock a UI Factory
+  window to the block mapper, with the mapper's measured geometry and the three
+  rules that look right and are not; `DisplayInMapper`; moving a block's visual
+  without moving the block; and the two offline techniques (Mono.Cecil against
+  `Assembly-CSharp.dll`, `strings` against `resources.assets`) that answered most
+  of it. The README follows the other mods' shape, and says what the panel does
+  now rather than what it used to.
 - The panel is docked to the block mapper: the same width, its top edge against the
   mapper's bottom, following it as it is dragged. It has no title bar of its own
   any more -- no name, no cross -- because it is the lower half of a window that is

@@ -315,33 +315,6 @@ namespace OrchestraMod
             return false;
         }
 
-        /// <summary>
-        /// Whether any of this block's types goes on for as long as the key is
-        /// down. Read from the XML rather than listed here: the six blocks without
-        /// a Toggle are exactly the six whose every type is struck or plucked, and
-        /// a tenth block would sort itself.
-        /// </summary>
-        public bool Sustains
-        {
-            get
-            {
-                if (Module.Types == null)
-                {
-                    return false;
-                }
-                for (int i = 0; i < Module.Types.Length; i++)
-                {
-                    if (Module.Types[i].Holds)
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        }
-
-        // declaring an Extra in a block's XML is enough to give it a row.
-
         public MMenu Types { get { return TypeMenu; } }
         public MSlider Note { get { return NoteSlider; } }
         public MSlider Volume { get { return VolumeSlider; } }
@@ -369,19 +342,29 @@ namespace OrchestraMod
             return index >= 0 && index < TypeCount ? Module.Types[index].Name : "None";
         }
 
-        public string SelectedTypeName
-        {
-            get { return TypeCount > 0 ? TypeName(SelectedType) : "Instrument"; }
-        }
-
         /// <summary>
-        /// What the block is called -- "Piano", "Brass" -- for the panel's title,
-        /// as its own XML declares. See OrchestraModule.Family for why it is not
-        /// asked of the game.
+        /// Whether any of this block's types goes on for as long as the key is
+        /// down. Read from the XML rather than listed here: the six blocks without
+        /// a Toggle are exactly the six whose every type is struck or plucked, and
+        /// a tenth block would sort itself.
         /// </summary>
-        public string BlockName
+        public bool Sustains
         {
-            get { return Module.Family == null ? "" : Module.Family; }
+            get
+            {
+                if (Module.Types == null)
+                {
+                    return false;
+                }
+                for (int i = 0; i < Module.Types.Length; i++)
+                {
+                    if (Module.Types[i].Holds)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
         }
 
         /// <summary>True while the panel's LISTEN is holding a note down.</summary>

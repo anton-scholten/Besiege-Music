@@ -61,7 +61,6 @@ namespace OrchestraMod
         /// control this panel did not lay out, and scale is the one change that
         /// cannot land them on top of the name between them.</summary>
         private const float ArrowScale = 1.2f;
-        private const int TypeColumns = 2;
 
         private static readonly Vector2 Reference = new Vector2(1920f, 1080f);
 
@@ -223,9 +222,12 @@ namespace OrchestraMod
         {
             block = on;
             // Before building, not after: the rows are laid out to a width, and a
-            // window built to the wrong one would be seen at it for a frame and
-            // rebuilt the next time the mapper opened.
-            Measure();
+            // window built to the wrong one would be seen at it for a frame.
+            Rect frame;
+            if (MapperFrame(out frame))
+            {
+                Widen(frame);
+            }
             if (!Build())
             {
                 return;
@@ -361,7 +363,6 @@ namespace OrchestraMod
             {
                 bar.gameObject.SetActive(false);
             }
-            float barHeight = 0f;
 
             // The prefab's scroll view starts below the bar that is no longer there,
             // so it is stretched over the whole window: otherwise the panel opens
@@ -396,9 +397,7 @@ namespace OrchestraMod
             content = ScrollContent();
             host = content != null ? (Transform)content : window.transform;
 
-            // Inside the content the rows start at the top; on the bare window they
-            // have to clear the title bar themselves.
-            float y = content != null ? Margin : barHeight + Margin;
+            float y = Margin;
             y = BuildTypes(y);
             y = BuildSliders(y);
             y = BuildSwitches(y);
@@ -409,12 +408,8 @@ namespace OrchestraMod
             if (content != null)
             {
                 content.sizeDelta = new Vector2(content.sizeDelta.x, y);
-                windowRect.sizeDelta = new Vector2(width, barHeight + y);
             }
-            else
-            {
-                windowRect.sizeDelta = new Vector2(width, y);
-            }
+            windowRect.sizeDelta = new Vector2(width, y);
 
             // So the canvas has a size before the window is placed against it, and
             // the scroll view has measured what it now holds.
@@ -1159,17 +1154,12 @@ namespace OrchestraMod
                 return;
             }
 
-            float scale = Scale();
-            float wide = frame.width * scale;
-            if (Mathf.Abs(wide - width) > 0.5f)
+            if (Widen(frame))
             {
-                // The rows are laid out to a width, so a mapper of a different one
-                // is a rebuild. Done here and now rather than left for the next
-                // open: the window has to be *somewhere* this frame, and a panel
-                // that returns without placing itself is a panel that never docks
-                // and never follows -- which is exactly what happened.
-                width = wide;
-                built = false;
+                // Rebuilt and placed in the same frame. Returning here instead --
+                // which is what it did -- leaves the window wherever it was, and
+                // clears the flag that lets this run at all, so it never docks and
+                // never follows again.
                 if (!Build())
                 {
                     return;
@@ -1178,6 +1168,7 @@ namespace OrchestraMod
                 Canvas.ForceUpdateCanvases();
             }
 
+            float scale = Scale();
             Vector2 size = windowRect.sizeDelta;
             float left = (frame.xMin - Screen.width * 0.5f) * scale;
             float bottom = (frame.yMin - Screen.height * 0.5f) * scale;
@@ -1195,16 +1186,11 @@ namespace OrchestraMod
         }
 
         /// <summary>
-        /// Takes the panel's width from the mapper's, before the rows are laid out
-        /// to it. Returns whether it changed.
+        /// Takes the panel's width from the mapper's. True if it changed, in which
+        /// case the rows -- which are laid out to it -- no longer fit.
         /// </summary>
-        private bool Measure()
+        private bool Widen(Rect frame)
         {
-            Rect frame;
-            if (!MapperFrame(out frame))
-            {
-                return false;
-            }
             float wide = frame.width * Scale();
             if (Mathf.Abs(wide - width) <= 0.5f)
             {

@@ -12,6 +12,7 @@ Orchestra/            the folder Besiege loads, and what goes to the Workshop
   OrchestraScripts/   sources; the built Orchestra.dll sits beside them
   Resources/          mesh, texture, icon, and Samples/ once cut
 tools/                build, install, and the sample extractor
+docs/                 sample cutting, design notes, and modding notes
 ```
 
 `.git` must stay *outside* the folder Besiege copies when publishing — its
@@ -289,33 +290,18 @@ to a signature that may change.
 UnityEngine.UI` does not win and `UnityEngine.UI.Slider` has to be spelled out.
 `Text`, `Image` and `Button` are fine.
 
-**The panel is docked to the mapper, and measuring it is the awkward part.**
-The mapper's window is drawn in world space, so there is no rect to read: it is
-found by projecting a renderer's bounds through the camera whose culling mask
-includes its layer. Which renderer is the whole question, and the answer was got by
-making the panel log every part it measured. With a piano open at 4K:
-
-    Background   874.80 x  389.88   at y 1540.87   <- the window
-    Background   874.80 x  281.88   at y 1540.87
-    Background   874.80 x  174.96   at y 1658.59
-    WideShadow   972.00 x  194.40   at y 1638.37
-    Mask         874.80 x 1555.20   at y  267.55
-    Visual        93.31 x   93.31
-
-So: the window is a `Background`; they all share its width and the tallest is the
-frame. Two other rules were shipped and both were wrong -- the widest thing drawn
-is `WideShadow`, an eleventh wider and higher up, which put the panel over the
-mapper's lower half; `Visual` by name is a 93-pixel button, which made the panel a
-narrow strip. `BlockMapper.upperLeft` and `lowerRight` are public and look like
-precisely what this wants; they are not, being found by tag and used by
-`UpdateBackground` to clamp the window against the screen. `background` itself is
-private, and the `ContainerDetails` components are one per row.
-
-Docking runs in `LateUpdate`, after the mapper's own drag has moved it; the width
-is taken before the rows are built, since they are laid out to it, and a mapper of
-a different width rebuilds and re-places in the same frame. It said `docking to
-'<name>' at <rect>` once a session in the log, which is how any of this is
-checkable from outside the game.
+**The panel is docked to the mapper, and measuring it is the awkward part.** The
+window is a renderer named `Background` -- the tallest of the three that share its
+width -- projected through the camera whose culling mask includes its layer. Two
+other rules were shipped and both were wrong: the widest thing the mapper draws is
+`WideShadow`, an eleventh too wide and higher up, and `Visual` is a 93-pixel
+button. `upperLeft`/`lowerRight` are public and are *not* the window's corners.
+Docking runs in `LateUpdate`, after the mapper's own drag; the width is taken
+before the rows are laid out to it; and the placement path must never return
+without placing, which is the bug that cost the most. The panel logs `docking to
+'<name>' at <rect>` once a session, and the measured geometry is written up in
+[docs/MODDING-NOTES.md](docs/MODDING-NOTES.md) for anyone doing this from another
+mod.
 
 **The mapper is a fallback, not a second panel.** Every mapper control except the
 key sets `DisplayInMapper = false` once `UIF.Available` says yes, so with UI
@@ -352,24 +338,7 @@ same *shape* — the same number of sliders and toggles — and a block with the
 shape still calls its extras something else, which is how a piano came to have a
 PALM MUTE where its SUSTAIN is. Captions therefore come from `MapperType.
 DisplayName` for every row, the fixed three included, and are rewritten in
-`ReadFromBlock` and `Paint` beside the values, the ranges, the type list and the
-title.
-
-**A window dragged off the screen takes the bar that drags it with it**, and the
-position is remembered, so it would be out there again next time. `Fit` is
-therefore applied every frame, not only when the panel opens: across, enough of
-the window has to overlap the screen to aim at, from either side; the bar may go
-neither above the top edge nor below the bottom one. Same policy as Git-view's
-`KeepOnScreen`.
-
-**Where the panel was left is remembered by its top-left corner**, not its middle:
-one panel serves all nine blocks and is as tall as the block it opened on has
-controls, so holding the middle would slide the window under the pointer whenever
-an instrument with one more row was opened. `Prefs` keeps it across sessions in
-`Modding.Configuration.GetData()`, which is Besiege's own store — PlayerPrefs
-would work but would leave the setting in the game's options file after the mod
-was uninstalled. UI Factory's drag reports nothing, so where the rect ended up is
-the only account of it there is; it is read when the panel closes.
+`ReadFromBlock` and `Paint` beside the values, the ranges and the type list.
 
 **Committing a setting is not the same as setting it.** A mapper value is stored
 twice — the live one, and the one the block loads from. Assigning
