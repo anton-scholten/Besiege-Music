@@ -53,28 +53,53 @@ ignored.
 Three things it has to get right, and the reasons are worth keeping:
 
 * **A block mesh is Z-up, centred on the origin, worn at half scale from
-  `z = 0.5`.** glTF is Y-up and right-handed, so the axes are swapped *and* one is
-  negated, which keeps the winding as it was. The convention is the synth block's,
-  whose own generator says it in as many words.
+  `z = 0.5`.** The convention is the synth block's, whose own generator says it in
+  as many words.
+
+* **glTF is right-handed and Unity is left-handed, so the map between them has to
+  flip the handedness.** `(x, y, z) -> (-x, -z, y)`: the up axis swaps in, and two
+  are negated, which is a reflection. A swap that preserves the handedness -- what
+  this did at first -- lands a model that measures correctly and is mirrored, and
+  a mirrored piano is a piano whose keyboard runs the wrong way. `wind` puts the
+  triangle winding back from the shading normals, so the reflection costs nothing
+  there. Watch the yaws in `POSE` if this line ever changes again: a reflection
+  does not commute with a turn, so mirroring the models reverses which way a given
+  yaw carries an instrument's face, and all six had to change sign.
 * **These models have no texture, only a flat colour per material.** A Besiege
   block wants a texture, so the colours go into a palette a few pixels across and
   every triangle points at the middle of its own patch. A block's texture is
   therefore about eighty bytes.
-* **The toolbar icon looks down the block's up axis**, not at its front: at
-  `<Icon>` rotation zero the block's +z points at the camera, +y is up and +x is
-  right, which is why Sound Blocks' inherited `-30,-30,0` photographed these
-  instruments from overhead. The nine now use `-115,210,0`, which is four things
-  in two numbers: -90 stands the block up, the further -25 lifts the camera above
-  it rather than below, 180 brings round the side the instruments face, and the
-  last 30 carries it round for the three-quarter view Besiege draws its own blocks
-  in. Get the sign of the tilt wrong and the icon is a view of the block's
-  underside, which is easy to miss and obvious once seen.
+* **The toolbar photographs a block from the *opposite* side to the one the
+  arithmetic says.** The camera is fixed and `<Icon><Rotation>` turns the block in
+  front of it, so where it stands in the block's own frame is that rotation
+  undone -- but it looks along **+z**, not the -z a Unity camera looks along by
+  default. That is measured, not reasoned: at `-115,210,0` the undoing puts the
+  camera in front of and above the block, and the game drew all nine from behind
+  and below, the piano showing its legs and the drum its bottom head. So
+  `icon_camera` undoes the rotation and then negates, and the poses below are read
+  off that.
+
+* **The nine icon poses are a camera, not a magic number.** x is how far above the
+  block it sits, y and z which side it looks from -- z spins the block under the
+  camera, being the turn Unity applies first. `-65,210,180` is Besiege's own
+  three-quarter, a third of the way up, looking at the side the instruments face
+  and turned a little further right, the way Besiege's own spotlight block stands
+  in the bar -- its lens swung towards the corner of the tile rather than square
+  to it, and its vertical edges still vertical, so this is a turn and not a tilt.
+  `-25,210,205` is half above, for the three that are struck from above and whose
+  face is their top; and brass and woodwind keep `z=0`, a trumpet being the same
+  shape from either side. A drum and a cymbal are round, so a turn about their own
+  axis does not show -- for those two, only the tilt or the scale can change what
+  the tile looks like. Get the tilt's sign wrong and the icon is a view of the
+  block's underside, which is easy to miss and obvious once seen.
 
 * **The instruments face the block's +y**, which is the side a machine is looked
-  at from while it is built. Both preview views look from there, so what they show
-  is what the toolbar and the placed block show. `ICON_ROTATION` in the tool is the
-  same rotation the block XMLs give the icon; it is duplicated so the preview can
-  be honest, and the two have to move together.
+  at from while it is built. The three-quarter preview looks from there, so what
+  it shows is what a placed block shows. The `ICON` table in the tool is the same
+  rotation the block XMLs give their icons; it is duplicated so the preview can be
+  honest about the toolbar, and `XmlCheck` reads the table out of the Python and
+  holds the two together, a preview drawn from a stale pose being a picture of a
+  block that does not exist.
 
 * **Check a preview against the game before believing it.** `--preview` renders
   each mesh from a fixed angle with a z-buffer and flat shading, and its first

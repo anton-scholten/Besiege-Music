@@ -131,7 +131,7 @@ fi
 if [[ -f "$XMLCHECK" ]]; then
     set +e
     TARGET_ASM="$XMLCHECK" "$BUILD_DIR/monohost" "$REPO_DIR/Orchestra"/*.xml \
-        "$SRC_DIR/OrchestraModule.cs"
+        "$SRC_DIR/OrchestraModule.cs" "$REPO_DIR/tools/make-block-meshes.py"
     xml_rc=$?
     set -e
     if [[ $xml_rc -ne 0 ]]; then

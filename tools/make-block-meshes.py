@@ -61,24 +61,50 @@ POSE = {
     #
     # These face the block's +y, which is the side a machine is usually looked at
     # from: a piano shows its keyboard, a guitar its face rather than its back.
-    "Piano":    (90.0, 0.0),
-    "Guitar":   (90.0, 0.0),
-    "Bass":     (90.0, 0.0),
+    # The signs turned over when the handedness above was fixed: a reflection does
+    # not commute with the yaw, so mirroring the model reverses which way a given
+    # turn carries its face.
+    "Piano":    (-90.0, 0.0),
+    "Guitar":   (-90.0, 0.0),
+    "Bass":     (-90.0, 0.0),
     "Strings":  (-90.0, 0.0),
-    "Brass":    (90.0, 0.0),
-    "Woodwind": (90.0, 0.0),
+    "Brass":    (-90.0, 0.0),
+    "Woodwind": (-90.0, 0.0),
     "Drums":    (0.0, 0.0),
     "Mallets":  (0.0, 0.0),
     "Cymbals":  (0.0, 0.0),
 }
 
-# What the block XMLs give their <Icon> rotation, kept here so `--preview` can
-# render from where the toolbar will look. At zero the icon camera looks straight
-# down the block's up axis, so -90 stands the block up; 180 turns the face the
-# instruments were pointed at towards it; the further 25 lifts the camera above
-# the block rather than below it; and the 30 carries it round to one side. That
-# last pair is the three-quarter view Besiege draws its own blocks in.
-ICON_ROTATION = (-115.0, 210.0, 0.0)
+# What each block XML gives its <Icon> rotation, kept here so `--preview` can
+# render from where the toolbar will look. These must be copied into the XMLs by
+# hand; XmlCheck holds the two together.
+#
+# Read them as a camera, which `icon_camera` works out exactly: x sets how far
+# above the block it sits, y and the block's own turn set which side, and z spins
+# the block under it. At -65 the camera is a third of the way up from the block's
+# waist -- Besiege's own three-quarter -- and at -25 it is half above it, looking
+# down at something whose face is its top. z=180 brings round the side the
+# instruments face; without it the toolbar photographs their backs, and the extra
+# 25 turns them a little further right, which is how Besiege stands its own blocks
+# in the bar -- the spotlight is a box with its lens face swung towards the corner
+# of the tile rather than square to it.
+DEFAULT_ICON = (-65.0, 210.0, 205.0)
+
+ICON = {
+    # Front, from above: everything with a face worth showing.
+    "Piano":    DEFAULT_ICON,
+    "Guitar":   DEFAULT_ICON,
+    "Bass":     DEFAULT_ICON,
+    "Strings":  DEFAULT_ICON,
+    # A trumpet and a saxophone are a profile from either side, and these are the
+    # side the toolbar already showed. Only the height changed.
+    "Brass":    (-65.0, 210.0, 0.0),
+    "Woodwind": (-65.0, 210.0, 0.0),
+    # Struck from above, so drawn from above: bars, drum head, cymbal.
+    "Drums":    (-25.0, 210.0, 205.0),
+    "Mallets":  (-25.0, 210.0, 205.0),
+    "Cymbals":  (-25.0, 210.0, 205.0),
+}
 
 # The mesh is worn at half scale by the block XML, as the synth block's is, so a
 # model drawn to this reaches four fifths of the block.
@@ -212,10 +238,14 @@ def stand(tris, yaw, roll):
     """glTF's frame to the block's: Z up, centred, scaled, then posed."""
     placed = []
     for ps, ns, colour in tris:
-        # Swap the up axis in and negate one of the others, which keeps the
-        # handedness -- and so the winding -- as it was.
-        ps = [(p[0], -p[2], p[1]) for p in ps]
-        ns = [(n[0], -n[2], n[1]) for n in ns]
+        # glTF is right-handed and Unity is left-handed, so the map between them
+        # has to *flip* the handedness: a swap that preserves it lands a model
+        # that is correct in every measurement and mirrored, which is invisible
+        # on a drum and plain on a piano. This one negates x as well as z, so it
+        # reflects, and `wind` puts the winding back from the shading normals.
+        # A piano's keyboard runs the right way along it because of this line.
+        ps = [(-p[0], -p[2], p[1]) for p in ps]
+        ns = [(-n[0], -n[2], n[1]) for n in ns]
         placed.append((ps, ns, colour))
 
     a, b = math.radians(yaw), math.radians(roll)
@@ -333,7 +363,7 @@ def write_obj(path, tris, uv, source):
 
 # ---- a look at what came out ----------------------------------------------
 
-def preview(path, tris, size=340, icon=False):
+def preview(path, tris, block, size=340, icon=False):
     """A flat-shaded render, so a pose can be judged without starting the game.
     Nothing here ships.
 
@@ -341,7 +371,7 @@ def preview(path, tris, size=340, icon=False):
     it is being built with, and the toolbar's, worked out from the same rotation
     the block XMLs give their icon."""
     if icon:
-        eye, up = icon_camera()
+        eye, up = icon_camera(block)
     else:
         # From the block's +y, which is the side the instruments face and the side
         # a machine is looked at from -- the same view as the toolbar's, further
@@ -403,22 +433,34 @@ def cross(a, b):
             a[0] * b[1] - a[1] * b[0])
 
 
-def icon_camera():
+def icon_camera(block):
     """Where the toolbar looks at a block from, in the block's own frame.
 
-    At icon rotation zero the camera sits along the block's up axis with the
-    block's +y up the picture and +x across it -- which is why the inherited
-    -30,-30,0 photographed these instruments from overhead. The block is turned by
-    ICON_ROTATION, so the camera in the block's frame is that rotation undone.
+    The toolbar camera is fixed and the block is turned in front of it by the
+    icon rotation, so the camera in the block's frame is that rotation undone.
+
+    It looks along **+z**, not the -z a Unity camera looks along by default. That
+    sign is not a guess: at -115,210,0 this returned a camera in front of and
+    above the block, and the game drew all nine from behind and below -- the
+    piano showing its legs and underside, the drum its bottom head. Screenshot
+    20260822200251_1.jpg, against the render this same function produced.
+    Whatever the toolbar does with the block after it has turned it, the two are
+    opposite, and everything here is written to reproduce the game rather than
+    to explain it. Judge a change to these numbers against a preview, and the
+    preview against the game.
     """
-    x, y, _ = (math.radians(a) for a in ICON_ROTATION)
-    # Unity turns Z, then X, then Y, so undoing it is Y first and then X.
+    x, y, z = (math.radians(a) for a in ICON[block])
+
+    # Unity turns Z, then X, then Y, so undoing it is Y, then X, then Z.
     def unturn(v):
         cy, sy = math.cos(-y), math.sin(-y)
         v = (v[0] * cy + v[2] * sy, v[1], -v[0] * sy + v[2] * cy)
         cx, sx = math.cos(-x), math.sin(-x)
-        return (v[0], v[1] * cx - v[2] * sx, v[1] * sx + v[2] * cx)
-    return normalise(unturn((0.0, 0.0, 1.0))), normalise(unturn((0.0, 1.0, 0.0)))
+        v = (v[0], v[1] * cx - v[2] * sx, v[1] * sx + v[2] * cx)
+        cz, sz = math.cos(-z), math.sin(-z)
+        return (v[0] * cz - v[1] * sz, v[0] * sz + v[1] * cz, v[2])
+
+    return normalise(unturn((0.0, 0.0, -1.0))), normalise(unturn((0.0, 1.0, 0.0)))
 
 
 def fetch(block):
@@ -454,8 +496,8 @@ def main():
         verts, faces = write_obj(os.path.join(OUT, block + ".obj"), tris, uv,
                                  (title, author, licence, pid))
         if want_preview:
-            preview(os.path.join(shots, block + ".png"), tris)
-            preview(os.path.join(shots, block + "-icon.png"), tris, icon=True)
+            preview(os.path.join(shots, block + ".png"), tris, block)
+            preview(os.path.join(shots, block + "-icon.png"), tris, block, icon=True)
         print("  %-9s %-16s %5d faces, %2d colour(s), %s"
               % (block, title, faces, len(colours),
                  " x ".join("%.2f" % s for s in size)))

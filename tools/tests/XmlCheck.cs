@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -47,14 +48,16 @@ static class XmlCheck
         string modId = ModId(args);
         Dictionary<string, string> resources = Resources(args);
         Schema schema = Schema.Read(args);
+        Dictionary<string, float[]> poses = IconPoses(args);
         int checkedFiles = 0;
+        int icons = 0;
 
         for (int i = 0; i < args.Length; i++)
         {
-            if (args[i].EndsWith(".cs"))
+            if (args[i].EndsWith(".cs") || args[i].EndsWith(".py"))
             {
-                continue;                       // the module source, read above
-            }
+                continue;                       // the module source and the mesh
+            }                                   // tool, both read above
             checkedFiles++;
             XmlDocument doc = new XmlDocument();
             try
@@ -89,6 +92,12 @@ static class XmlCheck
             // against each other here rather than in the game.
             bad += Wears(root, "Mesh", resources, args[i]);
             bad += Wears(root, "Texture", resources, args[i]);
+
+            // The toolbar's view of a block is written twice: here, and in the
+            // mesh tool, which renders a preview from it. Neither can be judged
+            // without the other -- a preview drawn from a stale pose is a picture
+            // of a block that does not exist -- so they are held together.
+            bad += Photographed(root, poses, args[i], ref icons);
 
             XmlNode modules = root.SelectSingleNode("Modules");
             if (modules != null && modId != null)
@@ -132,8 +141,122 @@ static class XmlCheck
             return 1;
         }
         Console.WriteLine("XML check: " + checkedFiles + " file(s) parse, blocks complete"
-                          + schema.Summary() + ".");
+                          + schema.Summary()
+                          + (icons > 0 ? ", " + icons + " icon pose(s) as posed" : "")
+                          + ".");
         return 0;
+    }
+
+
+    /// <summary>
+    /// Checks a block's icon rotation against the pose the mesh tool renders its
+    /// preview from. Blocks the tool says nothing about are left alone.
+    /// </summary>
+    static int Photographed(XmlElement root, Dictionary<string, float[]> poses,
+                            string path, ref int seen)
+    {
+        XmlNode named = root.SelectSingleNode("Name");
+        if (named == null || poses.Count == 0)
+        {
+            return 0;
+        }
+        string block = named.InnerText.Trim();
+        float[] want;
+        if (!poses.TryGetValue(block, out want))
+        {
+            return 0;
+        }
+        XmlElement turn = root.SelectSingleNode("Icon/Rotation") as XmlElement;
+        if (turn == null)
+        {
+            Console.Error.WriteLine("  " + path + ": no <Icon><Rotation>, but the mesh"
+                                    + " tool poses " + block + " for one");
+            return 1;
+        }
+        string[] axes = { "x", "y", "z" };
+        for (int k = 0; k < 3; k++)
+        {
+            float got;
+            if (!float.TryParse(turn.GetAttribute(axes[k]),
+                                NumberStyles.Float, CultureInfo.InvariantCulture, out got)
+                || Math.Abs(got - want[k]) > 0.001f)
+            {
+                Console.Error.WriteLine("  " + path + ": <Icon> turns " + axes[k] + "=\""
+                    + turn.GetAttribute(axes[k]) + "\", but make-block-meshes.py draws "
+                    + block + " at " + want[k].ToString(CultureInfo.InvariantCulture));
+                return 1;
+            }
+        }
+        seen++;
+        return 0;
+    }
+
+    /// <summary>
+    /// The mesh tool's ICON table, read out of the Python rather than copied, so
+    /// that the pose the previews are drawn from is the pose the game is given.
+    /// </summary>
+    static Dictionary<string, float[]> IconPoses(string[] args)
+    {
+        Dictionary<string, float[]> found = new Dictionary<string, float[]>();
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (!args[i].EndsWith(".py"))
+            {
+                continue;
+            }
+            string source;
+            try
+            {
+                source = File.ReadAllText(args[i]);
+            }
+            catch (Exception)
+            {
+                continue;               // an absent tool is not a broken block
+            }
+
+            string number = @"\s*(-?[0-9.]+)\s*";
+            string tuple = @"\(" + number + "," + number + "," + number + @"\)";
+            float[] fallback = null;
+            Match preset = Regex.Match(source, @"DEFAULT_ICON\s*=\s*" + tuple);
+            if (preset.Success)
+            {
+                fallback = Triple(preset, 1);
+            }
+
+            Match table = Regex.Match(source, @"ICON\s*=\s*\{(.*?)\n\}", RegexOptions.Singleline);
+            if (!table.Success)
+            {
+                continue;
+            }
+            MatchCollection rows = Regex.Matches(table.Groups[1].Value,
+                "\"([A-Za-z]+)\"\\s*:\\s*(DEFAULT_ICON|" + tuple + ")");
+            for (int r = 0; r < rows.Count; r++)
+            {
+                Match row = rows[r];
+                float[] pose = row.Groups[2].Value.StartsWith("DEFAULT_ICON")
+                    ? fallback : Triple(row, 3);
+                if (pose != null)
+                {
+                    found[row.Groups[1].Value] = pose;
+                }
+            }
+        }
+        return found;
+    }
+
+    /// <summary>Three captured numbers, from <paramref name="first"/> on.</summary>
+    static float[] Triple(Match m, int first)
+    {
+        float[] v = new float[3];
+        for (int k = 0; k < 3; k++)
+        {
+            if (!float.TryParse(m.Groups[first + k].Value, NumberStyles.Float,
+                                CultureInfo.InvariantCulture, out v[k]))
+            {
+                return null;
+            }
+        }
+        return v;
     }
 
     /// <summary>

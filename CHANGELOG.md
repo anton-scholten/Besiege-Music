@@ -86,10 +86,34 @@
 - The toolbar icons show each block three-quarters on and the right way up,
   rather than from overhead. The `<Icon>` rotation was Sound Blocks', which suited
   a speaker that looks the same from every side; a trumpet does not.
+- The icons were photographing the backs of the blocks, and from underneath: the
+  piano showed its legs, the drum its bottom head, the xylophone its base. The
+  toolbar's camera turned out to look along the opposite axis to the one the
+  preview assumed, so undoing the icon rotation put the camera exactly where it is
+  not. `icon_camera` now negates, having been calibrated against the game, and
+  each block carries its own pose rather than all nine sharing one: front and from
+  above for anything with a face, steeply from above for the three that are struck
+  there, and profile for the trumpet and saxophone, which are the same shape from
+  either side.
 - Every instrument now faces the side a machine is looked at from: the piano shows
   its keyboard, the guitars their faces rather than their backs, the violin its
-  front rather than its edge, and the trumpet and saxophone their length rather
+  front rather than its back, and the trumpet and saxophone their length rather
   than their bell.
+- All nine models were mirrored, in the world and in the toolbar alike. glTF is
+  right-handed and Unity is left-handed, and the swap that brought a model into
+  the block's frame preserved the handedness instead of flipping it -- so every
+  instrument arrived correct in every measurement and reflected: a piano with its
+  long side on the wrong hand, a violin with its chin rest on the wrong cheek. The
+  swap reflects now. The yaws in `POSE` changed sign with it, a reflection and a
+  turn not commuting.
+- The toolbar draws the seven blocks with a face or a top turned further to the
+  right, as Besiege stands its own blocks: its spotlight is a box with the lens
+  swung towards the corner of the tile. The drum's icon is drawn at 0.4 rather
+  than 0.5 -- a drum is as wide as the block, and filled its tile edge to edge.
+- `XmlCheck` reads the mesh tool's icon table out of the Python and holds each
+  block's `<Icon>` rotation to it. The two have to say the same thing -- a preview
+  drawn from a stale pose is a picture of a block that does not exist -- and they
+  had already drifted once.
 - `XmlCheck` now holds a block's `<Mesh>` and `<Texture>` names to what Mod.xml
   declares, and both to the files on disk. A name Besiege does not know is a block
   with no shape, and nothing else would have said so.

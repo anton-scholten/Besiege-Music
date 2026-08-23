@@ -35,7 +35,7 @@
 
 	<Icon>
 		<Position x="0.0" y="0.0" z="-1.5" /> <!--right, up, front-->
-		<Rotation x="-115.0" y="210.0" z="0.0" /> <!--stands the block up, turns its face to the camera, three-quarters-->
+		<Rotation x="-65.0" y="210.0" z="205.0" /> <!--how the toolbar sees it: the front, from above, turned further right-->
 		<Scale x="0.5" y="0.5" z="0.5" />
 	</Icon>
 	
