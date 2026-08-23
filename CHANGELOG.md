@@ -19,6 +19,28 @@
 
 **Changed**
 
+- The panel is docked to the block mapper: the same width, its top edge against the
+  mapper's bottom, following it as it is dragged. It has no title bar of its own
+  any more -- no name, no cross -- because it is the lower half of a window that is
+  already titled, and the mapper opens and closes it. LISTEN moved to the foot,
+  bottom left, with the block's toggles sharing the rest of that row equally.
+  Measuring the mapper is the whole of the trick: it is NGUI in world space, so the
+  join is made by projecting the widest thing it draws -- its own frame -- through
+  the camera that draws it. (Not `upperLeft`/`lowerRight`, which are public and
+  look like exactly what that wants; they are found by tag and are the corners of
+  the screen the mapper may be dragged within.) The window's remembered corner went
+  with the drag, and `Prefs` with it.
+- DECAY, RELEASE and ATTACK take any time up to a minute, typed, with a little more
+  under the handle than before -- 3 seconds of decay, 6 of release, 1.5 of attack.
+  `<Extra dragMax="...">` is what separates the two: what the handle covers, where
+  the setting itself takes more.
+- The toggles are drawn half again as tall, and the window is the height it was:
+  the extra came out of the space that was under them.
+- NOTE and RANGE accept more than their handles cover. RANGE will take any
+  distance from half a metre to two kilometres, typed, while the handle still runs
+  over the 5 to 500 that anybody drags through; NOTE takes the whole MIDI range,
+  with the handle over a piano's 88 keys. A typed value past the end parks the
+  handle there. The trumpet's ATTACK reaches a full second rather than 0.3.
 - The panel is narrower -- 434 rather than 470 -- by way of the caption column,
   which was half again as wide as the longest caption in it. The sliders sit
   beside their names now instead of across a gap, and they are the same length as
@@ -52,6 +74,37 @@
 
 **Fixed**
 
+- The panel did not dock and did not follow the mapper. When the mapper measured a
+  different width than the rows had been laid out to, `Dock` set the rebuild flag
+  and returned *without placing the window* -- and the same flag is what let it run
+  at all, so it never placed the window again either. It rebuilds at the new width
+  and places itself in the same frame now. Docking also moved to `LateUpdate`, so
+  the panel is put against a mapper that has already moved this frame rather than
+  one frame behind it.
+- The panel docks to the mapper's `Background`, the tallest of the three that share
+  its width. Two earlier rules were wrong and both shipped: the widest thing the
+  mapper draws is `WideShadow`, an eleventh wider than the window and higher up,
+  which put the panel across the mapper's lower half; and `Visual`, which sounds
+  like a frame, is a 93-pixel button, which made the panel a narrow strip beside
+  it. The geometry was settled by having the panel log every part it measured --
+  it still says which one it docked to, once a session.
+- Breath sounded like static rather than air. The noise it mixes in was the whole
+  spectrum; it is a band now -- one pole takes the fizz off the top, a second the
+  rumble off the bottom -- which is the part of it that sounds like a player.
+- A drum with a long decay and little damping was left hissing. Its noise kept the
+  same brightness all the way down, so what should have been the tail of a struck
+  head was a bright fizz under a fading tone. The filter closes as the noise dies,
+  the way high frequencies leave anything struck first, and the noise's own decay
+  is capped at a second and a half however long the body rings -- without which the
+  new range would have left seven seconds of it.
+- Slap left a hiss on the tail of every bass. The noise it adds was mixed in at a
+  fixed level, and these recordings are loudest at the strike and much quieter in
+  the window they ring out through -- so the same hiss that was 3% of the attack
+  was 8 to 24% of the ring, arriving as the note died. It is mixed in proportion to
+  what the recording is doing now, through a peak follower quick to rise and slow
+  to fall, which holds it at the attack's own 3 to 5% throughout. Breath on a flute
+  is unchanged: that recording holds its level, so a proportion of it is what it
+  always was.
 - Every block answered its key late. The sound was fed to Unity through a
   streaming `AudioClip` with a PCM reader callback, which is read well ahead of
   being heard: a note queued by a keypress was rendered into audio that would not

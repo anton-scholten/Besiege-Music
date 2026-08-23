@@ -214,5 +214,18 @@ namespace OrchestraMod
         [XmlAttribute("default")]
         [DefaultValue(0.5f)]
         public float Default = 0.5f;
+
+        /// <summary>
+        /// The top of the part worth dragging through, where that is less than
+        /// <see cref="Max"/>. A time in seconds will take almost anything -- a
+        /// release of half a minute is a long fade and nothing worse -- but a handle
+        /// that had to cover all of it could not be set to the half-second anybody
+        /// wants, so the panel's box takes the rest.
+        ///
+        /// Nought, the default, means the handle covers the whole range.
+        /// </summary>
+        [XmlAttribute("dragMax")]
+        [DefaultValue(0f)]
+        public float DragMax = 0f;
     }
 }

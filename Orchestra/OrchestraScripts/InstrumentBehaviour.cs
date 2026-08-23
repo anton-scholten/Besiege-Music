@@ -45,6 +45,9 @@ namespace OrchestraMod
         private readonly List<MSlider> extraSliders = new List<MSlider>();
         private readonly List<string> extraKeys = new List<string>();
 
+        /// <summary>Each extra slider's `dragMax`, or 0 where it has none.</summary>
+        private readonly List<float> extraDrag = new List<float>();
+
         // Indices into extraValues, resolved once. -1 where the block does not
         // declare that control, which is most of them for most blocks.
         private int iTune = -1, iDecay = -1, iDamp = -1, iSize = -1, iOpen = -1;
@@ -183,9 +186,14 @@ namespace OrchestraMod
             }
             TypeMenu = AddMenu("TypeKey", 0, names, false);
 
-            NoteSlider = AddSlider("Note", "NoteKey", 60f, 21f, 108f);
+            // Note and Range are declared wider than they are dragged through: a
+            // machine may want to be heard across a whole level, and a note may be
+            // wanted below the lowest key of a piano. What the handle covers is the
+            // part worth dragging, and the panel's box takes the rest -- see
+            // `Comfortable`.
+            NoteSlider = AddSlider("Note", "NoteKey", 60f, 0f, 127f);
             VolumeSlider = AddSlider("Volume", "VolumeKey", 0.7f, 0f, 1f);
-            RangeSlider = AddSlider("Range", "RangeKey", 120f, 5f, 500f);
+            RangeSlider = AddSlider("Range", "RangeKey", 120f, 0.5f, 2000f);
             if (Sustains)
             {
                 // Only where holding the key means something. A bowed or blown note
@@ -208,6 +216,10 @@ namespace OrchestraMod
                     else
                     {
                         extraSliders.Add(AddSlider(e.Name, e.Key, e.Default, e.Min, e.Max));
+                        // Kept beside its slider so the panel can ask what part of
+                        // the range the handle should cover, without going back to
+                        // the XML and matching them up again.
+                        extraDrag.Add(e.DragMax);
                     }
                 }
 
@@ -266,6 +278,43 @@ namespace OrchestraMod
         // ---- what the panel needs -------------------------------------------
         //
         // The panel builds itself from these rather than from a list of its own, so
+        /// <summary>
+        /// The part of a slider's range worth dragging through, where the setting
+        /// itself accepts more than that. True with the pair filled in, or false for
+        /// a slider whose whole range is worth having under the handle.
+        ///
+        /// Only these two: everything else is either already the range it should be,
+        /// or a nought-to-one figure the voices clamp anyway, where a larger number
+        /// would be accepted and then ignored.
+        /// </summary>
+        public bool Comfortable(MSlider slider, out float min, out float max)
+        {
+            if (slider == NoteSlider)
+            {
+                min = 21f;                  // the range of a piano, under the handle
+                max = 108f;
+                return true;
+            }
+            if (slider == RangeSlider)
+            {
+                min = 5f;
+                max = 500f;
+                return true;
+            }
+            for (int i = 0; i < extraSliders.Count && i < extraDrag.Count; i++)
+            {
+                if (extraSliders[i] == slider && extraDrag[i] > slider.Min)
+                {
+                    min = slider.Min;
+                    max = extraDrag[i];
+                    return true;
+                }
+            }
+            min = 0f;
+            max = 0f;
+            return false;
+        }
+
         /// <summary>
         /// Whether any of this block's types goes on for as long as the key is
         /// down. Read from the XML rather than listed here: the six blocks without

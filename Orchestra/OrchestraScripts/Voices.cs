@@ -185,6 +185,10 @@ namespace OrchestraMod
         private float bodyDamp;
         private float noiseAmp;
         private float noiseDamp;
+
+        /// <summary>How much of the strike's noise is left, 1 down to 0. The skin's
+        /// hiss loses its top as it goes, the way a struck thing does.</summary>
+        private float noiseBright;
         private float lp;
         private uint noiseState = 987654321u;
 
@@ -203,7 +207,13 @@ namespace OrchestraMod
             bodyAmp = velocity * (1f - noise * 0.6f);
             bodyDamp = Mathf.Exp(-1f / (decay * rate));
             noiseAmp = velocity * noise;
-            noiseDamp = Mathf.Exp(-1f / (Mathf.Max(0.01f, decay * 0.35f) * rate));
+            // A third of the body's decay, and never more than a second and a half
+            // whatever the body is given: a drum head is not a cymbal, and a long
+            // decay should ring, not hiss. Without the cap, a two-second decay left
+            // most of a second of bright noise behind, and the new range would have
+            // made that seven.
+            noiseDamp = Mathf.Exp(-1f / (Mathf.Clamp(decay * 0.35f, 0.01f, 1.5f) * rate));
+            noiseBright = 1f;
             lp = 0f;
 
             Active = true;
@@ -228,10 +238,15 @@ namespace OrchestraMod
                 noiseState ^= noiseState >> 17;
                 noiseState ^= noiseState << 5;
                 float white = ((int)(noiseState & 0xffff) - 32768) / 32768f;
-                // One pole of smoothing: raw white is too fizzy for a skin.
-                lp += (white - lp) * 0.45f;
+                // One pole of smoothing, closing as the noise dies: raw white is too
+                // fizzy for a skin even at the strike, and a hiss that keeps its top
+                // all the way down is the fizz that was left ringing under a long
+                // decay. High frequencies go first in anything struck, so the filter
+                // follows the noise down from open to nearly shut.
+                lp += (white - lp) * (0.06f + 0.39f * noiseBright);
                 s += lp * noiseAmp;
                 noiseAmp *= noiseDamp;
+                noiseBright *= noiseDamp;
 
                 buffer[n] += s;
             }
@@ -285,6 +300,17 @@ namespace OrchestraMod
         private float damping;
         private float lowpass;
         private float edge;
+
+        /// <summary>How loud the recording is just now, and how fast that is allowed
+        /// to fall -- a peak follower, so the noise <see cref="edge"/> adds is a
+        /// proportion of the note rather than a fixed hiss over it.</summary>
+        private float follow;
+        private float followFall;
+
+        /// <summary>The two poles that turn white noise into breath: what is left
+        /// after the top is taken off, and the rumble taken off that.</summary>
+        private float hiss;
+        private float rumble;
         private uint noiseState = 1234567u;
         private float combDepth;
         private int combDelay;
@@ -348,6 +374,12 @@ namespace OrchestraMod
             damping = Mathf.Clamp01(type.Damping);
             lowpass = 0f;
             edge = Mathf.Clamp01(type.Edge);
+            follow = 0f;
+            hiss = 0f;
+            rumble = 0f;
+            // About 80 ms to fall, which is slower than any note's waveform and
+            // faster than any note's decay.
+            followFall = 1f / Mathf.Max(1f, 0.08f * rate);
 
             combDepth = Mathf.Clamp01(type.Comb);
             // Shorter delay is nearer the bridge, which is thinner and more nasal.
@@ -474,7 +506,46 @@ namespace OrchestraMod
                     noiseState ^= noiseState >> 17;
                     noiseState ^= noiseState << 5;
                     float white = ((int)(noiseState & 0xffff) - 32768) / 32768f;
-                    s += white * edge * 0.12f;
+
+                    // Breath through a flute is air moving, not static: a band of
+                    // noise rather than the whole spectrum. One pole takes the fizz
+                    // off the top, a second takes the rumble off the bottom by being
+                    // subtracted, and what is left is the part that sounds like a
+                    // player. Twice the level, because a band is quieter than the
+                    // whole of what it was cut from.
+                    hiss += (white - hiss) * 0.35f;
+                    rumble += (hiss - rumble) * 0.02f;
+                    float air = (hiss - rumble) * 2f;
+
+                    // Noise rides the note rather than sitting under it, at a level
+                    // proportional to what the recording is doing just now.
+                    //
+                    // Flat, it was the same hiss whatever the note was worth -- and
+                    // these recordings are loudest at the strike and much quieter in
+                    // the window they ring out through. Measured on the basses, the
+                    // noise Slap added was 3% of the attack and then 8 to 24% of the
+                    // loop, which is a hiss that arrives as the note dies. In
+                    // proportion it stays at the attack's own 3 to 5% throughout,
+                    // which is a bright strike rather than a noisy tail.
+                    //
+                    // The follower is quick to rise, so an attack is not softened,
+                    // and slow to fall, so it does not flutter with the waveform.
+                    float amp = s < 0f ? -s : s;
+                    if (amp > follow)
+                    {
+                        follow = amp;
+                    }
+                    else
+                    {
+                        follow += (amp - follow) * followFall;
+                    }
+                    // 1.1, so a recording at full scale gets what it always got.
+                    float ride = follow * 1.1f;
+                    if (ride > 1f)
+                    {
+                        ride = 1f;
+                    }
+                    s += air * edge * 0.12f * ride;
                 }
 
                 if (combDepth > 0.001f)

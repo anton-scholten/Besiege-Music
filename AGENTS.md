@@ -289,6 +289,34 @@ to a signature that may change.
 UnityEngine.UI` does not win and `UnityEngine.UI.Slider` has to be spelled out.
 `Text`, `Image` and `Button` are fine.
 
+**The panel is docked to the mapper, and measuring it is the awkward part.**
+The mapper's window is drawn in world space, so there is no rect to read: it is
+found by projecting a renderer's bounds through the camera whose culling mask
+includes its layer. Which renderer is the whole question, and the answer was got by
+making the panel log every part it measured. With a piano open at 4K:
+
+    Background   874.80 x  389.88   at y 1540.87   <- the window
+    Background   874.80 x  281.88   at y 1540.87
+    Background   874.80 x  174.96   at y 1658.59
+    WideShadow   972.00 x  194.40   at y 1638.37
+    Mask         874.80 x 1555.20   at y  267.55
+    Visual        93.31 x   93.31
+
+So: the window is a `Background`; they all share its width and the tallest is the
+frame. Two other rules were shipped and both were wrong -- the widest thing drawn
+is `WideShadow`, an eleventh wider and higher up, which put the panel over the
+mapper's lower half; `Visual` by name is a 93-pixel button, which made the panel a
+narrow strip. `BlockMapper.upperLeft` and `lowerRight` are public and look like
+precisely what this wants; they are not, being found by tag and used by
+`UpdateBackground` to clamp the window against the screen. `background` itself is
+private, and the `ContainerDetails` components are one per row.
+
+Docking runs in `LateUpdate`, after the mapper's own drag has moved it; the width
+is taken before the rows are built, since they are laid out to it, and a mapper of
+a different width rebuilds and re-places in the same frame. It said `docking to
+'<name>' at <rect>` once a session in the log, which is how any of this is
+checkable from outside the game.
+
 **The mapper is a fallback, not a second panel.** Every mapper control except the
 key sets `DisplayInMapper = false` once `UIF.Available` says yes, so with UI
 Factory installed Besiege's own menu holds the key alone and the panel draws the

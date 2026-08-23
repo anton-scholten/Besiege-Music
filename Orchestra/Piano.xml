@@ -20,7 +20,7 @@
 			</Types>
 			<Extras>
 			<Extra kind="toggle" key="SustainKey" name="Sustain" default="0" />
-			<Extra kind="slider" key="ReleaseKey" name="Release" min="0.05" max="4" default="0.5" />
+			<Extra kind="slider" key="ReleaseKey" name="Release" min="0.05" max="60" dragMax="6" default="0.5" />
 			</Extras>
 		</OrchestraMod>
 	</Modules>

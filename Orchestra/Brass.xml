@@ -22,7 +22,7 @@
 			</Types>
 			<Extras>
 			<Extra kind="toggle" key="MuteKey" name="Mute" default="0" />
-			<Extra kind="slider" key="AttackKey" name="Attack" min="0.005" max="0.3" default="0.03" />
+			<Extra kind="slider" key="AttackKey" name="Attack" min="0.005" max="60" dragMax="1.5" default="0.03" />
 			<Extra kind="slider" key="VibratoKey" name="Vibrato" min="0" max="1" default="0.2" />
 			</Extras>
 		</OrchestraMod>
