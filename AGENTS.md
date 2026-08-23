@@ -82,15 +82,29 @@ Three things it has to get right, and the reasons are worth keeping:
 * **The nine icon poses are a camera, not a magic number.** x is how far above the
   block it sits, y and z which side it looks from -- z spins the block under the
   camera, being the turn Unity applies first. `-65,210,180` is Besiege's own
-  three-quarter, a third of the way up, looking at the side the instruments face
-  and turned a little further right, the way Besiege's own spotlight block stands
-  in the bar -- its lens swung towards the corner of the tile rather than square
-  to it, and its vertical edges still vertical, so this is a turn and not a tilt.
-  `-25,210,205` is half above, for the three that are struck from above and whose
-  face is their top; and brass and woodwind keep `z=0`, a trumpet being the same
-  shape from either side. A drum and a cymbal are round, so a turn about their own
-  axis does not show -- for those two, only the tilt or the scale can change what
-  the tile looks like. Get the tilt's sign wrong and the icon is a view of the
+  three-quarter, a third of the way up; `-25,210,115` is half above, for the three
+  that are struck from above and whose face is their top; and the horns take
+  `z=180`, which is the same turn measured from a different start, they being laid
+  across the block rather than facing out of it.
+
+* **Some icon poses carry a roll, and are not readable as three angles.** The
+  toolbar camera looks along world +z and an icon rotation turns the *block*, so
+  nothing in the Euler triple tilts the picture on its own; `rolled()` applies the
+  turn to the whole rotation and decomposes it back, which is where entries like
+  `-31.3, 156.7, -151.6` come from. `--pose x y z roll` prints one. The comment
+  beside each such entry keeps the base pose and the roll it was given, because
+  the numbers themselves no longer say. It is the only way to face a drum head or
+  a cymbal anywhere: a round thing looks the same however it is spun about its own
+  axis, so only the picture can turn.
+
+* **The toolbar lights a block from beside the camera and to the right**, which is
+  measurable on the drum icon: of the shell facets, the right-hand one is the
+  brightest. So `z` turns every instrument that way -- about 37 degrees right of
+  the camera for the ones with a face, which is lit rather than shadowed and still
+  open enough to read. Turning further only presents the edge of something flat: a
+  guitar at ninety degrees is a stick. A drum and a cymbal are round, so the turn
+  does not show on them at all -- for those two only the tilt or the scale can
+  change what the tile looks like. Get the tilt's sign wrong and the icon is a view of the
   block's underside, which is easy to miss and obvious once seen.
 
 * **The instruments face the block's +y**, which is the side a machine is looked
@@ -100,6 +114,14 @@ Three things it has to get right, and the reasons are worth keeping:
   honest about the toolbar, and `XmlCheck` reads the table out of the Python and
   holds the two together, a preview drawn from a stale pose being a picture of a
   block that does not exist.
+
+* **The preview projects into a left-handed frame.** These coordinates are
+  Unity's, so the screen's right is `cross(eye, up)`, not the `cross(up, eye)` a
+  right-handed frame would want. With the arguments the other way round every
+  render was a mirror of the game, which is invisible until it matters and then
+  costs a round of poses turned the wrong way -- "further right" in the preview
+  was further left in the toolbar. The trumpet settles it in one look: the game
+  draws its bell towards the left of the tile.
 
 * **Check a preview against the game before believing it.** `--preview` renders
   each mesh from a fixed angle with a z-buffer and flat shading, and its first

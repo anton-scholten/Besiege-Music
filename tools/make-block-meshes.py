@@ -83,12 +83,17 @@ POSE = {
 # above the block it sits, y and the block's own turn set which side, and z spins
 # the block under it. At -65 the camera is a third of the way up from the block's
 # waist -- Besiege's own three-quarter -- and at -25 it is half above it, looking
-# down at something whose face is its top. z=180 brings round the side the
-# instruments face; without it the toolbar photographs their backs, and the extra
-# 25 turns them a little further right, which is how Besiege stands its own blocks
-# in the bar -- the spotlight is a box with its lens face swung towards the corner
-# of the tile rather than square to it.
-DEFAULT_ICON = (-65.0, 210.0, 205.0)
+# down at something whose face is its top.
+#
+# z is where the instrument ends up looking, and the toolbar lights a block from
+# beside the camera and to the right -- the drum icon's right-hand shell facet is
+# its brightest. So every instrument is turned to that side: at z=115 a face sits
+# about 37 degrees right of the camera, lit rather than shadowed, and still open
+# enough to be read as a piano or a guitar. Turning further would only present the
+# edge of something flat. The horns take z=180, which is the same turn measured
+# from a different starting angle: they lie across the block rather than facing
+# out of it, and 180 is what points a bell to the right.
+DEFAULT_ICON = (-65.0, 210.0, 115.0)
 
 ICON = {
     # Front, from above: everything with a face worth showing.
@@ -96,14 +101,19 @@ ICON = {
     "Guitar":   DEFAULT_ICON,
     "Bass":     DEFAULT_ICON,
     "Strings":  DEFAULT_ICON,
-    # A trumpet and a saxophone are a profile from either side, and these are the
-    # side the toolbar already showed. Only the height changed.
-    "Brass":    (-65.0, 210.0, 0.0),
-    "Woodwind": (-65.0, 210.0, 0.0),
-    # Struck from above, so drawn from above: bars, drum head, cymbal.
-    "Drums":    (-25.0, 210.0, 205.0),
-    "Mallets":  (-25.0, 210.0, 205.0),
-    "Cymbals":  (-25.0, 210.0, 205.0),
+    # A trumpet and a saxophone are a profile from either side; this is the side
+    # that puts the bell to the right, with the light on it. The trumpet carries
+    # 20 degrees of roll on top, which lifts the bell off the horizontal:
+    # `--pose -65 210 180 20`.
+    "Brass":    (-51.2, -125.7, 151.8),
+    "Woodwind": (-65.0, 210.0, 180.0),
+    # Struck from above, so drawn from above: bars, drum head, cymbal. All three
+    # are rolled as well -- from `-25,210,115`, which showed their faces leaning
+    # left, by -80 for the round two (`--pose -25 210 115 -80`) and by -65 for the
+    # xylophone, which needs to lie along the tile as well as face right.
+    "Drums":    (-31.3, 156.7, -151.6),
+    "Mallets":  (-36.1, 166.3, -168.7),
+    "Cymbals":  (-31.3, 156.7, -151.6),
 }
 
 # The mesh is worn at half scale by the block XML, as the synth block's is, so a
@@ -385,10 +395,19 @@ def preview(path, tris, block, size=340, icon=False):
         up = (right[1] * eye[2] - right[2] * eye[1],
               right[2] * eye[0] - right[0] * eye[2],
               right[0] * eye[1] - right[1] * eye[0])
-    right = normalise(cross(up, eye))
-    up = normalise(cross(eye, right))
-    # Over the camera's shoulder, so a block is lit from wherever it is looked at.
-    light = normalise((eye[0] + 0.35, eye[1] + 0.1, eye[2] + 0.5))
+    # `cross(up, eye)` is the screen's right in a right-handed frame, and these
+    # coordinates are Unity's, which is left-handed -- so it points left, and every
+    # render this drew was a mirror of the game. Proven on the trumpet: the game
+    # draws its bell to the left of the tile, and this drew it to the right until
+    # the arguments were swapped. It cost a round of poses turned the wrong way,
+    # "right" in the preview being left in the toolbar.
+    right = normalise(cross(eye, up))
+    up = normalise(cross(right, eye))
+    # Beside the camera and to the right, which is where the toolbar's own light
+    # is: the drum icon's right-hand shell facet is its brightest.
+    light = normalise((eye[0] + right[0] * 0.9 + 0.1,
+                       eye[1] + right[1] * 0.9 + 0.1,
+                       eye[2] + right[2] * 0.9 + 0.5))
 
 
     pixels = [[(24, 24, 28)] * size for _ in range(size)]
@@ -463,6 +482,49 @@ def icon_camera(block):
     return normalise(unturn((0.0, 0.0, -1.0))), normalise(unturn((0.0, 1.0, 0.0)))
 
 
+def rolled(pose, degrees):
+    """One icon pose turned in the picture plane, about the camera's own axis.
+
+    Neither of the block's own turns can do this: the toolbar camera looks along
+    world +z, and an icon rotation is Y, then X, then Z of the *block*. So the
+    roll is applied to the whole rotation and the result decomposed back into the
+    order Unity reads, which is why some entries in ICON are not round numbers.
+    `--pose x y z roll` prints one.
+
+    It is what tilts a trumpet's bell up off the horizontal, and what turns a drum
+    head or a set of bars to face right rather than left -- a round thing has no
+    other way of facing anywhere.
+    """
+    x, y, z = (math.radians(v) for v in pose)
+
+    def mul(A, B):
+        return [[sum(A[i][k] * B[k][j] for k in range(3)) for j in range(3)]
+                for i in range(3)]
+
+    def Rx(a):
+        c, s = math.cos(a), math.sin(a)
+        return [[1, 0, 0], [0, c, -s], [0, s, c]]
+
+    def Ry(a):
+        c, s = math.cos(a), math.sin(a)
+        return [[c, 0, s], [0, 1, 0], [-s, 0, c]]
+
+    def Rz(a):
+        c, s = math.cos(a), math.sin(a)
+        return [[c, -s, 0], [s, c, 0], [0, 0, 1]]
+
+    R = mul(Rz(math.radians(degrees)), mul(Ry(y), mul(Rx(x), Rz(z))))
+    out = [math.degrees(v) for v in (math.asin(max(-1.0, min(1.0, -R[1][2]))),
+                                     math.atan2(R[0][2], R[2][2]),
+                                     math.atan2(R[1][0], R[1][1]))]
+    # The decomposition has to rebuild what it came from.
+    x2, y2, z2 = (math.radians(v) for v in out)
+    back = mul(Ry(y2), mul(Rx(x2), Rz(z2)))
+    assert max(abs(back[i][j] - R[i][j])
+               for i in range(3) for j in range(3)) < 1e-9, pose
+    return [round(v, 1) for v in out]
+
+
 def fetch(block):
     pid, uuid = SOURCES[block][0], SOURCES[block][1]
     path = os.path.join(CACHE, block + ".glb")
@@ -476,6 +538,13 @@ def fetch(block):
 
 
 def main():
+    if "--pose" in sys.argv:
+        at = sys.argv.index("--pose")
+        x, y, z, turn = (float(v) for v in sys.argv[at + 1:at + 5])
+        print("%s rolled %+.0f -> %s"
+              % ((x, y, z), turn, tuple(rolled((x, y, z), turn))))
+        return
+
     want_preview = "--preview" in sys.argv
     if not os.path.isdir(OUT):
         os.makedirs(OUT)

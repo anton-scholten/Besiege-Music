@@ -106,10 +106,22 @@
   long side on the wrong hand, a violin with its chin rest on the wrong cheek. The
   swap reflects now. The yaws in `POSE` changed sign with it, a reflection and a
   turn not commuting.
-- The toolbar draws the seven blocks with a face or a top turned further to the
-  right, as Besiege stands its own blocks: its spotlight is a box with the lens
-  swung towards the corner of the tile. The drum's icon is drawn at 0.4 rather
+- The trumpet's bell lifts off the horizontal, the xylophone lies along its tile,
+  and the drum head and cymbal face right rather than left. All four are rolls in
+  the picture plane rather than turns of the block -- a drum is round, and looks
+  the same however it is spun about its own axis, so only the picture can turn.
+  The piano's icon is drawn at 0.45: a grand is the widest of the nine.
+- Every toolbar icon is turned to face right, into the light: the toolbar lights a
+  block from beside the camera and to that side, and the instruments had their
+  faces in the shadow. They sit about 37 degrees off the camera now, far enough to
+  be lit and not so far as to show only the edge of something flat; the trumpet and
+  saxophone point their bells the same way. The drum's icon is drawn at 0.4 rather
   than 0.5 -- a drum is as wide as the block, and filled its tile edge to edge.
+- The preview was drawing every block mirrored. Its projection took the screen's
+  right as `cross(up, eye)`, which is a right-handed frame's answer, and these are
+  Unity's left-handed coordinates. It had been wrong from the start and only showed
+  once a pose was judged by it: "further right" in the preview was further left in
+  the game, and one round of icons was turned the wrong way on the strength of it.
 - `XmlCheck` reads the mesh tool's icon table out of the Python and holds each
   block's `<Icon>` rotation to it. The two have to say the same thing -- a preview
   drawn from a stale pose is a picture of a block that does not exist -- and they
