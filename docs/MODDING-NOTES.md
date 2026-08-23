@@ -148,6 +148,16 @@ timer, not a chain of them.
 emulating key with `Message=foo` presses every key that names `foo`. Unlimited
 names, and they cost no keyboard.
 
+**A key with no keycodes is never registered.** `Machine.InitSimBlock` files a
+block's keys with `KeyInputController` from inside
+`for (i = 0; i < key.KeysCount; i++)`, and `AddMKey` is what puts a key into
+`usedMessages` under its variable name. A key written into a `.bsg` with
+`Message=` and `Use=True` but no keycode entry therefore registers nothing and
+hears nothing — silently, and it looks for all the world like the block not
+supporting emulation. Keep a keycode in the array; `AddMKey` files a key under
+its name *or* its keys, never both, so the keycode stays inert. In game the case
+never arises: `KeySelector.SetVariable` sets the name and leaves the keys alone.
+
 **An emulated key is reference counted.** `MKey.UpdateEmulation` adds one on
 press and takes one away on release; `Emulating` is "the count is above nought",
 and a press is the nought-to-one edge. So a second emulator firing while the

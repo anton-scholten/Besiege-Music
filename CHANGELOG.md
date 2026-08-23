@@ -10,10 +10,15 @@
   `--self-test` builds a scale and checks the result without the game. MIDI
   rather than audio because a recording has to be transcribed first, which is a
   research problem and a neural network away, and a score already is the notes.
-  The one thing that is not obvious: an emulated key is reference counted, so a
-  repeat that starts while the same name is still held raises no press at all --
-  the tool cuts every note short of the next on its own block. See
-  [docs/SONGS.md](docs/SONGS.md).
+  Two things are not obvious, and both were found the hard way: a key written with
+  a variable and no keycode is never registered -- `Machine.InitSimBlock` files
+  keys from inside a loop over `KeysCount` -- so the first machines were silent
+  and looked like blocks that do not support emulation; and an emulated key is
+  reference counted, so a repeat starting while the same name is still held
+  raises no press at all, which is why every note is cut short of the next on its
+  own block. The blocks are turned to stand up, as a block placed on a flat
+  surface is in Besiege's own saves, and `--key` starts the song on a keypress
+  rather than with the simulation. See [docs/SONGS.md](docs/SONGS.md).
 - A block swells when it plays: 12% larger over 50 ms, back to its own size over
   the next 220 ms, restarted by every note so a repeated key beats rather than
   sits still. It is the visual that moves and not the block -- the swell is

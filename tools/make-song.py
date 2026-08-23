@@ -3,12 +3,13 @@
 
     ./tools/make-song.py song.mid --instrument Piano --install
 
-The machine is a grid of blocks laid out on one vertical plane. Two kinds:
+The machine is a flat grid of blocks, all at one height. Two kinds:
 
   * an **instrument block** per distinct pitch, holding that note and nothing
     else -- an Orchestra block plays one note, so a tune is a row of blocks;
   * a **timer block** per note in the score, set to fire at that note's moment
-    and to hold the key for as long as the note lasts.
+    and to hold the key for as long as the note lasts. They start with the
+    simulation, or on a keypress with `--key`.
 
 They are joined by Besiege's own variable system rather than by keys. A key can
 carry a *message* -- a variable name -- and `KeyInputController` keeps a table of
@@ -47,11 +48,18 @@ TIMER = 66
 # What a missing Orchestra shows instead, as the game itself writes: a ballast.
 FALLBACK = 35
 
+# A quarter turn about X, which is what a block placed on a flat surface carries
+# in Besiege's own saves. It sends the block's up axis -- the one an instrument
+# stands on, and the one a timer's dial faces along -- to world up, so a field of
+# these is a field of instruments standing up rather than lying on their sides.
+FACE_UP = (-0.7071068, 0.0, 0.0, 0.7071068)
+
 # The mapper keys the timer block declares (TimerBlock.Awake).
 TIMER_WAIT = "bmt-wait"
 TIMER_HOLD = "bmt-emulation-time"
 TIMER_AUTO = "bmt-automatic"
 TIMER_EMULATE = "bmt-emulate"
+TIMER_START = "bmt-activate"
 
 # General MIDI percussion, mapped onto the three struck families. Only the
 # common half of the kit; anything else falls back to the snare.
@@ -272,7 +280,7 @@ def element(parent, tag, **attrs):
     return ET.SubElement(parent, tag, dict((k, str(v)) for k, v in attrs.items()))
 
 
-def block(blocks, block_id, position, mod=None, local=None):
+def block(blocks, block_id, position, mod=None, local=None, facing=FACE_UP):
     """One block at a grid position, with the transform Besiege expects."""
     attrs = {"id": str(block_id), "guid": str(uuid.uuid4())}
     if mod is not None:
@@ -285,7 +293,8 @@ def block(blocks, block_id, position, mod=None, local=None):
     node = ET.SubElement(blocks, "Block", attrs)
     transform = ET.SubElement(node, "Transform")
     element(transform, "Position", x=position[0], y=position[1], z=position[2])
-    element(transform, "Rotation", x=0, y=0, z=0, w=1)
+    element(transform, "Rotation", x=facing[0], y=facing[1],
+            z=facing[2], w=facing[3])
     element(transform, "Scale", x=1, y=1, z=1)
     data = ET.SubElement(node, "Data")
     # Written on every block by the game itself; harmless and one less
@@ -300,23 +309,40 @@ def value(data, kind, key, text):
     return node
 
 
-def variable_key(data, key, name):
+def variable_key(data, key, name, keycode):
     """A mapper key driven by a variable rather than the keyboard.
 
     `MKey.Serialize` writes one entry per keycode and then the extras, so a key
-    that listens to a variable and nothing else is just the two: the name, and
+    that listens to a variable *looks* like it needs only the two: the name, and
     the flag that says to use it.
+
+    It needs the keycode as well, and this is the whole of why the first machines
+    this tool wrote were silent. `Machine.InitSimBlock` registers a key with
+    `KeyInputController` inside `for (i = 0; i < key.KeysCount; i++)`, and
+    `AddMKey` is what files a key under its variable name. No keycodes, no
+    iterations, no registration -- the block never joins the table the timers
+    look names up in, and nothing reaches it. The keyboard cannot trigger it
+    either way: `AddMKey` files a key under its name *or* its keys, never both,
+    and `Use=True` chooses the name. So the keycode is there to be counted.
+
+    In game this never comes up, because `KeySelector.SetVariable` sets the name
+    and leaves the block's own key alone.
     """
     node = ET.SubElement(data, "StringArray", {"key": key})
-    for entry in ("Message=" + name, "Use=True"):
+    for entry in (keycode, "Message=" + name, "Use=True"):
         ET.SubElement(node, "String").text = entry
 
 
 def grid(index, columns, spacing):
-    """Blocks are laid out, not built: a row at a time across one vertical plane."""
+    """Blocks are laid out, not built: a field on the ground, a row at a time.
+
+    Flat rather than upright, so the band is spread across the level instead of
+    stacked into a wall -- and so nothing has far to fall, none of it being
+    attached to anything.
+    """
     return (round((index % columns) * spacing, 4),
-            round((index // columns) * spacing, 4),
-            0)
+            0,
+            round((index // columns) * spacing, 4))
 
 
 def build(notes, options, families):
@@ -336,13 +362,15 @@ def build(notes, options, families):
     blocks = ET.SubElement(machine, "Blocks")
     placed = [0]                        # a counter the closures can advance
 
-    def place(block_id, mod=None, local=None):
+    def place(block_id, mod=None, local=None, facing=FACE_UP):
         spot = grid(placed[0], options.columns, options.spacing)
         placed[0] += 1
-        return block(blocks, block_id, spot, mod, local)
+        return block(blocks, block_id, spot, mod, local, facing)
 
     # Every machine has one of these, and the game is happier when it is first.
-    place(STARTING_BLOCK)
+    # Left in the orientation Besiege gives it: it is the machine's root, not one
+    # of the instruments.
+    place(STARTING_BLOCK, facing=(0.0, 0.0, 0.0, 1.0))
 
     # One instrument block per distinct voice, named so the timers can find it.
     voices = {}
@@ -358,7 +386,8 @@ def build(notes, options, families):
         # 1004 + localId is what this Besiege assigns Orchestra's blocks; the
         # loader recomputes it from modId and localId anyway.
         data = place(1004 + local, mod_id, local)
-        variable_key(data, "bmt-Activate", "orch_%03d" % index)
+        # N is the block's own default key, kept so the registration loop runs.
+        variable_key(data, "bmt-Activate", "orch_%03d" % index, "N")
         value(data, "Integer", "bmt-TypeKey", str(type_index))
         value(data, "Single", "bmt-NoteKey", str(pitch))
         # One block, one note, one loudness: the score's velocities for this
@@ -376,10 +405,18 @@ def build(notes, options, families):
     for start, length, pitch, velocity, channel, track in notes:
         voice = assign(pitch, channel, track, families, options)
         data = place(TIMER)
-        value(data, "Boolean", TIMER_AUTO, "True")
+        if options.key:
+            # Every timer waits its own time from the moment the key is pressed,
+            # so one press starts the song. `automatic` would start it with the
+            # simulation instead, which is the default.
+            keyed = ET.SubElement(data, "StringArray", {"key": TIMER_START})
+            ET.SubElement(keyed, "String").text = options.key
+        else:
+            value(data, "Boolean", TIMER_AUTO, "True")
         value(data, "Single", TIMER_WAIT, "%.4f" % (start + options.offset))
         value(data, "Single", TIMER_HOLD, "%.4f" % max(0.05, length))
-        variable_key(data, TIMER_EMULATE, "orch_%03d" % voices[voice])
+        # C is the timer's own default for this key, kept for the same reason.
+        variable_key(data, TIMER_EMULATE, "orch_%03d" % voices[voice], "C")
 
     return machine, len(voices), placed[0]
 
@@ -450,6 +487,31 @@ def indent(node, depth=0):
         node.tail = pad
 
 
+# What people type, and what Unity calls it. Anything else is passed through as
+# written -- Besiege parses the name with KeyCodeConverter, and a name it cannot
+# parse is dropped when the save loads, so the spelling has to be Unity's.
+KEY_ALIASES = {
+    "enter": "Return", "return": "Return", "space": "Space", "spacebar": "Space",
+    "shift": "LeftShift", "ctrl": "LeftControl", "control": "LeftControl",
+    "alt": "LeftAlt", "tab": "Tab", "esc": "Escape", "escape": "Escape",
+    "up": "UpArrow", "down": "DownArrow", "left": "LeftArrow", "right": "RightArrow",
+}
+
+
+def keycode(name):
+    """A key name as Unity spells it, or None."""
+    if not name:
+        return None
+    plain = name.strip()
+    if plain.lower() in KEY_ALIASES:
+        return KEY_ALIASES[plain.lower()]
+    if len(plain) == 1 and plain.isalpha():
+        return plain.upper()                    # Unity: letters are A..Z
+    if len(plain) == 1 and plain.isdigit():
+        return "Alpha" + plain                  # and digits are Alpha0..Alpha9
+    return plain
+
+
 def saved_machines():
     """Besiege's own SavedMachines folder, or None."""
     for root in (os.environ.get("BESIEGE_DIR"),
@@ -505,6 +567,9 @@ def main():
                         help="scales every block's volume")
     parser.add_argument("--range", type=float, default=120.0,
                         help="how far each block carries")
+    parser.add_argument("--key", metavar="KEYCODE",
+                        help="start the song on a keypress instead of with the "
+                             "simulation, as in --key Space")
     parser.add_argument("--no-drums", action="store_true",
                         help="treat channel 10 as pitched, not as a kit")
     parser.add_argument("--install", action="store_true",
@@ -515,6 +580,7 @@ def main():
 
     if options.self_test:
         return self_test(options)
+    options.key = keycode(options.key)
     if not options.midi:
         parser.error("a MIDI file is needed (or --self-test)")
 
@@ -615,6 +681,7 @@ def self_test(options):
 
     options.tracks = {}
     options.gap = 0.06
+    options.key = None
     options.name = "Self test"
     options.columns = 4
 
@@ -643,6 +710,37 @@ def self_test(options):
     names = set(s.text for t in timers for s in t.iter("String")
                 if s.text.startswith("Message="))
     assert len(names) == 8, "expected 8 variables, got %d" % len(names)
+
+    # Every variable key keeps a keycode: without one, Machine.InitSimBlock never
+    # registers it and the machine plays nothing.
+    for keyed in parsed.iter("StringArray"):
+        entries = [e.text for e in keyed]
+        if not entries:
+            continue                    # requiredMods, which is one inline value
+        assert not entries[0].startswith(("Message=", "Use=")), \
+            "a variable key with no keycode: %s" % entries
+
+    # One flat field, not a wall: every *block* at the same height, the machine's
+    # own spawn position aside.
+    heights = set(p.get("y") for b in parsed.iter("Block")
+                  for p in b.iter("Position"))
+    assert heights == set(["0"]), "blocks are not all at one height: %s" % heights
+
+    # And standing up, the starting block aside.
+    facing = set(r.get("x") for b in parsed.iter("Block") for r in b.iter("Rotation"))
+    assert facing == set(["0.0", str(FACE_UP[0])]), "not facing up: %s" % facing
+
+    # Timers start with the simulation unless a key is asked for.
+    assert all(t.find("Data/Boolean[@key='%s']" % TIMER_AUTO) is not None
+               for t in timers), "a timer does not start with the simulation"
+    options.key = keycode("space")
+    assert options.key == "Space", "key alias: %s" % options.key
+    keyed, _, _ = build(notes, options, families)
+    started = [t for t in keyed.iter("StringArray") if t.get("key") == TIMER_START]
+    assert len(started) == 10, "expected 10 keyed timers, got %d" % len(started)
+    assert started[0][0].text == "Space"
+    assert not [t for t in keyed.iter("Boolean") if t.get("key") == TIMER_AUTO], \
+        "a keyed timer is still automatic"
     assert len([b for b in parsed.iter("Block") if b.get("modId")]) == 8
     print("self test: %d notes, %d blocks, timers %.2f s apart, %d variables"
           % (len(notes), blocks, waits[1] - waits[0], len(names)))

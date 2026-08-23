@@ -34,12 +34,17 @@ run `basic-pitch` over a downloaded track and hand the MIDI it writes to
 
 ## How the machine works
 
-Two kinds of block, laid out in a grid on one vertical plane:
+Two kinds of block, laid out in a grid on the ground, all at one height and all
+turned to stand up — the quarter turn about X that Besiege's own saves give a
+block placed on a flat surface, so the instruments face the sky rather than lying
+on their sides:
 
 - an **instrument block** per distinct pitch, set to that note and nothing else —
   an Orchestra block plays one note, so a tune is a row of blocks;
-- a **timer block** per note in the score, `automatic` so it starts with the
-  simulation, `wait` set to the note's moment and `emulation-time` to its length.
+- a **timer block** per note in the score, `wait` set to the note's moment and
+  `emulation-time` to its length. It is `automatic`, so the song starts with the
+  simulation — unless `--key` is given, in which case each timer waits its own
+  time from that keypress instead and one press starts the band.
 
 They are joined by **variables**, not keys. A Besiege key can carry a *message* —
 a variable name — and `KeyInputController` keeps a table of which keys listen to
@@ -54,6 +59,30 @@ Nothing is connected to anything. The blocks are laid out, not built: Besiege
 loads them all the same and they drop to the ground when the simulation starts,
 which does not stop the music. Raise `--height` if you would rather they fell
 further, or lower it to keep them still.
+
+## Why every key still names a keycode
+
+A key set to a variable in the save keeps a keycode entry it never answers to:
+
+```xml
+<StringArray key="bmt-Activate">
+    <String>N</String>
+    <String>Message=orch_007</String>
+    <String>Use=True</String>
+</StringArray>
+```
+
+`Machine.InitSimBlock` registers a key with `KeyInputController` from inside
+`for (i = 0; i < key.KeysCount; i++)`, and `AddMKey` is what files it under its
+variable name. No keycodes, no iterations, no registration — the block never
+joins the table the timers look names up in, and the machine plays nothing at
+all. That was the first version of this tool, and it looked exactly like the
+blocks not supporting emulation.
+
+The keyboard cannot trigger the block either way: `AddMKey` files a key under its
+name *or* its keys, never both, and `Use=True` chooses the name. The keycode is
+there to be counted. In game the question never arises, because
+`KeySelector.SetVariable` sets the name and leaves the block's own key alone.
 
 ## Repeated notes, and why there is a gap
 
@@ -78,6 +107,7 @@ what the counter is sampled on.
 | `--tempo BPM` | ignore the file's tempo map |
 | `--transpose N` | in semitones |
 | `--offset S` | quiet before the first note (default 1 s) |
+| `--key KEYCODE` | start on a keypress rather than with the simulation |
 | `--from S`, `--seconds S` | play part of the score |
 | `--gap S` | silence between two notes on one block (default 0.06 s) |
 | `--limit N` | most notes to place (default 1200) |
@@ -87,6 +117,11 @@ what the counter is sampled on.
 | `--no-drums` | treat channel 10 as pitched rather than as a kit |
 | `--install` | write into Besiege's `SavedMachines` as well |
 | `--self-test` | build from a made-up score and check the output |
+
+`--key` takes a Unity key name — `Space`, `Return`, `Alpha1`, `LeftShift`, or a
+single letter. Common spellings are corrected (`space`, `enter`, `1`, `k`), and
+anything else is passed through as written: Besiege parses the name when the save
+loads and quietly drops one it does not recognise.
 
 Channel 10 is General MIDI percussion, and is mapped onto the struck blocks:
 kick, snare and toms to **Drums**; hi-hat, crash and ride to **Cymbals**.
