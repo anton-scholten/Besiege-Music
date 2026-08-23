@@ -289,6 +289,17 @@ to a signature that may change.
 UnityEngine.UI` does not win and `UnityEngine.UI.Slider` has to be spelled out.
 `Text`, `Image` and `Button` are fine.
 
+**The mapper is a fallback, not a second panel.** Every mapper control except the
+key sets `DisplayInMapper = false` once `UIF.Available` says yes, so with UI
+Factory installed Besiege's own menu holds the key alone and the panel draws the
+rest; without it, or if the panel throws while building (`OrchestraPanel.Failed`),
+everything comes back. Besiege reads that flag as it builds its rows, so a change
+lands on the next open rather than while the mapper is up. The question is put on
+a half-second timer rather than every frame: UI Factory loads its bundle after the
+mod does, so "not yet" is not "not installed" and one ask is not enough -- but when
+it really is absent, each ask is a caught exception, and one per block per frame
+buys nothing.
+
 **LISTEN plays the block in the build scene**, which is a second owner for the
 AudioSource. The rule is re-checked in `Update` rather than switched from the
 callbacks that change it, because a simulation runs on a *clone* of the machine:

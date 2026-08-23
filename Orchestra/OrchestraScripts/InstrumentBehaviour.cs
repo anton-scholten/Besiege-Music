@@ -155,6 +155,14 @@ namespace OrchestraMod
         /// source is held up for a note's release rather than cut off at the gate.</summary>
         private volatile bool sounding;
 
+        /// <summary>What the block last told Besiege's mapper to show, so the flags
+        /// are written when the answer changes and not every frame.</summary>
+        private bool mapperShown = true;
+
+        /// <summary>Unscaled time UI Factory may be asked about again.</summary>
+        private float mapperAskAt;
+        private const float MapperAskEvery = 0.5f;
+
         public override void SafeAwake()
         {
             sampleRate = AudioSettings.outputSampleRate;
@@ -393,6 +401,33 @@ namespace OrchestraMod
                 return;
             }
 
+            // Two panels for one block is one too many. When UI Factory is there
+            // the mod's own panel draws every setting, so the block leaves Besiege's
+            // mapper holding nothing but the key -- which the panel does not draw,
+            // rebinding being the mapper's own business. Without UI Factory, or if
+            // the panel gave up trying to build itself, the mapper is the only way
+            // to set the block and keeps the lot.
+            if (mapperShown)
+            {
+                // Asked now and then rather than every frame: UI Factory loads its
+                // bundle a moment after the mod does, so "not yet" is not "not
+                // installed" and the question has to be put more than once -- but
+                // when it really is absent, putting it is a caught exception, and
+                // one of those per block per frame is a bill for nothing.
+                if (Time.unscaledTime >= mapperAskAt)
+                {
+                    mapperAskAt = Time.unscaledTime + MapperAskEvery;
+                    if (UIF.Available && !OrchestraPanel.Failed)
+                    {
+                        ShowInMapper(false);
+                    }
+                }
+            }
+            else if (OrchestraPanel.Failed)
+            {
+                ShowInMapper(true);
+            }
+
             if (auditionUntil > 0f)
             {
                 // So a slider moved while the note rings is heard as it moves.
@@ -419,28 +454,6 @@ namespace OrchestraMod
                 // Nothing is driving the audio callback now, so it cannot clear this
                 // itself.
                 sounding = false;
-            }
-        }
-
-        /// <summary>The keys bound to Play, for the panel's read-only line.</summary>
-        public string KeyDescription
-        {
-            get
-            {
-                if (PlayKey.KeysCount == 0)
-                {
-                    return "unbound";
-                }
-                string text = "";
-                for (int i = 0; i < PlayKey.KeysCount; i++)
-                {
-                    if (i > 0)
-                    {
-                        text += " / ";
-                    }
-                    text += PlayKey.GetKey(i).ToString();
-                }
-                return text;
             }
         }
 
@@ -665,6 +678,42 @@ namespace OrchestraMod
             }
             wantLeft = gain * Mathf.Min(1f, 1f - pan);
             wantRight = gain * Mathf.Min(1f, 1f + pan);
+        }
+
+        /// <summary>
+        /// Shows or hides everything but the key in Besiege's own mapper.
+        ///
+        /// `DisplayInMapper` is read as the mapper builds its rows, so a change
+        /// lands the next time the mapper is opened rather than while it is up --
+        /// which is why this is decided every frame in the editor rather than once,
+        /// when UI Factory may not have finished loading.
+        /// </summary>
+        private void ShowInMapper(bool show)
+        {
+            if (show == mapperShown)
+            {
+                return;
+            }
+            mapperShown = show;
+
+            TypeMenu.DisplayInMapper = show;
+            NoteSlider.DisplayInMapper = show;
+            VolumeSlider.DisplayInMapper = show;
+            RangeSlider.DisplayInMapper = show;
+            if (PushToggle != null)
+            {
+                PushToggle.DisplayInMapper = show;
+            }
+            for (int i = 0; i < extraSliders.Count; i++)
+            {
+                extraSliders[i].DisplayInMapper = show;
+            }
+            for (int i = 0; i < extraToggles.Count; i++)
+            {
+                extraToggles[i].DisplayInMapper = show;
+            }
+            // PlayKey is deliberately untouched: the panel shows no key, and
+            // Besiege's own key capture is the only thing that can rebind one.
         }
 
         // ---- the block moving when it is played -------------------------------

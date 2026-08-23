@@ -19,6 +19,30 @@
 
 **Changed**
 
+- The panel is narrower -- 434 rather than 470 -- by way of the caption column,
+  which was half again as wide as the longest caption in it. The sliders sit
+  beside their names now instead of across a gap, and they are the same length as
+  before: only the space between went.
+- With UI Factory installed, a block leaves Besiege's own mapper holding nothing
+  but its key: the panel draws every slider, menu and toggle already, and two
+  panels for one block is one too many. Rebinding stays with the mapper, which is
+  the only thing that can capture a key. Without UI Factory -- or if the panel
+  gives up building itself -- the mapper keeps the lot, which is what makes it a
+  fallback rather than a second copy.
+- The instrument selector is centred on the slider column and the number beside it
+  rather than started where the sliders start, and its arrows stand clear of the
+  name again: scaling them up had grown them inwards over the gap the prefab
+  leaves.
+- The instrument selector is narrower than the row it sits in, which is what puts
+  its arrows beside the name rather than out at the margins -- they are anchored
+  to its own ends -- and they are drawn a fifth larger. Scaled rather than
+  resized: they sit inside a control this panel did not lay out, and scale is the
+  one change that cannot land them on top of the name between them.
+- LISTEN moved to the left-hand corner of the title bar, opposite the close cross
+  rather than beside it. The title is inset clear of both corners now, so a long
+  one no longer runs underneath a button.
+- The `PLAY <key> — rebind in the mapper behind` line at the foot of the panel is
+  gone, and with it the block property that fed it.
 - The Toggle is gone from the piano, both guitars, the xylophone, the drum and the
   cymbal. It latches the key down, which is worth having on something bowed or
   blown and means nothing on something struck: those notes die on their own

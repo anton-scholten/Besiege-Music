@@ -20,15 +20,48 @@ namespace OrchestraMod
     public class OrchestraPanel : MonoBehaviour
     {
         private const int CanvasOrder = 2400;
-        private const float Width = 470f;
+        private const float Width = 434f;
         private const float Margin = 12f;
         private const float RowHeight = 26f;
         private const float RowGap = 4f;
-        private const float LabelWidth = 132f;
+
+        /// <summary>The column the captions are written in. Wide enough for the
+        /// longest of them -- INSTRUMENT, and PIZZICATO among the extras -- and no
+        /// wider, the gap between a name and its slider being the width of the
+        /// whole window.</summary>
+        private const float LabelWidth = 96f;
         private const float ValueWidth = 62f;
+
+        /// <summary>The instrument selector, which is narrower than the row it sits
+        /// in: its arrows are anchored to its own ends, so the way to bring them in
+        /// beside the name is to make the thing they are anchored to smaller. It is
+        /// centred on the slider and its number together rather than started where
+        /// the sliders start, being the odd row out.</summary>
+        private const float TypeWidth = 250f;
+
+        /// <summary>How far each arrow is pushed back off the name between them.
+        /// Scaling them up grew them inwards, which closed the gap the prefab
+        /// leaves; this opens it again without making them smaller.</summary>
+        private const float ArrowGap = 9f;
+
+        /// <summary>How much bigger the selector's arrows are drawn than the prefab
+        /// draws them. Scaled rather than resized: they are anchored inside a
+        /// control this panel did not lay out, and scale is the one change that
+        /// cannot land them on top of the name between them.</summary>
+        private const float ArrowScale = 1.2f;
         private const int TypeColumns = 2;
 
         private static readonly Vector2 Reference = new Vector2(1920f, 1080f);
+
+        /// <summary>
+        /// The panel gave up, so Besiege's own mapper is the only way to set a
+        /// block and must keep its controls.
+        ///
+        /// Static because it is the blocks that act on it -- each one hides its
+        /// sliders from the mapper while this panel is drawing them instead -- and
+        /// there is one panel for all of them.
+        /// </summary>
+        public static bool Failed { get; private set; }
 
         private InstrumentBehaviour block;
         private bool hooked;
@@ -98,7 +131,6 @@ namespace OrchestraMod
         private readonly List<Switch> switches = new List<Switch>();
         private GameObject typeOption;
         private int shownType = -1;
-        private Text keyLine;
 
         /// <summary>
         /// Settings changed here that Besiege has not been told about yet.
@@ -262,6 +294,7 @@ namespace OrchestraMod
             {
                 Log.Warn("could not build the panel, so the stock mapper stands: " + e.Message);
                 failed = true;
+                Failed = true;
                 Teardown();
             }
             return built;
@@ -380,7 +413,6 @@ namespace OrchestraMod
             y = BuildTypes(y);
             y = BuildSliders(y);
             y = BuildSwitches(y);
-            y = BuildKeyLine(y);
             y += Margin;
 
             if (content != null)
@@ -440,11 +472,14 @@ namespace OrchestraMod
                 return;
             }
             float side = close != null ? close.sizeDelta.x : bar.rect.height;
-            rect.anchorMin = new Vector2(1f, 0f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(1f, 0.5f);
+            // The far left of the bar, where the close cross is the far right: the
+            // two are the same control at the same size, one in each corner, and a
+            // window that closes on the right should not be played on the right.
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 0.5f);
             rect.sizeDelta = new Vector2(side, 0f);
-            rect.anchoredPosition = new Vector2(-side, 0f);
+            rect.anchoredPosition = new Vector2(0f, 0f);
             // Last in the bar, so the title -- which is drawn across the whole of it
             // -- is not over the button taking the pointer first.
             rect.SetAsLastSibling();
@@ -462,6 +497,17 @@ namespace OrchestraMod
                 // The drawing is inset within its own square, so the picture is the
                 // right size while the whole button stays the thing that is clicked.
                 listenFace.preserveAspect = false;
+            }
+
+            // Both corners of the bar hold a button now, so the title is kept out
+            // of them: it is drawn across the whole bar and centred in it, and a
+            // long one -- MALLETS - GLOCKENSPIEL -- would otherwise run under the
+            // speaker as it used to run under the cross.
+            RectTransform banner = title == null ? null : title.rectTransform;
+            if (banner != null && banner.anchorMin.x == 0f && banner.anchorMax.x == 1f)
+            {
+                banner.offsetMin = new Vector2(side, banner.offsetMin.y);
+                banner.offsetMax = new Vector2(-side, banner.offsetMax.y);
             }
 
             Button click = button.GetComponent<Button>();
@@ -489,8 +535,13 @@ namespace OrchestraMod
             {
                 return y + RowHeight + RowGap;
             }
-            Place(typeOption, Margin + LabelWidth, y,
-                  Width - Margin * 2f - LabelWidth, RowHeight);
+            // The middle of the slider column and the number beside it, which is
+            // what the selector is centred on.
+            float span = Width - Margin * 2f - LabelWidth;
+            Place(typeOption, Margin + LabelWidth + (span - TypeWidth) / 2f, y,
+                  TypeWidth, RowHeight);
+            Enlarge(typeOption, "Previous", -ArrowGap);
+            Enlarge(typeOption, "Next", ArrowGap);
 
             List<string> choices = new List<string>();
             for (int i = 0; i < block.TypeCount; i++)
@@ -499,6 +550,31 @@ namespace OrchestraMod
             }
             UIF.SetOption(typeOption, choices, block.SelectedType);
             return y + RowHeight + RowGap * 2f;
+        }
+
+        /// <summary>
+        /// Draws one of the selector's arrows a little bigger than UI Factory does.
+        /// Named children rather than a search for buttons: the prefab calls them
+        /// Previous and Next, and a control it renamed should go back to its own
+        /// size rather than to this panel's guess at which button is which.
+        /// </summary>
+        private static void Enlarge(GameObject option, string child, float shift)
+        {
+            Transform arrow = option.transform.FindChild(child);
+            if (arrow == null)
+            {
+                return;
+            }
+            arrow.localScale = new Vector3(ArrowScale, ArrowScale, 1f);
+            RectTransform rect = arrow as RectTransform;
+            if (rect != null)
+            {
+                // Away from the middle, whichever end this one is anchored to:
+                // anchoredPosition is measured from its own anchor, so the sign is
+                // the caller's to decide and not this method's to work out.
+                rect.anchoredPosition = new Vector2(rect.anchoredPosition.x + shift,
+                                                    rect.anchoredPosition.y);
+            }
         }
 
         /// <summary>
@@ -696,18 +772,6 @@ namespace OrchestraMod
             return y + lines * (RowHeight + RowGap) + RowGap;
         }
 
-        /// <summary>
-        /// The key, shown but not editable. Rebinding needs Besiege's own capture,
-        /// which lives in the mapper's KeySelector -- and the mapper is open behind
-        /// this window, so the place to change it is right there.
-        /// </summary>
-        private float BuildKeyLine(float y)
-        {
-            keyLine = Label("", Margin, y, Width - Margin * 2f, RowHeight, 12,
-                            TextAnchor.MiddleLeft, UIF.QuietInk);
-            return y + RowHeight;
-        }
-
         // ---- binding and reading --------------------------------------------
 
         private void Rebind()
@@ -783,11 +847,6 @@ namespace OrchestraMod
             }
             UIF.SetOption(typeOption, choices, shownType);
 
-            if (keyLine != null)
-            {
-                keyLine.text = "PLAY  " + block.KeyDescription
-                             + "   —  rebind in the mapper behind";
-            }
             ShowListen();
             filling = false;
         }
