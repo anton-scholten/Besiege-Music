@@ -100,14 +100,43 @@ copy.
 ```
 
 One instrument block per pitch, one timer block per note, joined by Besiege's
-variable system and laid out in a grid. No dependencies — the MIDI parser is in
-the tool.
+variable system and laid out in a grid on the ground. No dependencies — the MIDI
+parser is in the tool. `--help` lists every block and the instruments it holds.
+
+**Which block plays what.** `--instrument` is where every note goes unless a
+`--track` says otherwise; both take a family, optionally with one of that family's
+instruments after a colon. Each family, instrument and pitch gets its own block,
+so several parts can play at once:
+
+```sh
+./tools/make-song.py song.mid --instrument "Strings:Ensemble" \
+    --track 0="Piano:Grand piano" --track 2=Bass --track 3="Brass:Trumpet"
+```
+
+Channel 10 is General MIDI percussion whatever the tracks say, and goes to Drums
+and Cymbals by kit piece. The score's own program changes are not read, so which
+part plays what is `--track`'s to say — and a format 0 MIDI keeps every part on
+one track, where `--track` cannot separate them.
+
+| Option | What it does |
+| --- | --- |
+| `--instrument FAMILY[:TYPE]` | the block for every note (default `Piano`) |
+| `--track N=FAMILY[:TYPE]` | the block for one track, repeatable |
+| `--key KEYCODE` | start on a keypress rather than with the simulation |
+| `--tempo BPM`, `--transpose N` | override the tempo; shift in semitones |
+| `--from S`, `--seconds S` | play part of the score |
+| `--offset S`, `--gap S` | quiet before the first note; silence between repeats |
+| `--limit N` | most notes to place (default 1200) |
+| `--columns N`, `--spacing N`, `--height N` | the grid, and where it spawns |
+| `--volume N`, `--range N` | scales every block's volume; how far they carry |
+| `--no-drums` | treat channel 10 as pitched rather than as a kit |
+| `--install` | write into Besiege's `SavedMachines` as well |
 
 MIDI rather than a YouTube link on purpose: a recording has to be transcribed
 before anything can play it, which is a research problem and a 100 MB neural
 network away, while a score already *is* the notes. MuseScore exports MIDI from
-anything in its library. See [docs/SONGS.md](docs/SONGS.md) for the options, the
-percussion mapping, and why repeated notes need a gap.
+anything in its library. See [docs/SONGS.md](docs/SONGS.md) for the rest — the
+percussion mapping, why repeated notes need a gap, and what to expect in game.
 
 ## One block, one note
 
@@ -171,7 +200,9 @@ Details land in `Player.log` and in the in-game console with `show_logs true`.
 AI agent? see [AGENTS.md](AGENTS.md) for layout, build, and any relevant info.
 [docs/MODDING-NOTES.md](docs/MODDING-NOTES.md) has what this mod had to work out
 about Besiege's modding API — including how to dock a UI Factory window to the
-block mapper, which is worth reading before trying it.
+block mapper, which is worth reading before trying it. The general notes, for a
+mod that is not this one, are collected in
+[Besiege-Modding-AI-notes](https://github.com/anton-scholten/Besiege-Modding-AI-notes).
 
 ## Credits
 

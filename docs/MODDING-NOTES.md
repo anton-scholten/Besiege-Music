@@ -7,10 +7,11 @@ fact was expensive to get, the way it was got is recorded with it.
 
 Target: Besiege on Unity **5.4.0f3**, built-in mod loader.
 
-General notes on the loader, the blacklist, resources and UI Factory are in the
-sibling mods ([Clippy](https://github.com/ahscholt/Besiege-clippy),
-[Git View](https://github.com/ahscholt/Besiege-Git-view)) and are not repeated
-here. What follows is what this mod had to find out for itself.
+The general notes -- the loader, the blacklist, blocks, keys and automation, UI
+Factory, and how to read the game's own metadata -- have been moved out to
+[Besiege-Modding-AI-notes](https://github.com/anton-scholten/Besiege-Modding-AI-notes),
+which is where a mod that is not this one should start. What follows is the same
+material with this mod's specifics attached.
 
 ## Docking a uGUI window to the block mapper
 

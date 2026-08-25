@@ -512,6 +512,37 @@ def keycode(name):
     return plain
 
 
+def instruments():
+    """The families and their instruments, for --help.
+
+    Read from the block XMLs rather than listed here, so a tenth block appears in
+    the help the day it is added.
+    """
+    import textwrap
+    try:
+        found = catalogue()
+    except SystemExit:
+        return ""                       # run from outside the repo: no list to give
+
+    lines = ["blocks, and the instruments each one holds:"]
+    for name, _, types in sorted(found.values()):
+        listed = ", ".join(t for t in types if t)
+        lines.append(textwrap.fill(listed, width=74,
+                                   initial_indent="  %-9s " % name,
+                                   subsequent_indent=" " * 12))
+    lines += ["",
+              "several at once, by track:",
+              "  make-song.py song.mid --instrument \"Strings:Ensemble\" \\",
+              "      --track 0=\"Piano:Grand piano\" --track 2=Bass",
+              "",
+              "channel 10 is General MIDI percussion whatever the tracks say, and",
+              "goes to Drums and Cymbals by kit piece; --no-drums treats it as",
+              "pitched instead. The score's own program changes are not read, so",
+              "which part plays what is --track's to say -- and a format 0 MIDI",
+              "keeps every part on one track, where --track cannot separate them."]
+    return "\n".join(lines)
+
+
 def saved_machines():
     """Besiege's own SavedMachines folder, or None."""
     for root in (os.environ.get("BESIEGE_DIR"),
@@ -536,14 +567,23 @@ def saved_machines():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Build a Besiege machine that plays a MIDI file on Orchestra blocks.")
+        description="Build a Besiege machine that plays a MIDI file on Orchestra "
+                    "blocks: an instrument block per pitch, a timer block per note.",
+        epilog=instruments(),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("midi", nargs="?", help="the score, as a .mid file")
     parser.add_argument("-o", "--out", help="where to write the .bsg")
     parser.add_argument("--name", help="the machine's name in game")
-    parser.add_argument("--instrument", default="Piano",
-                        help="block for every track, as Family or Family:Type")
-    parser.add_argument("--track", action="append", default=[], metavar="N=FAMILY",
-                        help="a block for one track, repeatable")
+    parser.add_argument("--instrument", default="Piano", metavar="FAMILY[:TYPE]",
+                        help="the block every note goes to unless a --track says "
+                             "otherwise (default: Piano). FAMILY is one of the nine "
+                             "blocks and TYPE is one of that block's instruments, "
+                             "as in --instrument \"Strings:Cello\"")
+    parser.add_argument("--track", action="append", default=[],
+                        metavar="N=FAMILY[:TYPE]",
+                        help="the block for one track of the score, repeatable: "
+                             "--track 0=\"Piano:Grand piano\" --track 2=Bass. "
+                             "Each family, instrument and pitch gets its own block")
     parser.add_argument("--tempo", type=float,
                         help="override the file's tempo, in bpm")
     parser.add_argument("--transpose", type=int, default=0, help="in semitones")

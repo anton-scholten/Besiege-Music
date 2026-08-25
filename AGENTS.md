@@ -189,11 +189,16 @@ that tag and under nothing else.
 
 ## The three hard constraints
 
-**`System.IO` is blacklisted.** No `File`, `Stream`, `Path`, `BinaryReader`. A
-SoundFont cannot be opened at runtime, and nothing can be downloaded. Audio
-arrives only as an `AudioClip` declared in `Mod.xml`; `SampleBank` then reads it
-into a `float[]` with `GetData`, on the game thread, because the audio thread
-cannot call Unity.
+**`System.IO` is blacklisted, with carve-outs.** No `File`, no `Directory`, no
+`StringReader`/`StringWriter` -- but `Stream`, `MemoryStream`, `BinaryReader`,
+`BinaryWriter`, `TextReader`, `TextWriter`, `Path` and `SeekOrigin` are each
+exempted by name in `InternalModding.Assemblies.AssemblyScanner`, so a mod can
+handle bytes it is given and cannot go and find any. A SoundFont cannot be opened
+at runtime and nothing can be downloaded. Audio arrives only as an `AudioClip`
+declared in `Mod.xml`; `SampleBank` then reads it into a `float[]` with `GetData`,
+on the game thread, because the audio thread cannot call Unity. The full list, and
+what it exempts, is in `tools/tests/BlacklistCheck.cs`, copied from the scanner
+itself.
 
 **Variables bind to `MKey` and nothing else.** `MSlider`, `MValue` and `MMenu`
 have no variable selector. That is why a block plays one note: a note slider
@@ -262,9 +267,9 @@ prefabs, and two matter here: `Options` (with the `Besiege.UI.Bridge.Option`
 component) is the `< Grand piano >` selector the block mapper itself uses, and
 `Text Toggle` is the game's real toggle. Both replaced hand-built equivalents —
 a grid of buttons painted red, and a button pretending to be a toggle. The full
-list of prefab names is in `Besiege.UI.Mod.OnLoad`: Window, Panel, Text, Text
-Button, Text Toggle, Text Dropdown, Icon, Icon Button, Icon Toggle, Input Field,
-Slider, Options, Scroll View, Mask, Blur.
+list is registered in `Besiege.UI.Mod.OnAllResourcesLoaded`: Empty, Icon, Text,
+Text Button, Text Toggle, Text Dropdown, Icon Button, Icon Toggle, Button
+Dropdown, Input Field, Slider, Options, Scroll View, Blur, Panel, Mask, Window.
 
 **The Window prefab is more than a frame, and what it already carries does not
 need adding.** It is `Window` (Image, `StopsZoomWhenHovered`) with three children:

@@ -100,10 +100,13 @@ what the counter is sampled on.
 
 ## Options
 
+`./tools/make-song.py --help` lists every block and the instruments it holds,
+read from the block XMLs, so it is never out of date.
+
 | Option | What it does |
 | --- | --- |
-| `--instrument Family[:Type]` | the block for every track. `Piano`, `Strings:Cello`, … |
-| `--track N=Family[:Type]` | the block for one track, repeatable |
+| `--instrument FAMILY[:TYPE]` | the block every note goes to unless a `--track` says otherwise (default `Piano`) |
+| `--track N=FAMILY[:TYPE]` | the block for one track, repeatable |
 | `--tempo BPM` | ignore the file's tempo map |
 | `--transpose N` | in semitones |
 | `--offset S` | quiet before the first note (default 1 s) |
@@ -123,9 +126,24 @@ single letter. Common spellings are corrected (`space`, `enter`, `1`, `k`), and
 anything else is passed through as written: Besiege parses the name when the save
 loads and quietly drops one it does not recognise.
 
-Channel 10 is General MIDI percussion, and is mapped onto the struck blocks:
-kick, snare and toms to **Drums**; hi-hat, crash and ride to **Cymbals**.
-Anything unrecognised becomes a snare.
+Each family, instrument and pitch gets its own block, so a piano C4 and a cello
+C4 are two blocks with two variables and several parts can play at once:
+
+```sh
+./tools/make-song.py song.mid --instrument "Strings:Ensemble" \
+    --track 0="Piano:Grand piano" --track 2=Bass --track 3="Brass:Trumpet"
+```
+
+The score's own program changes — its "this part is a flute" — are parsed and
+then ignored, so which part plays what is `--track`'s to say. Two things follow
+from that: a **format 0** MIDI keeps every part on one track, where `--track`
+cannot separate them (MuseScore exports format 1, a track per staff, so this
+mostly bites on files from elsewhere); and there is no listing of what the tracks
+are, so a MIDI from an unfamiliar source is worth opening in a score editor first.
+
+Channel 10 is General MIDI percussion whatever the tracks say, and is mapped onto
+the struck blocks: kick, snare and toms to **Drums**; hi-hat, crash and ride to
+**Cymbals**. Anything unrecognised becomes a snare.
 
 Velocity sets each block's volume, averaged over that pitch's notes — a block
 cannot be struck harder, so the dynamics that survive are between parts rather
