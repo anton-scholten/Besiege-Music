@@ -150,6 +150,11 @@ so this fails the build rather than the game.
 
 ### Every module attribute is required unless it has `[DefaultValue]`
 
+(The general form of this, and of everything else here that is about Besiege
+rather than about this mod, is in
+[Besiege-Modding-AI-notes](https://github.com/anton-scholten/Besiege-Modding-AI-notes).
+Start there for a different mod.)
+
 `InternalModding.Common.Serialization.Validate` picks the members it insists on
 with
 

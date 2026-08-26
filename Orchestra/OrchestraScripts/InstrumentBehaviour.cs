@@ -169,6 +169,7 @@ namespace OrchestraMod
         public override void SafeAwake()
         {
             sampleRate = AudioSettings.outputSampleRate;
+            NoSkins();
 
             PlayKey = AddKey("Play", "Activate", KeyCode.N);
 
@@ -278,6 +279,27 @@ namespace OrchestraMod
         // ---- what the panel needs -------------------------------------------
         //
         // The panel builds itself from these rather than from a list of its own, so
+        /// <summary>
+        /// Takes the skin picker out of Besiege's mapper for these blocks.
+        ///
+        /// `BlockMapper.RefreshLists` shows it when `Prefab.CanGetNewVisuals`, which
+        /// is `SkinCanBeChanged && (CanChangeMesh || CanChangeTexture)`. A skin
+        /// repaints a block's mesh, and these wear an instrument: a piano in a
+        /// wooden skin is a piano with its lid replaced by a plank. Nothing else
+        /// reads the flag but the toolbar's own skin button, which is the same
+        /// picker in another place.
+        ///
+        /// The prefab is shared by every block of this type, so this says the same
+        /// thing nine times over and settles it once.
+        /// </summary>
+        private void NoSkins()
+        {
+            if (BlockBehaviour != null && BlockBehaviour.Prefab != null)
+            {
+                BlockBehaviour.Prefab.SkinCanBeChanged = false;
+            }
+        }
+
         /// <summary>
         /// The part of a slider's range worth dragging through, where the setting
         /// itself accepts more than that. True with the pair filled in, or false for

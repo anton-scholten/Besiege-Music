@@ -333,10 +333,13 @@ First cut. Nine instrument blocks driven by one shared behaviour.
   mark theirs, and `XmlCheck` reads those markers off the module source and holds
   the block XMLs to them.
 
-- The blocks' module elements carried no `modid`,
-  so Besiege could not tell which mod owned `<OrchestraMod>` and never attached
-  the behaviour. The build now checks every block's `modid` against `Mod.xml`.
-  (This was real, but on its own it would not have shown the blocks either.)
+- The blocks' module elements were given a `modid`. This was first recorded here
+  as a fix, and it was not one: `CustomModules.DeserializeBlockModules` resolves a
+  module element *without* a `modid` against the mod that owns the block XML, so
+  omitting it was never a fault. The attribute exists to let a block use a module
+  some other mod registered, and when it is present it is the only thing
+  consulted — so a wrong one is fatal where none at all is fine. The build checks
+  it only where it appears.
 
 - None of the blocks appeared in the toolbar: the block XMLs were written from
   scratch and lacked `BasePoint`, `Colliders` and `AddingPoints`, which Besiege

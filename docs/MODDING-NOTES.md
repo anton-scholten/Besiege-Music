@@ -171,6 +171,28 @@ A modded block is written with `modId` and `localId`, and the loader
 `ModIds.GetEffectiveBlockId`, so the `id` attribute in the file is not what
 resolves it. `fallback` is the vanilla block shown when the mod is absent.
 
+## Taking the skin picker off a block
+
+`BlockMapper.RefreshLists` shows the mapper's skin control when
+`OptionsMaster.skinsEnabled`, the block is the only one selected,
+`Prefab.hasBVC`, `Prefab.CanGetNewVisuals`, and the block has more than one skin
+option. `CanGetNewVisuals` is
+`SkinCanBeChanged && (CanChangeMesh || CanChangeTexture)`, and **`SkinCanBeChanged`
+is a public field on `BlockPrefab`** -- so a block that should not be repainted
+sets it false once:
+
+```csharp
+BlockBehaviour.Prefab.SkinCanBeChanged = false;      // in SafeAwake
+```
+
+The prefab is shared by every block of that type, so any instance saying it
+settles it for all of them, and nothing writes the flag to disk.
+
+One wrinkle: when `StatMaster.collapseSkinMapper` is on, the mapper registers the
+*collapsed* skin button before it reaches that gate, so the button can still
+appear. Clicking it only clears the flag and marks the mapper dirty, after which
+the full path runs and finds nothing to show.
+
 ## Moving a block's visual without moving the block
 
 `BlockBehaviour.VisualController.renderers` is the block's own list of
