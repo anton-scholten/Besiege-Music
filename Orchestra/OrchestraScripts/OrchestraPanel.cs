@@ -17,52 +17,12 @@ namespace OrchestraMod
     /// stock mapper does the job; every mention of `Besiege.UI` is confined to
     /// <see cref="UIF"/> so that one guarded call decides whether this can exist.
     /// </summary>
-    public class OrchestraPanel : MonoBehaviour
+    public class OrchestraPanel : DockedPanel
     {
-        private const int CanvasOrder = 2400;
-        /// <summary>What the panel is drawn at before a mapper has been measured.
-        /// It ends up whatever Besiege's own window is wide, the two being docked
-        /// edge to edge.</summary>
-        private const float DefaultWidth = 434f;
-        private const float Margin = 12f;
-        private const float RowHeight = 26f;
-        private const float RowGap = 4f;
-
-        /// <summary>The column the captions are written in. Wide enough for the
-        /// longest of them -- INSTRUMENT, and PIZZICATO among the extras -- and no
-        /// wider, the gap between a name and its slider being the width of the
-        /// whole window.</summary>
-        private const float LabelWidth = 96f;
-        private const float ValueWidth = 62f;
-
         /// <summary>The toggles are drawn half again as tall as a slider row. They
         /// are the only thing on their line, and they are what a hand goes for
         /// while the other hand is on the keys.</summary>
         private const float SwitchHeight = RowHeight * 1.5f;
-
-        /// <summary>The instrument selector, which is narrower than the row it sits
-        /// in: its arrows are anchored to its own ends, so the way to bring them in
-        /// beside the name is to make the thing they are anchored to smaller. It is
-        /// centred on the slider and its number together rather than started where
-        /// the sliders start, being the odd row out.</summary>
-        private const float TypeWidth = 250f;
-
-        /// <summary>How wide the panel is drawn, which is how wide Besiege's mapper
-        /// is: the two are one window with a seam.</summary>
-        private float width = DefaultWidth;
-
-        /// <summary>How far each arrow is pushed back off the name between them.
-        /// Scaling them up grew them inwards, which closed the gap the prefab
-        /// leaves; this opens it again without making them smaller.</summary>
-        private const float ArrowGap = 9f;
-
-        /// <summary>How much bigger the selector's arrows are drawn than the prefab
-        /// draws them. Scaled rather than resized: they are anchored inside a
-        /// control this panel did not lay out, and scale is the one change that
-        /// cannot land them on top of the name between them.</summary>
-        private const float ArrowScale = 1.2f;
-
-        private static readonly Vector2 Reference = new Vector2(1920f, 1080f);
 
         /// <summary>
         /// The panel gave up, so Besiege's own mapper is the only way to set a
@@ -79,42 +39,8 @@ namespace OrchestraMod
         private bool built;
         private bool failed;
 
-        /// <summary>True while ReadFromBlock is writing, so the controls' own
-        /// change events do not echo back into the block.</summary>
-        private bool filling;
-
-        private GameObject window;
-        private RectTransform windowRect;
-
-        /// <summary>Where the rows are put: the Window prefab's own scroll content,
-        /// or the window itself if this UI Factory has none.</summary>
-        private Transform host;
-
-        /// <summary>The scroll content, when that is what <see cref="host"/> is.</summary>
-        private RectTransform content;
-
-        private ClickShield shield;
         /// <summary>The picture on the speaker button, lit while it sounds.</summary>
         private Image listenFace;
-
-        /// <summary>The camera Besiege's mapper is drawn by, held so the layer
-        /// search is not repeated every frame.</summary>
-        private Camera mapperEye;
-
-        private class Row
-        {
-            public UnityEngine.UI.Slider Control;
-            public Text Caption;
-
-            /// <summary>The number at the end of the row, which can be typed into.
-            /// Value is the label inside it -- or the whole of it, on a UI Factory
-            /// with no text box to borrow.</summary>
-            public UnityEngine.UI.InputField Box;
-            public Text Value;
-
-            public MSlider Bound;
-            public bool Note;       // shown as a note name rather than a number
-        }
 
         private class Switch
         {
@@ -124,22 +50,9 @@ namespace OrchestraMod
             public MToggle Bound;
         }
 
-        private readonly List<Row> rows = new List<Row>();
         private readonly List<Switch> switches = new List<Switch>();
-        private GameObject typeOption;
+        private Chooser typeOption;
         private int shownType = -1;
-
-        /// <summary>
-        /// Settings changed here that Besiege has not been told about yet.
-        ///
-        /// A mapper setting is stored twice: the live value, and the one the block
-        /// is *loaded* from. Assigning `MapperType.Value` writes only the first, so
-        /// a panel that stopped there would be heard now and forgotten on save.
-        /// Committing reconciles them, and it is not free -- Besiege reserialises
-        /// the block and adds an undo entry -- so a drag writes live every frame
-        /// and commits once, when the mouse comes up.
-        /// </summary>
-        private readonly List<MapperType> pending = new List<MapperType>();
 
         // ---- lifetime --------------------------------------------------------
 
@@ -224,9 +137,9 @@ namespace OrchestraMod
             // Before building, not after: the rows are laid out to a width, and a
             // window built to the wrong one would be seen at it for a frame.
             Rect frame;
-            if (MapperFrame(out frame))
+            if (MapperFrame(out frame) && Widen(frame))
             {
-                Widen(frame);
+                built = false;          // the rows are laid out to a width
             }
             if (!Build())
             {
@@ -312,90 +225,13 @@ namespace OrchestraMod
             host = null;
             content = null;
             listenFace = null;
-            if (window != null)
-            {
-                Destroy(window);
-                window = null;
-            }
+            DestroyWindow();
             built = false;
         }
 
         private void BuildWindow()
         {
-            Canvas canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null)
-            {
-                canvas = gameObject.AddComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = CanvasOrder;
-                canvas.pixelPerfect = false;
-
-                CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                // UI Factory authors against 1920x1080 and matches on height;
-                // anything else draws Besiege's own widgets at the wrong size
-                // beside the game's.
-                scaler.referenceResolution = Reference;
-                scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-                scaler.matchWidthOrHeight = 1f;
-
-                gameObject.AddComponent<GraphicRaycaster>();
-            }
-
-            window = UIF.Spawn(UIF.WindowPrefab, canvas.transform);
-            if (window == null)
-            {
-                throw new Exception("UI Factory gave no Window prefab");
-            }
-            window.name = "Orchestra panel";
-
-            windowRect = window.transform as RectTransform;
-            windowRect.anchorMin = new Vector2(0.5f, 0.5f);
-            windowRect.anchorMax = new Vector2(0.5f, 0.5f);
-            windowRect.pivot = new Vector2(0.5f, 0.5f);
-
-            // The bar goes: it held a name for a window that is now the lower half
-            // of Besiege's own, which is already titled, and a cross for a window
-            // the mapper opens and closes. What is left is the frame and its rows,
-            // which is what docking wants -- a seam, not two headers.
-            RectTransform bar = window.transform.FindChild("TopBar") as RectTransform;
-            if (bar != null)
-            {
-                bar.gameObject.SetActive(false);
-            }
-
-            // The prefab's scroll view starts below the bar that is no longer there,
-            // so it is stretched over the whole window: otherwise the panel opens
-            // with a bar's worth of empty frame above its first row.
-            ScrollRect scroll = window.GetComponentInChildren<ScrollRect>(true);
-            RectTransform view = scroll == null ? null : scroll.transform as RectTransform;
-            if (view != null)
-            {
-                view.anchorMin = new Vector2(0f, 0f);
-                view.anchorMax = new Vector2(1f, 1f);
-                view.offsetMin = Vector2.zero;
-                view.offsetMax = Vector2.zero;
-            }
-
-            shield = gameObject.GetComponent<ClickShield>();
-            if (shield == null)
-            {
-                shield = gameObject.AddComponent<ClickShield>();
-            }
-            shield.Guard(windowRect);
-
-            // The rows go in the scroll view the Window prefab ships with, which is
-            // where a window's contents are meant to go. Putting them on the window
-            // instead left that scroll view holding the prefab's own 500-unit
-            // placeholder, taller than any panel -- and a scroll view whose contents
-            // do not fit shows a scrollbar, which is the one this panel had. Besiege's
-            // scroll view hides both bars for contents that fit, so filling it
-            // properly is also what takes the bar away.
-            //
-            // The window itself already carries StopsZoomWhenHovered, so the wheel
-            // over the panel does not zoom the level.
-            content = ScrollContent();
-            host = content != null ? (Transform)content : window.transform;
+            OpenWindow("Orchestra panel");
 
             float y = Margin;
             y = BuildTypes(y);
@@ -404,33 +240,7 @@ namespace OrchestraMod
             // A short foot: the row below the sliders is buttons, which are tall
             // enough to sit against the frame without looking crowded.
             y += RowGap;
-
-            if (content != null)
-            {
-                content.sizeDelta = new Vector2(content.sizeDelta.x, y);
-            }
-            windowRect.sizeDelta = new Vector2(width, y);
-
-            // So the canvas has a size before the window is placed against it, and
-            // the scroll view has measured what it now holds.
-            Canvas.ForceUpdateCanvases();
-        }
-
-        /// <summary>
-        /// The Window prefab's own scroll content, which is what its rows belong in.
-        /// Null if this UI Factory's window has no scroll view, in which case they go
-        /// straight on the window and nothing is lost but the scrolling.
-        /// </summary>
-        private RectTransform ScrollContent()
-        {
-            ScrollRect scroll = window.GetComponentInChildren<ScrollRect>(true);
-            if (scroll == null || scroll.content == null)
-            {
-                Log.Warn("UI Factory's Window prefab has no scroll view; the panel's "
-                         + "rows go straight on the window.");
-                return null;
-            }
-            return scroll.content;
+            CloseWindow(y);
         }
 
         /// <summary>
@@ -452,7 +262,10 @@ namespace OrchestraMod
             }
             button.name = "Listen";
             Place(button, x, y, side, side);
-            UIF.NoSwell(button);
+            // The prefab's own swell is left on: this is a button the size of a
+            // button, and growing 15% under the pointer is what the rest of
+            // Besiege's interface does. It comes off the toggles beside it, where
+            // growing a full-width row carries its lettering out of the window.
 
             Transform icon = button.transform.FindChild("Icon");
             listenFace = icon == null ? null : icon.GetComponent<Image>();
@@ -478,54 +291,19 @@ namespace OrchestraMod
 
         private float BuildTypes(float y)
         {
-            Label("INSTRUMENT", Margin, y, LabelWidth, RowHeight, 13,
-                  TextAnchor.MiddleLeft, UIF.QuietInk);
+            typeOption = AddSelector("INSTRUMENT", y, Choices(), block.SelectedType);
+            return y + RowHeight + RowGap * 2f;
+        }
 
-            typeOption = UIF.Spawn(UIF.OptionPrefab, host);
-            if (typeOption == null)
-            {
-                return y + RowHeight + RowGap;
-            }
-            // The middle of the slider column and the number beside it, which is
-            // what the selector is centred on.
-            float span = width - Margin * 2f - LabelWidth;
-            Place(typeOption, Margin + LabelWidth + (span - TypeWidth) / 2f, y,
-                  TypeWidth, RowHeight);
-            Enlarge(typeOption, "Previous", -ArrowGap);
-            Enlarge(typeOption, "Next", ArrowGap);
-
+        /// <summary>The instruments this block holds.</summary>
+        private List<string> Choices()
+        {
             List<string> choices = new List<string>();
             for (int i = 0; i < block.TypeCount; i++)
             {
                 choices.Add(block.TypeName(i));
             }
-            UIF.SetOption(typeOption, choices, block.SelectedType);
-            return y + RowHeight + RowGap * 2f;
-        }
-
-        /// <summary>
-        /// Draws one of the selector's arrows a little bigger than UI Factory does.
-        /// Named children rather than a search for buttons: the prefab calls them
-        /// Previous and Next, and a control it renamed should go back to its own
-        /// size rather than to this panel's guess at which button is which.
-        /// </summary>
-        private static void Enlarge(GameObject option, string child, float shift)
-        {
-            Transform arrow = option.transform.FindChild(child);
-            if (arrow == null)
-            {
-                return;
-            }
-            arrow.localScale = new Vector3(ArrowScale, ArrowScale, 1f);
-            RectTransform rect = arrow as RectTransform;
-            if (rect != null)
-            {
-                // Away from the middle, whichever end this one is anchored to:
-                // anchoredPosition is measured from its own anchor, so the sign is
-                // the caller's to decide and not this method's to work out.
-                rect.anchoredPosition = new Vector2(rect.anchoredPosition.x + shift,
-                                                    rect.anchoredPosition.y);
-            }
+            return choices;
         }
 
         /// <summary>
@@ -545,15 +323,19 @@ namespace OrchestraMod
             return y + RowGap;
         }
 
+        /// <summary>What a control is called, as the panel writes it.</summary>
+        private static string Caption(MapperType control)
+        {
+            return control == null ? "" : control.DisplayName.ToUpper();
+        }
+
         /// <summary>
-        /// The part of a slider's range the handle runs through, which is not always
-        /// the whole of what the setting accepts: RANGE will take any distance a
-        /// level is wide, and a handle that had to cover all of it would be useless
-        /// for the fifty metres anybody actually wants. Typing is not limited to
-        /// this -- <see cref="Typed"/> clamps to the setting's own bounds -- and a
-        /// value beyond it parks the handle at that end.
+        /// The part of a slider's range this block's handle runs through. RANGE
+        /// will take any distance a level is wide, and a handle that had to cover
+        /// all of it would be useless for the fifty metres anybody wants, so the
+        /// block says what is worth dragging through and the box takes the rest.
         /// </summary>
-        private void Span(MSlider bound, out float min, out float max)
+        protected override void Span(MSlider bound, out float min, out float max)
         {
             min = bound.Min;
             max = bound.Max;
@@ -567,129 +349,6 @@ namespace OrchestraMod
                 min = low;
                 max = high;
             }
-        }
-
-        /// <summary>What a control is called, as the panel writes it.</summary>
-        private static string Caption(MapperType control)
-        {
-            return control == null ? "" : control.DisplayName.ToUpper();
-        }
-
-        private float AddSlider(float y, string caption, MSlider bound, bool isNote)
-        {
-            Text label = Label(caption, Margin, y, LabelWidth, RowHeight, 13,
-                               TextAnchor.MiddleLeft, UIF.QuietInk);
-
-            GameObject go = UIF.Spawn(UIF.SliderPrefab, host);
-            if (go == null)
-            {
-                return y + RowHeight + RowGap;
-            }
-            float x = Margin + LabelWidth;
-            float w = width - Margin * 2f - LabelWidth - ValueWidth - RowGap;
-            Place(go, x, y, w, RowHeight);
-
-            UnityEngine.UI.Slider control = go.GetComponent<UnityEngine.UI.Slider>();
-            if (control == null)
-            {
-                control = go.GetComponentInChildren<UnityEngine.UI.Slider>(true);
-            }
-            Row row = new Row();
-            row.Control = control;
-            row.Caption = label;
-            row.Bound = bound;
-            row.Note = isNote;
-            AddValue(row, width - Margin - ValueWidth, y);
-            if (control != null)
-            {
-                float low, high;
-                Span(bound, out low, out high);
-                control.minValue = low;
-                control.maxValue = high;
-                // Notes snap: dragged freely a block lands a quarter-tone sharp and
-                // is unplayable beside another.
-                control.wholeNumbers = isNote;
-                Row captured = row;
-                control.onValueChanged.AddListener(delegate(float v) { Dragged(captured, v); });
-            }
-            rows.Add(row);
-            return y + RowHeight + RowGap;
-        }
-
-        /// <summary>
-        /// The number at the end of a row: Besiege's own text box, so a setting can
-        /// be typed exactly rather than found by dragging.
-        ///
-        /// UI Factory's Input Field, which brings the game's own look and -- the part
-        /// that matters -- the behaviour that stops Besiege's hotkeys firing at what
-        /// is being typed. Without that prefab the number is a plain label again, and
-        /// the slider is the only way to set it.
-        /// </summary>
-        private void AddValue(Row row, float x, float y)
-        {
-            GameObject go = UIF.Spawn(UIF.InputPrefab, host);
-            if (go == null)
-            {
-                row.Value = Label("", x, y, ValueWidth, RowHeight, 13,
-                                  TextAnchor.MiddleRight, Color.white);
-                return;
-            }
-            Place(go, x, y, ValueWidth, RowHeight);
-
-            UnityEngine.UI.InputField field =
-                go.GetComponent<UnityEngine.UI.InputField>();
-            if (field == null)
-            {
-                field = go.GetComponentInChildren<UnityEngine.UI.InputField>(true);
-            }
-            if (field == null)
-            {
-                return;
-            }
-
-            row.Box = field;
-            row.Value = Style(field.textComponent, TextAnchor.MiddleRight, Color.white);
-            // The prefab's placeholder is a word in whatever language the game is in;
-            // an empty box that says nothing is what a number wants.
-            Text ghost = field.placeholder as Text;
-            if (ghost != null)
-            {
-                UIF.Untranslate(ghost);
-                ghost.text = "";
-            }
-            field.lineType = UnityEngine.UI.InputField.LineType.SingleLine;
-            field.characterLimit = 8;
-
-            Row captured = row;
-            field.onEndEdit.AddListener(delegate(string typed) { Typed(captured, typed); });
-        }
-
-        /// <summary>
-        /// Squares one of the prefab's own labels up to the box it is in: the padding
-        /// it was authored with is for a box of the size UI Factory drew, and these
-        /// are a row high and hold six characters.
-        /// </summary>
-        private static Text Style(Text label, TextAnchor align, Color ink)
-        {
-            if (label == null)
-            {
-                return null;
-            }
-            RectTransform rect = label.rectTransform;
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(4f, 0f);
-            rect.offsetMax = new Vector2(-4f, 0f);
-            label.alignment = align;
-            label.color = ink;
-            label.fontSize = 13;
-            label.resizeTextForBestFit = false;
-            // A field edits plain text, and a number that does not fit is better read
-            // over the edge of its box than wrapped out of sight.
-            label.supportRichText = false;
-            label.horizontalOverflow = HorizontalWrapMode.Overflow;
-            label.verticalOverflow = VerticalWrapMode.Overflow;
-            return label;
         }
 
         /// <summary>The block's own toggles, two to a row, lit when on.</summary>
@@ -743,6 +402,20 @@ namespace OrchestraMod
                 if (item.Caption != null)
                 {
                     UIF.Untranslate(item.Caption);
+                    // The same size as the text boxes: a toggle's word is read at a
+                    // glance across the panel, and the prefab's own size is small
+                    // for that.
+                    item.Caption.fontSize = FieldFont;
+                    item.Caption.resizeTextForBestFit = false;
+                    UIF.EnsureFont(item.Caption);
+                    // The lettering grows under the pointer, and the row does not:
+                    // the same answer the selectors give, and the reason the
+                    // prefab's own swell came off above -- that one grows the whole
+                    // toggle, which on a full-width row carries its words out of
+                    // the window.
+                    Swell swell = go.AddComponent<Swell>();
+                    swell.grows = item.Caption.transform;
+                    swell.grown = 1.15f;
                 }
                 if (item.Control != null)
                 {
@@ -822,142 +495,13 @@ namespace OrchestraMod
             }
 
             shownType = block.SelectedType;
-            List<string> choices = new List<string>();
-            for (int i = 0; i < block.TypeCount; i++)
+            if (typeOption != null)
             {
-                choices.Add(block.TypeName(i));
+                typeOption.Set(Choices(), shownType);
             }
-            UIF.SetOption(typeOption, choices, shownType);
 
             ShowListen();
             filling = false;
-        }
-
-        private void Write(Row row)
-        {
-            if (row.Bound == null)
-            {
-                return;
-            }
-            string shown = row.Note
-                ? NoteName(Mathf.RoundToInt(row.Bound.Value))
-                : row.Bound.Value.ToString("0.00");
-            if (row.Box != null)
-            {
-                // Not while it is being typed in: the box is the player's until they
-                // are finished with it, and a drag elsewhere must not take the caret
-                // out from under them.
-                if (!row.Box.isFocused)
-                {
-                    row.Box.text = shown;
-                }
-                return;
-            }
-            if (row.Value != null)
-            {
-                row.Value.text = shown;
-            }
-        }
-
-        /// <summary>
-        /// A number was typed. Unlike a drag this is a finished edit, so it commits
-        /// at once rather than waiting for a mouse button that was never held.
-        /// Anything unreadable leaves the setting alone, and the box goes back to
-        /// showing what it is.
-        /// </summary>
-        private void Typed(Row row, string text)
-        {
-            if (block != null && row.Bound != null && !filling)
-            {
-                float value;
-                if (Read(row, text, out value))
-                {
-                    if (row.Note)
-                    {
-                        value = Mathf.Round(value);
-                    }
-                    value = Mathf.Clamp(value, row.Bound.Min, row.Bound.Max);
-                    row.Bound.Value = value;
-                    if (row.Control != null)
-                    {
-                        // The slider's own change event would only write back what
-                        // was just written, and queue a commit this does itself.
-                        filling = true;
-                        row.Control.value = value;
-                        filling = false;
-                    }
-                    Commit(row.Bound);
-                }
-            }
-            Write(row);
-        }
-
-        /// <summary>
-        /// Reads back what <see cref="Write"/> puts out, and what someone would type
-        /// instead of it: a note as a name or as a number, and a bare number anywhere.
-        /// </summary>
-        private static bool Read(Row row, string text, out float value)
-        {
-            value = 0f;
-            if (string.IsNullOrEmpty(text))
-            {
-                return false;
-            }
-            text = text.Trim();
-            if (float.TryParse(text, out value))
-            {
-                return true;
-            }
-            return row.Note && NoteNumber(text, out value);
-        }
-
-        /// <summary>
-        /// "C4", "F#3", "Bb5" as the MIDI number the slider holds. C4 is middle C,
-        /// which is what <see cref="NoteName"/> writes.
-        /// </summary>
-        private static bool NoteNumber(string text, out float value)
-        {
-            value = 0f;
-            // C  D  E  F  G  A  B
-            int[] steps = new int[] { 9, 11, 0, 2, 4, 5, 7 };
-            char letter = char.ToUpper(text[0]);
-            if (letter < 'A' || letter > 'G')
-            {
-                return false;
-            }
-            int semitone = steps[letter - 'A'];
-            int at = 1;
-            if (at < text.Length && (text[at] == '#' || text[at] == 's'))
-            {
-                semitone++;
-                at++;
-            }
-            else if (at < text.Length && (text[at] == 'b' || text[at] == 'B'))
-            {
-                semitone--;
-                at++;
-            }
-            int octave;
-            if (at >= text.Length || !int.TryParse(text.Substring(at), out octave))
-            {
-                return false;
-            }
-            value = (octave + 1) * 12 + semitone;
-            return true;
-        }
-
-        /// <summary>C4 is middle C, which is the convention Besiege's players use.</summary>
-        private static string NoteName(int note)
-        {
-            string[] names = new string[]
-            {
-                "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
-            };
-            if (note < 0 || note > 127)
-            {
-                return note.ToString();
-            }
-            return names[note % 12] + (note / 12 - 1);
         }
 
         private void Paint(Switch item)
@@ -979,17 +523,6 @@ namespace OrchestraMod
         }
 
         // ---- input -----------------------------------------------------------
-
-        private void Dragged(Row row, float value)
-        {
-            if (block == null || row.Bound == null || filling)
-            {
-                return;
-            }
-            row.Bound.Value = value;
-            Write(row);
-            Queue(row.Bound);
-        }
 
         private void Flip(Switch item, bool on)
         {
@@ -1013,7 +546,7 @@ namespace OrchestraMod
         /// </summary>
         private void WatchType()
         {
-            int index = UIF.OptionIndex(typeOption);
+            int index = typeOption == null ? -1 : typeOption.Index;
             if (index < 0 || index == shownType || index >= block.TypeCount)
             {
                 return;
@@ -1045,14 +578,6 @@ namespace OrchestraMod
             listenFace.color = on ? Color.white : UIF.QuietInk;
         }
 
-        private void Queue(MapperType changed)
-        {
-            if (changed != null && !pending.Contains(changed))
-            {
-                pending.Add(changed);
-            }
-        }
-
         /// <summary>
         /// Docking runs here rather than in Update: the mapper is dragged by its own
         /// behaviour, and a panel placed before it has moved is a panel one frame
@@ -1079,333 +604,22 @@ namespace OrchestraMod
             // Committed when the mouse comes up rather than on every change: each
             // commit reserialises the block and adds an undo entry, which during a
             // drag would be one per frame.
-            if (pending.Count > 0 && !Input.GetMouseButton(0))
-            {
-                CommitPending();
-            }
-        }
-
-        private void CommitPending()
-        {
-            for (int i = 0; i < pending.Count; i++)
-            {
-                Commit(pending[i]);
-            }
-            pending.Clear();
+            SettleDrags();
         }
 
         /// <summary>
-        /// Writes a setting through the mapper, so it survives a save and can be
-        /// undone. `ApplyValue` is the fallback where that machinery is not up: the
-        /// live value is set either way, so the block sounds right regardless.
+        /// The mapper changed width under the panel, so the rows have to be laid
+        /// out again before it can be placed against the new one.
         /// </summary>
-        private void Commit(MapperType changed)
+        protected override bool Rebuild()
         {
-            if (changed == null)
-            {
-                return;
-            }
-            try
-            {
-                BlockMapper mapper = BlockMapper.CurrentInstance;
-                if (mapper != null && mapper.Current != null)
-                {
-                    BlockMapper.OnEditField(mapper.Current, changed);
-                    return;
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Warn("could not commit " + changed.Key + " (" + e.Message
-                         + "); applying it directly.");
-            }
-            try
-            {
-                changed.ApplyValue();
-            }
-            catch (Exception)
-            {
-                // Nothing further to try.
-            }
-        }
-
-        // ---- where the window sits -------------------------------------------
-
-        /// <summary>
-        /// Puts the panel against the bottom edge of Besiege's own mapper, the same
-        /// width as it, so the two read as one window with a seam.
-        ///
-        /// The mapper is NGUI in world space -- its widgets are not on any canvas
-        /// this could be parented into -- so the join is made by measuring: the
-        /// mapper publishes `upperLeft` and `lowerRight`, and where those two land
-        /// on screen is where its frame is. Every frame, because the mapper is
-        /// draggable and the panel has to go with it.
-        /// </summary>
-        private void Dock()
-        {
-            if (windowRect == null || window == null || !window.activeSelf)
-            {
-                return;
-            }
-
-            Rect frame;
-            if (!MapperFrame(out frame))
-            {
-                return;
-            }
-
-            if (Widen(frame))
-            {
-                // Rebuilt and placed in the same frame. Returning here instead --
-                // which is what it did -- leaves the window wherever it was, and
-                // clears the flag that lets this run at all, so it never docks and
-                // never follows again.
-                if (!Build())
-                {
-                    return;
-                }
-                ReadFromBlock();
-                Canvas.ForceUpdateCanvases();
-            }
-
-            float scale = Scale();
-            Vector2 size = windowRect.sizeDelta;
-            float left = (frame.xMin - Screen.width * 0.5f) * scale;
-            float bottom = (frame.yMin - Screen.height * 0.5f) * scale;
-            windowRect.anchoredPosition =
-                new Vector2(left + size.x * 0.5f, bottom - size.y * 0.5f);
-        }
-
-        /// <summary>
-        /// Canvas units per screen pixel. The scaler matches on height against a
-        /// 1080-tall reference, so one unit is one pixel at 1080p.
-        /// </summary>
-        private float Scale()
-        {
-            return Screen.height > 0 ? Reference.y / Screen.height : 1f;
-        }
-
-        /// <summary>
-        /// Takes the panel's width from the mapper's. True if it changed, in which
-        /// case the rows -- which are laid out to it -- no longer fit.
-        /// </summary>
-        private bool Widen(Rect frame)
-        {
-            float wide = frame.width * Scale();
-            if (Mathf.Abs(wide - width) <= 0.5f)
-            {
-                return false;
-            }
-            width = wide;
             built = false;
-            return true;
-        }
-
-        /// <summary>
-        /// Besiege's mapper window in screen pixels, or false if it cannot be found
-        /// -- in which case the panel stays where it is rather than jumping to a
-        /// corner.
-        ///
-        /// The window has to be picked out of everything the mapper draws, and the
-        /// list was read out of the game rather than guessed at -- the panel logs
-        /// what it measures, and this is what it saw with a piano open at 4K:
-        ///
-        ///     Background   874.80 x 389.88   at y 1540.87   <- the window
-        ///     Background   874.80 x 281.88   at y 1540.87
-        ///     Background   874.80 x 174.96   at y 1658.59
-        ///     WideShadow   972.00 x 194.40   at y 1638.37   <- 11% wider, and higher
-        ///     Mask         874.80 x 1555.20  at y  267.55   <- the scroll region
-        ///     Visual        93.31 x  93.31                  <- a button
-        ///
-        /// So: the window is a `Background`, all of which are its width, and the
-        /// tallest of them is the frame -- the others are sections inside it. Taking
-        /// the widest thing drawn lands on `WideShadow`, which is how the panel came
-        /// to be an eleventh wider than the mapper and to sit over its lower half;
-        /// taking `Visual` by name lands on a 93-pixel button, which is how it came
-        /// to be a narrow strip. Both were shipped, and both are in the log above.
-        /// </summary>
-        private bool MapperFrame(out Rect frame)
-        {
-            frame = new Rect();
-            try
+            if (!Build())
             {
-                BlockMapper mapper = BlockMapper.CurrentInstance;
-                if (mapper == null)
-                {
-                    return false;
-                }
-                Renderer[] parts = mapper.GetComponentsInChildren<Renderer>(false);
-                Camera eye = null;
-                Rect best = new Rect();
-                string bestName = null;
-                bool named = false;
-
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    if (parts[i] == null || !parts[i].enabled)
-                    {
-                        continue;
-                    }
-                    if (eye == null)
-                    {
-                        eye = MapperCamera(parts[i].gameObject.layer);
-                        if (eye == null)
-                        {
-                            Explain("no camera draws layer "
-                                    + parts[i].gameObject.layer.ToString());
-                            return false;
-                        }
-                    }
-                    Rect here = ScreenRect(parts[i], eye);
-                    if (here.width < 1f || here.height < 1f)
-                    {
-                        continue;
-                    }
-
-                    if (parts[i].name == "Background")
-                    {
-                        // The frame, and the sections drawn inside it, all share its
-                        // width; the tallest is the frame itself.
-                        if (!named || here.height > best.height
-                            || (here.height == best.height && here.yMin < best.yMin))
-                        {
-                            named = true;
-                            best = here;
-                            bestName = parts[i].name;
-                        }
-                        continue;
-                    }
-                    if (named || here.width > Screen.width * 0.95f)
-                    {
-                        continue;
-                    }
-                    if (bestName == null || here.width > best.width)
-                    {
-                        best = here;
-                        bestName = parts[i].name;
-                    }
-                }
-
-                if (bestName == null)
-                {
-                    Explain(parts.Length == 0
-                        ? "the mapper draws nothing this can measure"
-                        : "none of the mapper's " + parts.Length.ToString()
-                          + " parts look like its window");
-                    return false;
-                }
-                Explain("docking to '" + bestName + "' at " + best.ToString());
-                frame = best;
-                return true;
-            }
-            catch (Exception e)
-            {
-                Explain("could not measure the mapper: " + e.Message);
                 return false;
             }
-        }
-
-        /// <summary>One renderer's world box, in screen pixels.</summary>
-        private static Rect ScreenRect(Renderer part, Camera eye)
-        {
-            Bounds box = part.bounds;
-            Vector3 a = eye.WorldToScreenPoint(new Vector3(box.min.x, box.min.y, box.center.z));
-            Vector3 b = eye.WorldToScreenPoint(new Vector3(box.max.x, box.max.y, box.center.z));
-            float xMin = Mathf.Min(a.x, b.x);
-            float yMin = Mathf.Min(a.y, b.y);
-            return new Rect(xMin, yMin, Mathf.Abs(b.x - a.x), Mathf.Abs(b.y - a.y));
-        }
-
-        /// <summary>
-        /// What the panel found to dock to, said once. Docking is measured off
-        /// another mod-less mod's furniture, so when it is wrong the only way to
-        /// know why is to have it say what it saw -- and the only way to make that
-        /// bearable is to say it once a session.
-        /// </summary>
-        private static bool explained;
-
-        private static void Explain(string what)
-        {
-            if (explained)
-            {
-                return;
-            }
-            explained = true;
-            Log.Info(what);
-        }
-
-        /// <summary>
-        /// The camera the mapper is drawn by, found by the layer it is on rather
-        /// than by name: NGUI puts its interface in the world, and only the camera
-        /// that renders that layer knows where on screen it ends up.
-        /// </summary>
-        private Camera MapperCamera(int layer)
-        {
-            if (mapperEye != null && mapperEye.isActiveAndEnabled
-                && (mapperEye.cullingMask & (1 << layer)) != 0)
-            {
-                return mapperEye;
-            }
-            mapperEye = null;
-            Camera[] all = Camera.allCameras;
-            for (int i = 0; i < all.Length; i++)
-            {
-                if ((all[i].cullingMask & (1 << layer)) != 0
-                    && (mapperEye == null || all[i].depth > mapperEye.depth))
-                {
-                    // The topmost camera drawing that layer: Besiege renders its
-                    // interface last, over the level.
-                    mapperEye = all[i];
-                }
-            }
-            return mapperEye;
-        }
-
-        // ---- helpers ---------------------------------------------------------
-
-        /// <summary>Places a rect from its parent's top-left, in UI Factory's units.</summary>
-        private void Place(GameObject go, float x, float y, float w, float h)
-        {
-            RectTransform rect = go.transform as RectTransform;
-            if (rect == null)
-            {
-                return;
-            }
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.sizeDelta = new Vector2(w, h);
-            rect.anchoredPosition = new Vector2(x, -y);
-        }
-
-        private Text Label(string text, float x, float y, float w, float h,
-                           int size, TextAnchor align, Color ink)
-        {
-            GameObject go = UIF.Spawn(UIF.TextPrefab, host);
-            if (go == null)
-            {
-                return null;
-            }
-            Place(go, x, y, w, h);
-            Text label = go.GetComponent<Text>();
-            if (label == null)
-            {
-                label = go.GetComponentInChildren<Text>(true);
-            }
-            if (label == null)
-            {
-                return null;
-            }
-            UIF.Untranslate(label);
-            label.text = text;
-            label.fontSize = size;
-            label.resizeTextForBestFit = false;
-            label.alignment = align;
-            label.color = ink;
-            label.raycastTarget = false;
-            label.horizontalOverflow = HorizontalWrapMode.Overflow;
-            label.verticalOverflow = VerticalWrapMode.Overflow;
-            return label;
+            ReadFromBlock();
+            return true;
         }
     }
 }

@@ -1,12 +1,17 @@
 # Besiege Orchestra
 
-Nine instrument blocks, in [Besiege](https://store.steampowered.com/app/346010/Besiege/).
+Nine instrument blocks, and a tenth that turns a MIDI file into a machine that
+plays them, in [Besiege](https://store.steampowered.com/app/346010/Besiege/).
 
 ![The nine blocks: piano, electric guitar, acoustic bass, violin, trumpet, saxophone, xylophone, drum and cymbal](Promo_1.jpg)
 
 Piano, guitar, bass, strings, brass, woodwind, mallets, drums and cymbals. Each
 block plays one note on one key, heard from where the block stands — so a machine
 can carry a band, and you hear it move.
+
+The **MIDI loader** block — the download arrow — reads a score off your disk and
+writes the machine that plays it, either straight into what you are building or
+out to a saved machine of its own.
 
 **[UI Factory](https://steamcommunity.com/sharedfiles/filedetails/?id=2913469777)**
 (another Besiege mod which enables the nice UI, see workshop item `2913469777`) is
@@ -91,9 +96,45 @@ too many, and rebinding needs Besiege's own key capture. Without UI Factory the
 mapper keeps everything, which is what makes it a fallback rather than a second
 copy.
 
-## Playing a song
+## Playing a song, from inside the game
 
-`tools/make-song.py` turns a MIDI file into a machine that plays it:
+Place the **Loader** block — the download arrow in the toolbar — and click it.
+Besiege's menu above keeps **the key and nothing else**: every timer the block
+writes waits for that key, so binding it there binds the whole song. Everything
+else is in the panel docked underneath:
+
+1. **INSTRUMENT** and **TYPE** are the block a score is written for and the
+   instrument within it; changing the first refills the second. Percussion always
+   goes to Drums and Cymbals whatever these say.
+2. **VOLUME**, **RANGE**, **TRANSPOSE** and **DELAY** are what every block it
+   writes is set to. Delay is the pause between the key and the first note — a
+   machine dropped into a level is usually still falling for the first second.
+3. **FOLDER** is where MIDI files go:
+   `Besiege_Data/Mods/Data/Orchestra_<id>/Songs`. It can be typed into, to point
+   at another folder *inside the mod's data directory* — Besiege lets a mod read
+   nowhere else, which is also why there is no "browse" dialog. The two buttons
+   open it in your file manager and list it again, for a file dropped in while the
+   game is running.
+4. **FILE** lists what is in that folder — click it and pick one.
+5. The summary says how long the song is, how many notes survived, and what it
+   will cost in blocks — an instrument block per distinct voice, a timer per note
+   — before you commit to any of it.
+6. **ADD TO MACHINE** drops those blocks into the machine you are building,
+   already selected, so you can drag them where you want them. **SAVE AS MACHINE**
+   does the same and then opens Besiege's own save screen over it, where
+   **SELECTION ONLY** saves just those blocks — the game names the file, asks
+   before overwriting, and draws the thumbnail.
+
+With no key bound the song starts with the simulation instead.
+
+The loader needs UI Factory — Besiege's own menu has no text box, no list and no
+button. Without it, the tool below does the same job outside the game.
+
+## Playing a song, from the command line
+
+`tools/make-song.py` turns a MIDI file into a machine that plays it, with more
+control than the block has — several instruments at once, part of a score, a
+tempo of your own:
 
 ```sh
 ./tools/make-song.py travelers.mid --instrument "Piano:Grand piano" --install
@@ -188,7 +229,9 @@ number is the MIDI note each was recorded at.
 
 Each block wears its own instrument: low-poly models from
 [Poly Pizza](https://poly.pizza), converted and stood upright by
-`tools/make-block-meshes.py`. They carry no textures of their own, only a flat
+`tools/make-block-meshes.py`. The loader block's download arrow is not a model at
+all — `tools/make-arrow-mesh.py` builds it out of boxes, in the same conventions,
+and can render it as the toolbar will see it. They carry no textures of their own, only a flat
 colour per material, so the tool gathers those into a small palette and points
 each triangle at its own patch — which is why a block's texture is a few dozen
 bytes.

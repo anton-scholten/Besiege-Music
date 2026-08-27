@@ -29,6 +29,9 @@
 		<Block path="Mallets.xml" />
 		<Block path="Drums.xml" />
 		<Block path="Cymbals.xml" />
+
+		<!-- Not an instrument: the block that turns a MIDI file into a machine. -->
+		<Block path="Loader.xml" />
 	</Blocks>
 
 	<Resources>
@@ -41,6 +44,7 @@
 		<Mesh name="Mallets_mesh" path="Instruments\Mallets.obj" />
 		<Mesh name="Drums_mesh" path="Instruments\Drums.obj" />
 		<Mesh name="Cymbals_mesh" path="Instruments\Cymbals.obj" />
+		<Mesh name="Loader_mesh" path="Instruments\Loader.obj" />
 		<Texture name="Piano_texture" path="Instruments\Piano.png" />
 		<Texture name="Guitar_texture" path="Instruments\Guitar.png" />
 		<Texture name="Bass_texture" path="Instruments\Bass.png" />
@@ -50,6 +54,7 @@
 		<Texture name="Mallets_texture" path="Instruments\Mallets.png" />
 		<Texture name="Drums_texture" path="Instruments\Drums.png" />
 		<Texture name="Cymbals_texture" path="Instruments\Cymbals.png" />
+		<Texture name="Loader_texture" path="Instruments\Loader.png" />
 		<Texture name="Orchestra_icon" path="Orchestra.png" />
 
 		<!-- Sampled instruments, cut by tools/extract-samples.py; see

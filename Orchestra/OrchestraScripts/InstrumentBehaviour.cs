@@ -280,24 +280,17 @@ namespace OrchestraMod
         //
         // The panel builds itself from these rather than from a list of its own, so
         /// <summary>
-        /// Takes the skin picker out of Besiege's mapper for these blocks.
-        ///
-        /// `BlockMapper.RefreshLists` shows it when `Prefab.CanGetNewVisuals`, which
-        /// is `SkinCanBeChanged && (CanChangeMesh || CanChangeTexture)`. A skin
+        /// Takes the skin picker out of Besiege's mapper for these blocks. A skin
         /// repaints a block's mesh, and these wear an instrument: a piano in a
-        /// wooden skin is a piano with its lid replaced by a plank. Nothing else
-        /// reads the flag but the toolbar's own skin button, which is the same
-        /// picker in another place.
+        /// wooden skin is a piano with its lid replaced by a plank.
         ///
-        /// The prefab is shared by every block of this type, so this says the same
-        /// thing nine times over and settles it once.
+        /// <see cref="Skins"/> for why this hides the control rather than clearing
+        /// `BlockPrefab.SkinCanBeChanged`, which is read by more than the mapper and
+        /// leaves the block menu showing a loading texture.
         /// </summary>
         private void NoSkins()
         {
-            if (BlockBehaviour != null && BlockBehaviour.Prefab != null)
-            {
-                BlockBehaviour.Prefab.SkinCanBeChanged = false;
-            }
+            Skins.Hide(BlockBehaviour);
         }
 
         /// <summary>

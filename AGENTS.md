@@ -1,7 +1,8 @@
 # Working notes
 
 Nine instrument blocks for Besiege, one shared behaviour, two synthesis engines
-and a sampler.
+and a sampler -- plus a tenth block, the MIDI loader, which reads a score off the
+disk and writes the machine that plays it.
 
 ## Layout
 
@@ -9,11 +10,24 @@ and a sampler.
 Orchestra/            the folder Besiege loads, and what goes to the Workshop
   Mod.xml             manifest; <ID> is written by the game on first load, keep it
   Piano.xml ...       one per block, each declaring its own types and controls
+  Loader.xml          the MIDI loader block: a tool, not an instrument
   OrchestraScripts/   sources; the built Orchestra.dll sits beside them
   Resources/          mesh, texture, icon, and Samples/ once cut
-tools/                build, install, the sample extractor, the song maker
+tools/                build, install, the sample extractor, the song makers
 docs/                 sample cutting, design notes, and modding notes
 ```
+
+The sources fall into three groups:
+
+| Files | What they are |
+| --- | --- |
+| `InstrumentBehaviour`, `Voices`, `SampleBank`, `OrchestraModule` | the nine instruments and their sound |
+| `Midi`, `Song`, `Bsg`, `Drop`, `Catalogue`, `Files` | the converter: a score in, blocks out |
+| `DockedPanel`, `OrchestraPanel`, `LoaderPanel`, `UIF`, `IconArt`, `ClickShield` | the two panels, and the UI Factory they need |
+
+**The converter touches no Unity object**, which is why it can be -- and is --
+checked at build time by `tools/tests/SongCheck.cs`, running on Besiege's own Mono
+with no game in sight. Anything added to it should keep that property.
 
 `.git` must stay *outside* the folder Besiege copies when publishing — its
 read-only objects jam the Workshop uploader.
@@ -21,8 +35,15 @@ read-only objects jam the Workshop uploader.
 ## Build
 
 `./tools/build.sh`, `./tools/verify-build.sh`, `./tools/install.sh`. No .NET
-toolchain: the build drives Besiege's own `mcs.dll` through `libmono.so`, and
-`build.sh` also runs the loader's blacklist check.
+toolchain: the build drives Besiege's own `mcs.dll` through `libmono.so`. It also
+runs three checks, each of which has caught something real: the block XMLs against
+the module's own attributes (`XmlCheck`), the built assembly against the loader's
+blacklist (`BlacklistCheck`), and the MIDI converter against a made-up score
+(`SongCheck`).
+
+The assembly is built into a scratch *directory* rather than under a scratch
+*name*: an assembly is identified by its name once loaded, so building to
+`Orchestra.<pid>.dll` made it impossible for the song check to reference.
 
 **That compiler is C# 4 and old.** No interpolated strings, no `?.`, no
 `nameof`. **Any `enum` declaration segfaults it** — engine names are strings and
@@ -267,6 +288,14 @@ menu — so an instrument declared in XML gets its rows without code.
 mentioning it is compiled, so confining the mentions means one guarded call,
 `UIF.Available`, decides whether the panel can exist at all.
 
+**Selectors and toggles follow the family's house style**, which is written up in
+[04-ui-factory.md](https://github.com/anton-scholten/Besiege-Modding-AI-notes/blob/main/notes/04-ui-factory.md):
+every selector is a `Chooser` (with arrows, or without for the file list), and
+every toggle has the prefab's swell destroyed and a `Swell` put on its caption so
+the lettering grows and the row does not. `Chooser.cs`, `Swell.cs` and
+`ZoomGuard.cs` are copies -- keep them in step with Braids Synth and Special
+Effects rather than editing one of them here.
+
 **Use UI Factory's controls, not lookalikes.** It ships Besiege's own widgets as
 prefabs, and two matter here: `Options` (with the `Besiege.UI.Bridge.Option`
 component) is the `< Grand piano >` selector the block mapper itself uses, and
@@ -356,6 +385,110 @@ twice — the live one, and the one the block loads from. Assigning
 `BlockMapper.OnEditField` reconciles them, reserialising the block and adding an
 undo entry, which is why the panel writes live on every drag frame and commits
 once when the mouse comes up.
+
+## The MIDI loader block
+
+`LoaderBehaviour` is a tool with no simulation behaviour at all. Its settings are
+ordinary mapper controls; the file box, the summary and the two buttons are in
+`LoaderPanel`, which -- unlike the instrument panel -- **needs UI Factory**,
+Besiege's mapper having no text box to type a filename into. It says so once and
+does nothing rather than sitting there looking broken.
+
+**Find your own block ids, never compute them, and match on the prefab's name --
+which is not the block's name.** A registered modded prefab is called
+`<mod guid>-<local id>`: `BlockPrefabCreator.CreatePrefab` names the object that,
+and `BlockLoader.RegisterPrefab` then calls `BlockPrefab.SetNameFromGameObject`,
+which copies it over the `<Name>` that `SetupBehaviour` had put there. That string
+names this mod's blocks exactly, and `Catalogue.LocalIdOf` reads the `<ID>` back
+out of it. Three other answers are wrong and each shipped: `BlockPrefab.locID` is
+-1 on every modded block (its constructor sets it, nothing writes it); a mod's
+blocks are not numbered contiguously once other mods are installed; and the
+module's behaviour is *not* on the prefab, `ModBlockBehaviourHandler.Awake` adding
+it to the instance. Matching on `BlockPrefab.name` as the block's `<Name>` finds
+nothing at all, which is how every family ended up without an id and the loader
+refused to convert. Getting this wrong is silent and produces machines full of
+another mod's blocks.
+
+**Never clear `BlockPrefab.SkinCanBeChanged` to hide the skin picker.** It is read
+by `BlockPrefab.SetIcons` as well as by the mapper, and `SetIcons` calls
+`VisualController.SetPrefabIcons()` -- the thing that puts a block's own mesh and
+material on its button -- only when the flag is true. Clear it and the block shows
+`BlockLoader.LoadingMaterial` in the block menu, which is what "the icon is the
+loading texture" means; clicking the button repaints it from `defaultMat`, captured
+from the same loading material, so it stays wrong. `Skins.Hide` builds the `MVisual`
+the mapper would have built and sets `DisplayInMapper = false` instead -- Special
+Effects' answer, kept in step with it. Both wrong versions shipped here: once per
+block in `SafeAwake`, and once for every prefab at load, which only spread it to
+all ten.
+
+**A mod may only reach its own folders, and a folder argument needs a trailing
+slash.** Both come out of `ModPaths.GetFilePath`, and both cost something here
+before it was read to the end. It combines the argument with the mod folder --
+which does hand an absolute path straight through -- and then walks the result's
+directory *upwards* looking for the mod's own, throwing
+`Path is not in mod directory!` if it never arrives. And a resolved path that does
+not end in a separator is treated as a file, so the folder acted on is its parent:
+`GetFiles("")`, the obvious way to list the mod's own folder, tries to list `Mods/`
+and throws. That is what emptied the block catalogue and made the loader say *the
+instrument blocks could not be read*; the block list now comes from `Mod.xml`,
+which names every one of them anyway. `Files.cs` is the only place that touches any
+of this, and it says so at the top.
+
+**A mod can open the system's file dialog.** `SFB.StandaloneFileBrowser` is in
+`Assembly-CSharp` with `libStandaloneFileBrowser.so` beside it, and **nothing in
+Besiege calls it** -- so it works or it does not, and `Files.Pick` treats a failure
+as ordinary and falls back to a folder in the mod's data directory.
+
+**Adding blocks to the machine is Besiege's own additive load.**
+`MachineFileBrowserController.LoadAdditive` is what the load screen's "add to
+machine" button runs, and every member it touches is public:
+`Machine.AddBlocksFromInfo` (whose third argument is `ref`, not `out`),
+`BlockSelectionTool.Duplicating`, `DeselectAll`, `Select`,
+`AdvancedBlockEditor.SetActiveTool`, `UndoSystem.AddActions`,
+`AddPiece.UpdateMiddleOfObject`. `Drop.cs` does the same steps in the same order,
+so joints, clusters, undo and the selection tool behave as they do for a real
+load.
+
+**Saving goes through Besiege's own screen.** A mod can write neither with
+`XmlSaver.Save` (forbidden by name, every caller private) nor with `ModIO`
+(SavedMachines is outside its folders), so SAVE adds the blocks -- they arrive
+selected -- and opens `FileBrowserView.Open(FileBrowserType.LocalMachines, true,
+true)` over the top, where SELECTION ONLY saves exactly them. The view is inactive
+while closed, so it is found with `Resources.FindObjectsOfTypeAll`, not
+`FindObjectOfType`. `Bsg.cs` still writes the format -- into the mod's own data
+folder when that screen cannot be found, and for `SongCheck` to hold against
+`make-song.py`.
+
+**Its panel is the whole menu.** Besiege's mapper keeps the key -- which is what
+every timer the block writes waits for -- and `DisplayInMapper = false` takes the
+rest away as soon as UI Factory answers, exactly as `InstrumentBehaviour` does.
+The instrument and its type are two `MMenu`s, and the second's list is swapped
+whenever the first moves: **`MMenu.Items` has a public setter**, so a menu whose
+choices depend on another menu needs nothing else. The sliders are the same rows
+the instrument panel draws, which is why they live on `DockedPanel`.
+
+**A uGUI `Dropdown` opens inside whatever mask it is under.** `Dropdown` parents
+its list to itself, so in a panel built into the Window prefab's scroll view the
+list is clipped by that viewport -- a dropdown near the bottom opens into nothing.
+Put it at the top of the panel, or do not use one.
+
+**Prefer `ModIO`'s relative form.** It will take an absolute path (above), but a
+file chosen from the mod's own Songs folder is remembered by name and read back
+with `data: true`. The relative form is what the API is for and it cannot be wrong
+about where the data folder is; the absolute path is shown to the player and used
+for what they type.
+
+**Two name clashes cost a build each.** `using Modding` makes `ModIO` mean the
+*namespace* of that name rather than `Modding.ModIO`; and `Machine` under
+`using Modding.Modules` resolves to `Modding.Blocks`', not the game's. Write both
+out in full.
+
+**`List.Sort` is not stable, and that silently changed the tempo.** The tempo map
+starts with MIDI's assumed 120 bpm at tick 0, and most files set their own tempo
+at tick 0 as well. Sorted by tick alone, the assumption could end up last and win,
+and the whole score played at the wrong speed with nothing else out of place --
+found by running both converters over the same five files and comparing, which is
+what `SongCheck.cs <file.mid>` is for.
 
 ## Engines
 

@@ -177,21 +177,105 @@ resolves it. `fallback` is the vanilla block shown when the mod is absent.
 `OptionsMaster.skinsEnabled`, the block is the only one selected,
 `Prefab.hasBVC`, `Prefab.CanGetNewVisuals`, and the block has more than one skin
 option. `CanGetNewVisuals` is
-`SkinCanBeChanged && (CanChangeMesh || CanChangeTexture)`, and **`SkinCanBeChanged`
-is a public field on `BlockPrefab`** -- so a block that should not be repainted
-sets it false once:
+`SkinCanBeChanged && (CanChangeMesh || CanChangeTexture)`, and `SkinCanBeChanged`
+is a public field on `BlockPrefab` -- so clearing it takes the row away.
+
+**It also breaks the block menu, and this mod shipped that bug twice.**
+`BlockPrefab.SetIcons` reads the same flag and calls
+`VisualController.SetPrefabIcons()` only when it is *true*. That call is what puts
+a block's own mesh and material on its button in the block menu. Without it the
+button keeps `BlockLoader.LoadingMaterial`, which
+`BlockButtonCreator.CreateBlockButton` painted on while the mod's resources were
+still loading -- so the block shows the **loading texture** in the menu, and
+clicking it repaints it from `BlockButtonControl.defaultMat`, which was captured
+from the same loading material.
 
 ```csharp
-BlockBehaviour.Prefab.SkinCanBeChanged = false;      // in SafeAwake
+BlockBehaviour.Prefab.SkinCanBeChanged = false;      // WRONG
+Skins.Hide(BlockBehaviour);                          // in SafeAwake
 ```
 
-The prefab is shared by every block of that type, so any instance saying it
-settles it for all of them, and nothing writes the flag to disk.
+`Skins.Hide` is Special Effects' answer, kept in step with it: build the `MVisual`
+the mapper would have built and set `DisplayInMapper = false`, which
+`GenericController.CreateContainers` honours. It has to exist before the mapper
+first opens, or the game builds it there and shows it once; `RefreshLists` then
+takes its reuse path and leaves the flag alone.
 
 One wrinkle: when `StatMaster.collapseSkinMapper` is on, the mapper registers the
 *collapsed* skin button before it reaches that gate, so the button can still
-appear. Clicking it only clears the flag and marks the mapper dirty, after which
-the full path runs and finds nothing to show.
+appear. Clicking it marks the mapper dirty, after which the full path runs and
+finds nothing to show.
+
+## Finding your own block prefabs, and the ids the game gave them
+
+`PrefabMaster.BlockPrefabs` is every block in the game, keyed by the id a machine
+file writes. To pick your own out of it, match the prefab's **name**, which for a
+modded block is:
+
+```
+<mod guid>-<local id>          e.g. aca735ea-a614-4aef-9676-67ec1edd5059-3
+```
+
+`BlockPrefabCreator.CreatePrefab` names the prefab object that. `SetupBehaviour`
+separately sets `BlockPrefab.name` to the block XML's `<Name>` -- and then
+`BlockLoader.RegisterPrefab` calls `BlockPrefab.SetNameFromGameObject()`, which
+copies the object's name over it. So by the time a prefab is in the table its
+`name` is the guid-and-id string, **not** "Bass". The guid's own hyphens are no
+trouble: the last hyphen is the separator, and what follows it is a number.
+
+`prefab.Type` (and `prefab.ID`) is then the id to write into a `BlockInfo` or a
+`.bsg`.
+
+Three things that look like they would work and do not:
+
+* **`BlockPrefab.locID`** is `-1` for every modded block. The constructor sets it;
+  nothing ever writes it.
+* **Arithmetic on your own block's id** (`base + localId`) assumes a mod's blocks
+  are numbered contiguously from a known start. They are not, once other mods are
+  installed -- it lands in a neighbour's range, and machines come out full of
+  somebody else's blocks.
+* **Looking for your module's behaviour on the prefab.**
+  `ModBlockBehaviourHandler.Awake` adds module behaviours to the block *instance*.
+  A prefab is inactive and its Awake has never run, so it carries the handler and
+  nothing of yours.
+
+What else does reach a prefab, and is worth having as a second route for a game
+that has not renamed it: `nameKeywords`, which `SetupBehaviour` fills with the
+block's `<SearchKeywords>` **and the owning mod's `<Author>`**.
+
+The table is not filled when a mod's `OnLoad` runs, so ask again -- a
+`MonoBehaviour` that retries once a second and stops when everything is accounted
+for costs nothing and is the whole of it.
+
+## Making a machine from inside the game
+
+The MIDI loader block needs four things the modding API does not advertise, and
+all four are written up in
+[Besiege-Modding-AI-notes](https://github.com/anton-scholten/Besiege-Modding-AI-notes)
+now -- 01 for the first two, 12 for the last two:
+
+- **`Modding.ModIO` reaches the mod's own folders and nowhere else.**
+  `ModPaths.GetFilePath` combines what it is given with the mod folder -- which
+  does let an absolute path through -- and then walks the result's directory
+  upwards looking for the mod's own, throwing `Path is not in mod directory!` when
+  it never arrives. A second trap in the same method: a resolved path with no
+  trailing separator is treated as a *file*, so `GetFiles("")` lists `Mods/` rather
+  than the mod's folder, and throws. Both are why the catalogue is read from
+  `Mod.xml` and why every folder argument here ends in a slash.
+- **`SFB.StandaloneFileBrowser` ships with Besiege** and Besiege never calls it,
+  so the system file dialog is available and unproven. Failure is treated as
+  ordinary, and the fallback is a `Songs` folder under `Mods/Data/`.
+- **Adding blocks is `MachineFileBrowserController.LoadAdditive`**, step for step;
+  every member it uses is public, and the result is a selection with the move tool
+  up and one undo behind it. `Machine.AddBlocksFromInfo`'s third argument is
+  `ref`, not `out`.
+- **`XmlSaver.Save` is forbidden by name** and every caller is private, and
+  `ModIO` will not write to `SavedMachines` either -- so SAVE adds the blocks and
+  opens Besiege's own save screen (`FileBrowserView.Open`, public; the view is
+  inactive while closed, so `Resources.FindObjectsOfTypeAll` finds it). The `.bsg`
+  writer stays for the fallback and for the build's check; `XData.Type` is already
+  the element name the file uses, which makes it a short method rather than a table
+  of kinds.
 
 ## Moving a block's visual without moving the block
 

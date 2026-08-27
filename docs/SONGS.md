@@ -1,13 +1,84 @@
 # Machines that play a song
 
-`tools/make-song.py` turns a MIDI file into a `.bsg` — a Besiege machine that
-plays the score on Orchestra blocks.
+There are two ways to turn a MIDI file into a Besiege machine that plays it on
+Orchestra blocks, and they write the same machine.
+
+**In the game**, the **Loader** block — the download arrow — reads a file, says
+what it comes to, and either adds those blocks to the machine you are building or
+saves them as a machine of their own.
+
+**Outside it**, `tools/make-song.py` does the same job with more control over
+which part goes where:
 
 ```sh
 ./tools/make-song.py travelers.mid --instrument "Piano:Grand piano" --install
 ```
 
-It has no dependencies: standard Python, and the MIDI parser is in the file.
+Neither has any dependencies: standard Python for the tool, and the MIDI parser is
+written out in both.
+
+## The loader block
+
+Place it, click it, and Besiege's own menu keeps **the key and nothing else** --
+every timer the block writes waits for that key, so binding it there binds the
+whole song, and rebinding is the mapper's own business. Everything else is in the
+panel docked underneath: the folder, the file, the two selectors (which block, and
+which instrument within it), volume, range, transpose and delay, the summary, and
+the two buttons. With no key bound the timers start with the simulation instead.
+
+The file list is a dropdown rather than the game's `< choice >` stepper -- a
+folder of thirty files is thirty presses of an arrow. Its open list is shortened
+to fit what is underneath it: a uGUI `Dropdown` parents that list to itself, so it
+is drawn inside this window's own scroll mask and anything past the window's edge
+is simply not there.
+
+The panel leads with the folder to put files in, because that is the first thing
+anybody needs:
+
+```
+Besiege_Data/Mods/Data/Orchestra_<mod id>/Songs
+```
+
+The path is a button — click it and the folder opens in your file manager. The
+reload arrow beside it lists that folder again, so a file dropped in while the
+game is running does not need a restart or a fresh block. Everything in it is
+listed underneath, one clickable row each, and the one you chose is written in
+white.
+
+`ModIO` will not say where that folder is — everything it takes and returns is
+relative — so the path is rebuilt from the pieces the game builds it from:
+`StaticSettings.DataPath + "/Mods/Data/" + name-without-spaces + "_" + guid`.
+That path is for *showing*, though. A file chosen from the list is remembered by
+**name alone** and read back relative to the mod's data folder, which is the form
+`ModIO` is meant for and the one that cannot be wrong about where that folder is;
+an absolute path is only used for something typed by hand or picked from the
+system dialog, and even then the name is tried in the Songs folder first.
+
+There is no "browse" button, and cannot usefully be one: Besiege ships a file
+dialog (`SFB.StandaloneFileBrowser`, which the game itself never calls) that can
+show you the whole disk, and `ModIO` will open nothing outside the mod's own
+folders. The file has to be *in* that folder.
+
+The summary is written from the converted machine rather than from the file, so
+the numbers are the ones the machine will really have: its length, how many notes
+survived the separation below, and the blocks it will cost.
+
+**ADD TO MACHINE** is Besiege's own additive load, the one the load screen's "add
+to machine" button runs, so the blocks arrive selected with the move tool up and
+one undo takes them all away again. They are laid out around the loader block, so
+they appear where you are looking.
+
+**SAVE AS MACHINE** does the same and then opens Besiege's own save screen over
+it, where **SELECTION ONLY** saves exactly the blocks that were just added. It has
+to: a mod cannot write a machine file. `XmlSaver.Save` is one of the four methods
+the mod loader forbids by name and every caller of it is private, and `ModIO` --
+the only file API a mod has -- refuses any path outside the mod's own folders. The
+game naming the file is no loss: it also asks before overwriting and renders the
+thumbnail. Where that screen cannot be found, the `.bsg` is written into
+`Mods/Data/Orchestra_<id>/Machines/` instead and the panel says so.
+
+What the loader cannot do that the tool can: several instruments at once (it puts
+every pitched part on one block family), a slice of a score, or a tempo of its own.
 
 ## Why a score and not a YouTube link
 
@@ -33,6 +104,10 @@ run `basic-pitch` over a downloaded track and hand the MIDI it writes to
 `make-song.py`. Expect to edit it.
 
 ## How the machine works
+
+The same for both, and `tools/tests/SongCheck.cs` holds the in-game converter to
+it at build time: it converts a made-up scale, writes the machine, reads it back,
+and checks the things that make a machine play rather than sit there.
 
 Two kinds of block, laid out in a grid on the ground, all at one height and all
 turned to stand up — the quarter turn about X that Besiege's own saves give a

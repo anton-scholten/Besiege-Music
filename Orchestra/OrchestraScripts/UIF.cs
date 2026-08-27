@@ -32,11 +32,13 @@ namespace OrchestraMod
         public const string TextPrefab = "Text";
         public const string SliderPrefab = "Slider";
 
-        /// <summary>Besiege's own `&lt; choice &gt;` selector, as the mapper uses.</summary>
-        public const string OptionPrefab = "Options";
 
         /// <summary>A real toggle, rather than a button painted to look like one.</summary>
         public const string TogglePrefab = "Text Toggle";
+
+        /// <summary>A button with a word on it, as Besiege's own dialogs use.</summary>
+        public const string ButtonPrefab = "Text Button";
+
 
         /// <summary>The square picture button a title bar's corner is made of; the
         /// window's own close cross is one.</summary>
@@ -84,6 +86,54 @@ namespace OrchestraMod
                 // moment after the mod does, and "not yet" is not "not installed".
                 asked = available;
                 return available;
+            }
+        }
+
+        /// <summary>
+        /// Besiege's own lettering, for the controls this mod builds itself rather
+        /// than taking from a prefab. Null if UI Factory is not there, which every
+        /// caller answers with Unity's built-in Arial.
+        /// </summary>
+        public static Font Font
+        {
+            get
+            {
+                try
+                {
+                    return Besiege.UI.Make.Font;
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gives a label UI Factory's font if it has none.
+        ///
+        /// The Input Field prefab's own text and placeholder come out of the
+        /// bundle without one, and a Text with no font draws nothing at all -- so
+        /// the box reads as one that swallows typing rather than one that failed to
+        /// paint. `Besiege.UI.Make.Font` is the font the rest of the game is
+        /// written in.
+        /// </summary>
+        public static void EnsureFont(Text label)
+        {
+            if (label == null || label.font != null)
+            {
+                return;
+            }
+            try
+            {
+                if (Besiege.UI.Make.Font != null)
+                {
+                    label.font = Besiege.UI.Make.Font;
+                }
+            }
+            catch (Exception)
+            {
+                // A UI Factory that cannot say leaves Unity's own default in place.
             }
         }
 
@@ -157,58 +207,5 @@ namespace OrchestraMod
             }
         }
 
-        /// <summary>
-        /// Fills in one of UI Factory's Option selectors and returns whether it
-        /// took. Its component is a Bridge type, so like everything else here the
-        /// mention stays in this file.
-        /// </summary>
-        public static bool SetOption(GameObject control, System.Collections.Generic.List<string> choices, int index)
-        {
-            if (control == null)
-            {
-                return false;
-            }
-            try
-            {
-                Besiege.UI.Bridge.Option option =
-                    control.GetComponent<Besiege.UI.Bridge.Option>();
-                if (option == null)
-                {
-                    return false;
-                }
-                option.options = choices;
-                option.Index = index;
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Which choice an Option is showing, or -1 if it cannot be asked.
-        ///
-        /// Read rather than subscribed to: `onValueChanged` is UI Factory's own
-        /// event type, and polling one integer while a panel is open costs nothing
-        /// next to binding to a signature that may change under us.
-        /// </summary>
-        public static int OptionIndex(GameObject control)
-        {
-            if (control == null)
-            {
-                return -1;
-            }
-            try
-            {
-                Besiege.UI.Bridge.Option option =
-                    control.GetComponent<Besiege.UI.Bridge.Option>();
-                return option == null ? -1 : option.Index;
-            }
-            catch (Exception)
-            {
-                return -1;
-            }
-        }
     }
 }

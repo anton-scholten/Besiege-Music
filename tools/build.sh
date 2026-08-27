@@ -35,10 +35,13 @@ fi
 # may be mapped by the running game and refuse to be overwritten. A rename
 # replaces the directory entry instead, which always works.
 #
-# The scratch name includes the pid so two concurrent builds cannot collide.
-mkdir -p "$BUILD_DIR"
-TMP_OUT="$BUILD_DIR/Orchestra.$$.dll"
-trap 'rm -f "$TMP_OUT"' EXIT
+# The scratch *directory* includes the pid so two concurrent builds cannot
+# collide -- the file inside it keeps the assembly's own name, which is what an
+# assembly is identified by once it is loaded. Building to Orchestra.<pid>.dll
+# instead named the assembly after the process, so nothing could reference it.
+mkdir -p "$BUILD_DIR/tmp.$$"
+TMP_OUT="$BUILD_DIR/tmp.$$/Orchestra.dll"
+trap 'rm -rf "$BUILD_DIR/tmp.$$"' EXIT
 
 find_besiege() {
     if [[ -n "${BESIEGE_DIR:-}" ]]; then echo "$BESIEGE_DIR"; return; fi
@@ -131,7 +134,8 @@ fi
 if [[ -f "$XMLCHECK" ]]; then
     set +e
     TARGET_ASM="$XMLCHECK" "$BUILD_DIR/monohost" "$REPO_DIR/Orchestra"/*.xml \
-        "$SRC_DIR/OrchestraModule.cs" "$REPO_DIR/tools/make-block-meshes.py"
+        "$SRC_DIR/OrchestraModule.cs" "$SRC_DIR/LoaderModule.cs" \
+        "$REPO_DIR/tools/make-block-meshes.py" "$REPO_DIR/tools/make-arrow-mesh.py"
     xml_rc=$?
     set -e
     if [[ $xml_rc -ne 0 ]]; then
@@ -209,6 +213,31 @@ if [[ -f "$BLACKLIST" ]]; then
     fi
 else
     echo "(blacklist checker unavailable; skipping that check)" >&2
+fi
+
+# The converter is the one part of this mod that can be run outside the game --
+# it touches no Unity object -- so it is, against a score made up on the spot.
+# This is the same check `tools/make-song.py --self-test` makes of the tool that
+# writes the same machine from the command line.
+SONGCHECK="$BUILD_DIR/tmp.$$/songcheck.exe"
+set +e
+"$HOST" -target:exe -out:"$SONGCHECK" -lib:"$MANAGED" -lib:"$BUILD_DIR/tmp.$$" \
+    -r:System.dll -r:System.Xml.dll -r:UnityEngine.dll -r:Assembly-CSharp.dll \
+    -r:Orchestra.dll "$REPO_DIR/tools/tests/SongCheck.cs" >/dev/null
+song_rc=$?
+set -e
+if [[ $song_rc -eq 0 ]]; then
+    set +e
+    TARGET_ASM="$SONGCHECK" "$BUILD_DIR/monohost"
+    song_rc=$?
+    set -e
+    if [[ $song_rc -ne 0 ]]; then
+        echo >&2
+        echo >&2 "The MIDI converter does not write the machine it should."
+        exit 1
+    fi
+else
+    echo "(song check would not compile; skipping it)" >&2
 fi
 
 if [[ $CHECK_ONLY -eq 1 ]]; then
