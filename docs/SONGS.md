@@ -54,6 +54,55 @@ That path is for *showing*, though. A file chosen from the list is remembered by
 an absolute path is only used for something typed by hand or picked from the
 system dialog, and even then the name is tried in the Songs folder first.
 
+### Tempo
+
+The panel's TEMPO slider is a readout most of the time and a setting when it is
+wanted. Reading a file sets it to that file's own starting tempo, and picking
+another file sets it again; moving it or typing into it stops that, until the next
+file.
+
+The two states are not the same conversion. Following the file passes
+`SongOptions.Tempo = 0`, which keeps the file's **whole tempo map** -- a score that
+slows down for eight bars still slows down. A number in the slider replaces the map
+with one tempo for the length of the piece. That is why "follow the file" is a
+control of its own rather than a comparison against the number in the box: the two
+would look identical at the moment a file is read and behave differently after it.
+
+Both are saved with the machine, being ordinary mapper controls.
+
+MIDI files in the wild carry some remarkable tempos. The Chopin nocturne bundled
+here arrived from Online Sequencer claiming **999 bpm**, which put a four-minute
+piece into thirteen seconds; the file was wrong, not the converter, and it has been
+rewritten to the 50 bpm the notes were written for. The slider is what makes the
+next one survivable -- and the summary line says which tempo the length above it
+was worked out at, so an absurd one shows up before a thousand blocks are placed
+for it.
+
+### Songs that ship with the mod
+
+`ModIO` has two roots, chosen by the `data` flag every one of its methods takes:
+the mod's **data** folder above, which the player can write to, and the mod's
+**own** folder, which is the directory a Workshop subscription downloads into.
+Anything in `Orchestra/Songs/` is read from the second and listed with
+`(built-in) ` in front of its name.
+
+Nothing has to be declared for it. A MIDI file is read as bytes rather than loaded
+as a resource, and a mod's folder is uploaded to the Workshop **whole** —
+`ModListUI.CreateUploadData` sets `UploadData.Path` to `ModInfo.Directory` and
+`IsFolder` true, and `Mod.xml` never filters it — so a file dropped into that
+folder ships with the mod as it stands.
+
+The mark is not decoration. All the block keeps of a chosen song is its *name*, so
+the name is what has to say which of the two folders to read it back out of, and
+it is also what keeps a bundled song and a player's own of the same name from
+being one entry. Built-ins are listed after the player's own files: they are the
+same for everybody, and what somebody put in their own folder is what they opened
+the list for.
+
+An update replaces the mod's folder whole, so nothing a player made belongs in it.
+That is what the data folder is for, and it is what every button on the panel
+points at.
+
 There is no "browse" button, and cannot usefully be one: Besiege ships a file
 dialog (`SFB.StandaloneFileBrowser`, which the game itself never calls) that can
 show you the whole disk, and `ModIO` will open nothing outside the mod's own

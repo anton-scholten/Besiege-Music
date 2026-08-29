@@ -37,7 +37,8 @@ class SongCheck
         {
             // Given a real file, say what the converter makes of it, so it can be
             // held against what `tools/make-song.py` says about the same score.
-            return Report(args[0], args.Length > 1 ? args[1] : "Piano");
+            return Report(args[0], args.Length > 1 ? args[1] : "Piano",
+                          args.Length > 2 ? float.Parse(args[2]) : 0f);
         }
 
         byte[] file = Score();
@@ -164,15 +165,21 @@ class SongCheck
 
     /// <summary>What one real file comes to, in the same words the Python tool
     /// prints. Not part of the build's check: a way to compare the two.</summary>
-    static int Report(string path, string instrument)
+    static int Report(string path, string instrument, float bpm)
     {
         SongOptions options = new SongOptions();
         options.Instrument = instrument;
+        // Nought follows the file's own tempo map, as the panel does until
+        // somebody moves its TEMPO slider; anything else flattens the score to
+        // that one speed, as the slider then does.
+        options.Tempo = bpm;
         SongPlan plan = Song.Convert(File.ReadAllBytes(path), options);
         Console.WriteLine(Path.GetFileName(path) + ": " + plan.Notes + " notes, "
                           + plan.Voices + " instrument block(s), "
                           + (plan.Voices + plan.Timers + 1) + " blocks, "
-                          + plan.Seconds.ToString("0.0") + " seconds");
+                          + plan.Seconds.ToString("0.0") + " seconds, file says "
+                          + plan.FileBpm.ToString("0.##") + " bpm"
+                          + (bpm > 0f ? ", played at " + bpm.ToString("0.##") : ""));
         if (plan.Crowded > 0)
         {
             Console.WriteLine("  " + plan.Crowded + " note(s) fell inside another "

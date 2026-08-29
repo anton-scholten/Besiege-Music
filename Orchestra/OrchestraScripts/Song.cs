@@ -71,6 +71,10 @@ namespace OrchestraMod
         public int Timers;
         public float Seconds;
 
+        /// <summary>The tempo the file itself starts at, whatever this was
+        /// converted at: the number the panel's TEMPO slider goes back to.</summary>
+        public float FileBpm = 120f;
+
         /// <summary>Notes that fell inside another note on the same block and went.</summary>
         public int Crowded;
 
@@ -183,7 +187,9 @@ namespace OrchestraMod
             {
                 throw new Exception("there are no notes in that file");
             }
-            return Plan(notes, options);
+            SongPlan plan = Plan(notes, options);
+            plan.FileBpm = midi.StartBpm;
+            return plan;
         }
 
         /// <summary>The conversion proper, from notes already read.</summary>

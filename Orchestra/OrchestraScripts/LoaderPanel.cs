@@ -31,9 +31,16 @@ namespace OrchestraMod
         private const float ButtonHeight = RowHeight * 1.5f;
 
 
-        /// <summary>Two lines of path at 13pt, which is what a real install's
-        /// folder comes to across a mapper-width window.</summary>
-        private const float PathHeight = 34f;
+        /// <summary>Three lines of path at 13pt, with <see cref="PathLines"/>'s
+        /// spacing between them: a Steam library on another drive runs to three
+        /// across a mapper-width window, and a path cut off mid-way hides the half
+        /// that says which install it is.</summary>
+        private const float PathHeight = 56f;
+
+        /// <summary>A little air between the wrapped lines. Unity packs them at the
+        /// font's own line height, which for a path -- all descenders and slashes --
+        /// reads as one block of text rather than three lines.</summary>
+        private const float PathLines = 1.2f;
 
         /// <summary>How many lines the summary is given. Fixed, so the window is
         /// the same height whatever it has to say and does not jump about as a
@@ -322,6 +329,7 @@ namespace OrchestraMod
             {
                 folderPath.horizontalOverflow = HorizontalWrapMode.Wrap;
                 folderPath.verticalOverflow = VerticalWrapMode.Truncate;
+                folderPath.lineSpacing = PathLines;
             }
             return y + PathHeight + RowGap;
         }
@@ -398,7 +406,25 @@ namespace OrchestraMod
             y = AddSlider(y, "RANGE", block.Range, false);
             y = AddSlider(y, "TRANSPOSE", block.Transpose, false);
             y = AddSlider(y, "DELAY", block.Delay, false);
+            y = AddSlider(y, "TEMPO", block.Tempo, false);
             return y + RowGap;
+        }
+
+        /// <summary>
+        /// The part of TEMPO worth dragging through. The slider accepts anything a
+        /// file can say -- one arrived claiming 999 bpm -- but a handle that had to
+        /// cover all of that would be useless for the sixty or so anybody means.
+        /// Typing is not limited to this; the box takes the rest.
+        /// </summary>
+        protected override void Span(MSlider bound, out float min, out float max)
+        {
+            if (block != null && bound != null && bound == block.Tempo)
+            {
+                min = 20f;
+                max = 240f;
+                return;
+            }
+            base.Span(bound, out min, out max);
         }
 
         /// <summary>One of UI Factory's square picture buttons, with a drawn
@@ -550,6 +576,31 @@ namespace OrchestraMod
             }
             ShowFiles();
             ShowChoices();
+            ShowSliders();
+            Describe();
+            filling = false;
+        }
+
+        /// <summary>
+        /// Puts the sliders and their boxes on what the block's own settings say.
+        ///
+        /// Its own method because the block moves them itself: TEMPO follows the
+        /// file, so reading a file changes a setting the player did not touch, and
+        /// a panel that only did this when it was first filled showed the tempo of
+        /// the file *before* the one now chosen. It has to run wherever the block
+        /// is asked to read something -- which is `Chose` and `Reread` as well as
+        /// here.
+        ///
+        /// `filling` is saved rather than set and cleared: writing a slider raises
+        /// its own changed event, which without the guard would commit the value
+        /// straight back and, for TEMPO, read as somebody having moved it. Called
+        /// from inside a fill as well as outside one, so it has to leave the flag
+        /// as it found it.
+        /// </summary>
+        private void ShowSliders()
+        {
+            bool was = filling;
+            filling = true;
             for (int i = 0; i < rows.Count; i++)
             {
                 Row row = rows[i];
@@ -563,8 +614,7 @@ namespace OrchestraMod
                 }
                 Write(row);
             }
-            Describe();
-            filling = false;
+            filling = was;
         }
 
         /// <summary>
@@ -625,7 +675,13 @@ namespace OrchestraMod
                 ? "Starts with the simulation -- no key is bound."
                 : "Starts " + block.Delay.Value.ToString("0.0") + " s after "
                   + block.KeyName() + " is pressed.";
-            Line(3, lost.Length > 0 ? lost : starts);
+            // Which tempo the length above was worked out at, and whose it is: a
+            // file that says something absurd is worth catching before a thousand
+            // blocks are placed for it.
+            string beat = block.Tempo == null ? "" :
+                "  --  " + block.Tempo.Value.ToString("0.#") + " bpm"
+                + (block.TempoFromFile ? " (the file's)" : " (set here)");
+            Line(3, (lost.Length > 0 ? lost : starts) + beat);
             shownFor = Fingerprint();
             Say(block.Trouble, block.Trouble == null ? UIF.QuietInk : Bad);
         }
@@ -795,8 +851,14 @@ namespace OrchestraMod
             {
                 return;
             }
-            block.Path = files[which];
-            block.Analyse();
+            // Through SetFile rather than by writing Path: a new file brings its
+            // own tempo, and that is where the TEMPO slider is put back to
+            // following it.
+            block.SetFile(files[which]);
+            // The file may have moved TEMPO, which is a control the player is
+            // looking at: show it, rather than leaving the last file's number under
+            // a summary written for this one.
+            ShowSliders();
             Describe();
         }
 
@@ -987,6 +1049,7 @@ namespace OrchestraMod
                 return;
             }
             block.Analyse();
+            ShowSliders();
             Describe();
         }
 
@@ -1001,6 +1064,8 @@ namespace OrchestraMod
                  + block.Range.Value.ToString("0.###") + "|"
                  + block.Transpose.Value.ToString("0.###") + "|"
                  + block.Delay.Value.ToString("0.###") + "|"
+                 + block.Tempo.Value.ToString("0.###") + "|"
+                 + (block.TempoFromFile ? "file" : "set") + "|"
                  + (block.KeyName() == null ? "-" : block.KeyName());
         }
 

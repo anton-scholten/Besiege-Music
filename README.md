@@ -109,17 +109,24 @@ else is in the panel docked underneath:
 2. **VOLUME**, **RANGE**, **TRANSPOSE** and **DELAY** are what every block it
    writes is set to. Delay is the pause between the key and the first note — a
    machine dropped into a level is usually still falling for the first second.
-3. **FOLDER** is where MIDI files go:
+3. **TEMPO** is the speed in beats per minute. It follows the file — picking a new
+   one puts it back to whatever that file says — until you move it or type a
+   number, and then that is what gets built. Left alone it keeps a score's own
+   tempo changes; set by hand it plays the whole thing at one speed.
+4. **FOLDER** is where MIDI files go:
    `Besiege_Data/Mods/Data/Orchestra_<id>/Songs`. It can be typed into, to point
    at another folder *inside the mod's data directory* — Besiege lets a mod read
    nowhere else, which is also why there is no "browse" dialog. The two buttons
    open it in your file manager and list it again, for a file dropped in while the
    game is running.
-4. **FILE** lists what is in that folder — click it and pick one.
-5. The summary says how long the song is, how many notes survived, and what it
+5. **FILE** lists what is in that folder — click it and pick one. Songs that ship
+   with the mod are listed after your own with **(built-in)** in front of them, so
+   a bundled `waltz.mid` and one of yours by the same name are both there and
+   neither hides the other.
+6. The summary says how long the song is, how many notes survived, and what it
    will cost in blocks — an instrument block per distinct voice, a timer per note
    — before you commit to any of it.
-6. **ADD TO MACHINE** drops those blocks into the machine you are building,
+7. **ADD TO MACHINE** drops those blocks into the machine you are building,
    already selected, so you can drag them where you want them. **SAVE AS MACHINE**
    does the same and then opens Besiege's own save screen over it, where
    **SELECTION ONLY** saves just those blocks — the game names the file, asks

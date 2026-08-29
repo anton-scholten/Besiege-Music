@@ -84,9 +84,51 @@
   easing back out over a third of a second when the note is let go, so a bowed
   note is one movement from the bow landing to the bow leaving. Only the blocks
   that can hold a note do it, which is the same set that has a Toggle.
+- A **TEMPO slider** on the loader block, in beats per minute. It shows whatever
+  the file says as soon as one is read and goes back to following the file every
+  time another is picked; move it or type into it and that number is what ADD and
+  SAVE use instead. Following the file is not the same as asking for the tempo the
+  file starts at -- a score that changes speed part way through keeps every one of
+  its changes, where a number here flattens the whole of it to one speed -- so the
+  two are kept apart by a control of their own, saved with the machine like every
+  other setting. The summary says which it is using.
+  The panel shows its sliders again whenever the block reads a file, not only when
+  it is filled: TEMPO is the first setting here the *block* moves rather than the
+  player, and without that the handle kept the last file's number under a summary
+  written for the new one until the reload button was pressed.
+- **Songs can ship with the mod.** Anything in `Orchestra/Songs/` is listed in the
+  loader's file selector after the player's own, with `(built-in)` in front of it,
+  and read out of the mod's own folder rather than its data one -- `ModIO`'s other
+  root, and the directory a Workshop subscription downloads into. Nothing needs
+  declaring: a MIDI file is read as bytes, and a mod's folder is uploaded whole
+  (`UploadData.Path` is `ModInfo.Directory`, `IsFolder` true). The mark is what
+  makes it work as well as what it says -- a chosen song is kept by name alone, so
+  the name has to say which folder to read it back from, and a bundled `waltz.mid`
+  and a player's own of the same name can both be in the list.
 
 **Fixed**
 
+- The bundled **Chopin Nocturne declared 999 bpm** and played in 13 seconds. The
+  fault was in the file, not the converter: Online Sequencer had written a tempo
+  meta of 60060 microseconds per quarter where the sequence is 50 bpm (210 quarters
+  against a 251-second recording of the same arrangement). Rewritten in place to
+  1200000, which is 50 bpm, and it now comes to 257 seconds. Every other download
+  from that site in this repository carries a sensible tempo.
+- `Midi.StartBpm`, added for the slider above, reported **120 for every file**: it
+  took the first mark in the tempo map, which is the assumed 120 the map is seeded
+  with, where the one in force at tick 0 is the *last* mark there -- what the
+  binary search that times the notes lands on. Caught by
+  `tools/tests/SongCheck.cs`, which now prints the file's own tempo and takes a
+  tempo to play at, so both converters can be compared on the same real file.
+- `tools/make-song.py` played **every file faster than 120 bpm at 120 bpm**. Its
+  tempo map starts with the MIDI default, `(0, 500000)`, and `changes.sort()`
+  sorted the *tuples*: a file whose own tick-0 tempo is faster is a smaller
+  microsecond count, so it sorted ahead of the default and the walk that follows
+  took the default as the later of the two. Sorting by tick alone fixes it --
+  Python's sort is stable, so the default stays first and the file's own tempo
+  wins. `Sax.mid` (160 bpm) was coming out 33% slow, and the in-game converter,
+  whose twin of this bug was fixed earlier, disagreed with the tool on any such
+  file.
 - A generated song came out played on **another mod's blocks** -- Sound Blocks'
   sound block, wherever that mod's ids happened to land. The loader worked out its
   instruments' ids by arithmetic from its own, `base + localId`, which assumes a
@@ -169,6 +211,10 @@
   caret where it was clicked rather than the whole path selected for the next key
   to wipe, and a double click takes the lot. This Unity is older than
   `InputField.onFocusSelectAll`, so it is done on the click.
+- The folder path under the loader's FOLDER box wraps onto three lines rather than
+  two, with a little air between them (`lineSpacing` 1.2): a Steam library on
+  another drive runs past two, and a path cut off mid-way hides the half that says
+  which install it is.
 - Text that is read or typed is a size larger (15pt, up from 13): every input
   field in both panels, every toggle's lettering, and the folder path under the
   loader's folder box, which was 10pt and is now 13 across two lines.

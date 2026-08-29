@@ -38,6 +38,30 @@ namespace OrchestraMod
         /// The default; <see cref="SongFolder"/> is what is actually used.</summary>
         public const string DefaultSongFolder = "Songs";
 
+        /// <summary>
+        /// What a song that ships with the mod is listed as.
+        ///
+        /// Songs come from two places and are shown in one list, so the two have to
+        /// be told apart by name alone -- a name is all the block keeps, and all
+        /// <see cref="Read"/> is given. The mark does that and says which is which
+        /// in the same breath, so a player's own `waltz.mid` and a bundled one can
+        /// both be in the list without either hiding the other.
+        /// </summary>
+        public const string BuiltInMark = "(built-in) ";
+
+        /// <summary>Whether a listed name is one of the mod's own songs.</summary>
+        public static bool IsBuiltIn(string name)
+        {
+            return name != null && name.StartsWith(BuiltInMark);
+        }
+
+        /// <summary>A listed name with the mark taken off, which is the file's own
+        /// name on disk.</summary>
+        public static string Bare(string name)
+        {
+            return IsBuiltIn(name) ? name.Substring(BuiltInMark.Length) : name;
+        }
+
         /// <summary>Where the songs are kept, as a path under the mod's data
         /// folder. Editable in the panel, and remembered between sessions -- but
         /// always inside that folder, rule 1 above leaving nowhere else to look.</summary>
@@ -151,6 +175,23 @@ namespace OrchestraMod
             if (string.IsNullOrEmpty(path))
             {
                 throw new Exception("no file chosen");
+            }
+
+            // A song that ships with the mod, which is in the mod's own folder
+            // rather than the player's data one -- the other root ModIO offers, and
+            // the one a Workshop download lands in.
+            if (IsBuiltIn(path))
+            {
+                string shipped = DefaultSongFolder + "/" + Leaf(Bare(path));
+                if (Ask(shipped, false))
+                {
+                    byte[] own = Modding.ModIO.ReadAllBytes(shipped, false);
+                    Log.Info("read " + shipped + " from the mod's own folder ("
+                             + own.Length + " bytes)");
+                    return own;
+                }
+                throw new Exception("there is no " + Leaf(Bare(path))
+                    + " in the songs this mod ships with; press the reload arrow.");
             }
 
             // Always by name, inside the songs folder. A mod may not read anywhere
@@ -279,7 +320,57 @@ namespace OrchestraMod
                 Log.Warn("could not list " + SongsPath() + ": " + e.Message);
             }
             found.Sort();
-            Log.Info("songs: " + found.Count + " file(s) in " + SongsPath());
+
+            // The mod's own, after the player's: they are always there, they are
+            // the same for everybody, and what somebody put in their own folder is
+            // what they came to the list for.
+            List<string> shipped = BuiltIn();
+            found.AddRange(shipped);
+            Log.Info("songs: " + (found.Count - shipped.Count) + " file(s) in "
+                     + SongsPath() + ", " + shipped.Count + " shipped with the mod");
+            return found;
+        }
+
+        /// <summary>
+        /// The songs that ship with the mod, marked as such.
+        ///
+        /// These live in the mod's **own** folder, not the player's data one --
+        /// `ModIO`'s other root, which is the directory a Workshop subscription
+        /// downloads into and which an update replaces whole. Nothing is written
+        /// there and nothing needs to be: a mod's folder is uploaded entire
+        /// (`UploadData.Path` is `ModInfo.Directory`, `IsFolder` true), so a file
+        /// dropped into `Orchestra/Songs/` ships with the mod as it stands.
+        ///
+        /// Always this folder, whatever the panel's box is pointed at: the box
+        /// names a folder under the *data* directory, and the mod's own songs are
+        /// not in it and cannot be moved out of it.
+        /// </summary>
+        private static List<string> BuiltIn()
+        {
+            List<string> found = new List<string>();
+            string folder = DefaultSongFolder + "/";        // a folder: rule 2
+            try
+            {
+                if (!Modding.ModIO.ExistsDirectory(folder, false))
+                {
+                    return found;           // this build ships no songs
+                }
+                string[] all = Modding.ModIO.GetFiles(folder, false);
+                for (int i = 0; i < all.Length; i++)
+                {
+                    string lower = all[i].ToLower();
+                    if (lower.EndsWith(".mid") || lower.EndsWith(".midi"))
+                    {
+                        found.Add(BuiltInMark + Leaf(all[i]));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Warn("could not list the songs shipped with the mod: "
+                         + e.Message);
+            }
+            found.Sort();
             return found;
         }
 

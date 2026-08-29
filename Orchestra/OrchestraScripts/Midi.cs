@@ -285,6 +285,36 @@ namespace OrchestraMod
             return marks;
         }
 
+        /// <summary>
+        /// The tempo the file itself starts at, in beats per minute -- what the
+        /// panel's TEMPO slider is set to when a file is picked, so the number it
+        /// shows is the file's own until somebody changes it.
+        ///
+        /// Read through the same tempo map the notes are timed by, rather than by
+        /// hunting for the first tempo event: the rules about which of two events
+        /// at tick 0 wins are in there, and a second copy of them would be a second
+        /// chance to get them wrong.
+        /// </summary>
+        public float StartBpm
+        {
+            get
+            {
+                List<Mark> marks = Tempos(0f);
+                // The *last* mark at tick 0, not the first. The map is seeded with
+                // MIDI's assumed 120 bpm and a file that sets its own tempo there
+                // adds a second mark at the same tick; the later one is the one in
+                // force, which is what the binary search in SecondsAt lands on and
+                // so what every note is timed by. Taking marks[0] reported 120 for
+                // every file in the world.
+                int micros = 500000;
+                for (int i = 0; i < marks.Count && marks[i].Tick <= 0; i++)
+                {
+                    micros = marks[i].Micros;
+                }
+                return micros <= 0 ? 120f : (float)(60000000.0 / micros);
+            }
+        }
+
         private static int ByTick(int[] a, int[] b)
         {
             int first = a[0].CompareTo(b[0]);

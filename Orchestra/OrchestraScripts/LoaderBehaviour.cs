@@ -23,7 +23,40 @@ namespace OrchestraMod
         private MSlider RangeSlider;
         private MSlider TransposeSlider;
         private MSlider DelaySlider;
+        private MSlider TempoSlider;
         private MKey StartKeyBinding;
+
+        /// <summary>Set when somebody has put a tempo in by hand, which is the
+        /// opposite of <see cref="TempoFromFile"/> and the same thing. A control
+        /// rather than a field so it is saved with the machine, undone with it and
+        /// sent over multiplayer with it, as every other setting here is; hidden
+        /// from Besiege's mapper with the rest while the panel is up.</summary>
+        private MToggle TempoSetToggle;
+
+        /// <summary>
+        /// The TEMPO slider is showing the file's own tempo and should follow it.
+        ///
+        /// True until somebody moves the slider or types into its box, and true
+        /// again the moment another file is picked -- so a score is played as it
+        /// was written unless you say otherwise, and saying otherwise lasts as long
+        /// as you are working on that file.
+        /// </summary>
+        public bool TempoFromFile
+        {
+            get { return TempoSetToggle == null || !TempoSetToggle.IsActive; }
+            set
+            {
+                if (TempoSetToggle != null)
+                {
+                    TempoSetToggle.IsActive = !value;
+                }
+            }
+        }
+
+        /// <summary>The last value this block wrote to that slider, which is how a
+        /// value somebody else put there is recognised: `MSlider` raises no event
+        /// worth hooking, and the panel polls its other controls the same way.</summary>
+        private float tempoWritten = -1f;
 
         private readonly List<string> families = new List<string>();
 
@@ -78,6 +111,15 @@ namespace OrchestraMod
             // machine dropped into a level is usually still falling for the first
             // second of it.
             DelaySlider = AddSlider("Delay", "LeadKey", 1f, 0f, 10f);
+
+            // Beats per minute. Set to whatever the file says as soon as one is
+            // read, and left alone after that until another file is picked -- so
+            // it is a readout most of the time and a setting when it is wanted.
+            // The range takes anything a file can hold: a MIDI tempo is three bytes
+            // of microseconds, and files in the wild carry some absurd ones -- the
+            // score this was written for arrived claiming 999.
+            TempoSlider = AddSlider("Tempo", "TempoKey", 120f, 5f, 999f);
+            TempoSetToggle = AddToggle("Tempo set by hand", "TempoSetKey", false);
 
             // The one control left in Besiege's own mapper: every timer this block
             // writes waits for this key, so binding it here binds the whole song.
@@ -159,6 +201,8 @@ namespace OrchestraMod
             RangeSlider.DisplayInMapper = show;
             TransposeSlider.DisplayInMapper = show;
             DelaySlider.DisplayInMapper = show;
+            TempoSlider.DisplayInMapper = show;
+            TempoSetToggle.DisplayInMapper = show;
             // StartKeyBinding is deliberately untouched: the panel shows no key,
             // and Besiege's own key capture is the only thing that can rebind one.
         }
@@ -192,6 +236,7 @@ namespace OrchestraMod
         public MSlider Range { get { return RangeSlider; } }
         public MSlider Transpose { get { return TransposeSlider; } }
         public MSlider Delay { get { return DelaySlider; } }
+        public MSlider Tempo { get { return TempoSlider; } }
 
         /// <summary>The instrument every pitched part goes to, as the converter
         /// wants it: the block, and the instrument within it after a colon.</summary>
@@ -225,6 +270,12 @@ namespace OrchestraMod
             options.Transpose = TransposeSlider == null
                 ? 0 : Mathf.RoundToInt(TransposeSlider.Value);
             options.Offset = DelaySlider == null ? 1f : DelaySlider.Value;
+            // Nought means "follow the file", which is not the same as asking for
+            // the tempo the file starts at: a score that changes tempo part way
+            // through keeps every one of its changes, where a number here flattens
+            // the whole of it to one speed.
+            options.Tempo = TempoFromFile || TempoSlider == null
+                ? 0f : TempoSlider.Value;
             // Every timer waits its own time from that key, so one press -- by hand
             // or emulated by anything else on the machine -- starts the whole song.
             // With no key bound there is nothing to wait for, and the timers start
@@ -283,12 +334,14 @@ namespace OrchestraMod
             {
                 return;
             }
+            NoticeTempo();
             try
             {
                 SongPlan plan = Song.Convert(Files.Read(Path), Options());
                 plan.Name = Files.NameOf(Path);
                 Plan = plan;
                 Files.Remember(Path);
+                ShowFileTempo(plan.FileBpm);
             }
             catch (Exception e)
             {
@@ -297,6 +350,63 @@ namespace OrchestraMod
                 // is the difference between "no file" and a parse that fell over
                 // in a way worth reporting.
                 Log.Warn("could not read " + Path + ": " + e.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Points the block at another song, and reads it.
+        ///
+        /// A new file brings its own tempo with it: the slider goes back to
+        /// following whatever the file says, whatever it was set to for the last
+        /// one. Same file, no change -- so redrawing the panel does not undo a
+        /// tempo somebody typed.
+        /// </summary>
+        public void SetFile(string path)
+        {
+            string wanted = path == null ? "" : path;
+            if (wanted == Path)
+            {
+                return;
+            }
+            Path = wanted;
+            TempoFromFile = true;
+            // Nothing has been written to the slider for *this* file yet. Without
+            // this the value left over from the last one reads as somebody having
+            // just moved the slider, and the tempo would go back to being set by
+            // hand the moment a new file was picked.
+            tempoWritten = -1f;
+            Analyse();
+        }
+
+        /// <summary>Whether the slider has been moved since this block last wrote
+        /// to it, which is the only sign there is that somebody set it by hand.</summary>
+        private void NoticeTempo()
+        {
+            // `tempoWritten` below nought means nothing has been put in the slider
+            // this session, so there is nothing yet to have been moved away from --
+            // a block just loaded out of a machine is in that state, and its toggle
+            // already says which of the two it is.
+            if (TempoFromFile && TempoSlider != null && tempoWritten >= 0f
+                && Mathf.Abs(TempoSlider.Value - tempoWritten) > 0.01f)
+            {
+                TempoFromFile = false;
+            }
+        }
+
+        /// <summary>Puts the file's own tempo in the slider, while it is following
+        /// one. Remembered as well as written, so the next look can tell this value
+        /// from one somebody dragged to.</summary>
+        private void ShowFileTempo(float bpm)
+        {
+            if (!TempoFromFile || TempoSlider == null || bpm <= 0f)
+            {
+                return;
+            }
+            float shown = Mathf.Clamp(bpm, TempoSlider.Min, TempoSlider.Max);
+            tempoWritten = shown;
+            if (Mathf.Abs(TempoSlider.Value - shown) > 0.01f)
+            {
+                TempoSlider.Value = shown;
             }
         }
 

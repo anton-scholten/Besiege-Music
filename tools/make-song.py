@@ -180,7 +180,14 @@ class Midi(object):
                 for tick, kind, a, _ in track:
                     if kind == "tempo":
                         changes.append((tick, a))
-            changes.sort()
+            # By tick alone, and not by the whole tuple. Sorting the tuples
+            # compares the microseconds when two tempos share a tick, so a file
+            # whose own tick-0 tempo is *faster* than 120 bpm -- a smaller number
+            # -- sorted ahead of the default above and the walk below then took
+            # the default as the later one. Every such file was played at 120.
+            # Python's sort is stable, so keying on the tick keeps the default
+            # first and whatever the file said last, which is what wins.
+            changes.sort(key=lambda change: change[0])
 
         # Walk the map once, remembering where each segment starts in seconds.
         marks = []
