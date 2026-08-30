@@ -412,10 +412,17 @@ def build(notes, options, families):
     for start, length, pitch, velocity, channel, track in notes:
         voice = assign(pitch, channel, track, families, options)
         data = place(TIMER)
-        if options.key:
+        if getattr(options, "variable", None):
+            # A variable instead of the keyboard, which is what the loader block
+            # writes when its own key is set to one. The keycode alongside is never
+            # answered to -- with Use=True the key listens to the name -- but it has
+            # to be there: Machine.InitSimBlock registers a key once per keycode it
+            # holds, so a key with none is filed under no name and hears nothing.
+            variable_key(data, TIMER_START, options.variable, options.key or "C")
+        elif options.key:
             # Every timer waits its own time from the moment the key is pressed,
             # so one press starts the song. `automatic` would start it with the
-            # simulation instead, which is the default.
+            # simulation instead, which is what --key none asks for.
             keyed = ET.SubElement(data, "StringArray", {"key": TIMER_START})
             ET.SubElement(keyed, "String").text = options.key
         else:
@@ -506,10 +513,14 @@ KEY_ALIASES = {
 
 
 def keycode(name):
-    """A key name as Unity spells it, or None."""
+    """A key name as Unity spells it, or None for "start with the simulation"."""
     if not name:
         return None
     plain = name.strip()
+    # The way to ask for no key at all, now that there is a key by default. The
+    # block in game says the same thing by having nothing bound to its mapper.
+    if plain.lower() in ("none", "off", "-"):
+        return None
     if plain.lower() in KEY_ALIASES:
         return KEY_ALIASES[plain.lower()]
     if len(plain) == 1 and plain.isalpha():
@@ -594,8 +605,9 @@ def main():
     parser.add_argument("--tempo", type=float,
                         help="override the file's tempo, in bpm")
     parser.add_argument("--transpose", type=int, default=0, help="in semitones")
-    parser.add_argument("--offset", type=float, default=1.0,
-                        help="seconds of quiet before the first note (default 1)")
+    parser.add_argument("--offset", type=float, default=0.0,
+                        help="seconds of quiet before the first note (default 0, "
+                             "as the loader block's DELAY)")
     parser.add_argument("--gap", type=float, default=0.06,
                         help="silence between two notes on one block (default 0.06 s)")
     parser.add_argument("--from", dest="skip", type=float, default=0.0,
@@ -614,9 +626,14 @@ def main():
                         help="scales every block's volume")
     parser.add_argument("--range", type=float, default=120.0,
                         help="how far each block carries")
-    parser.add_argument("--key", metavar="KEYCODE",
-                        help="start the song on a keypress instead of with the "
-                             "simulation, as in --key Space")
+    parser.add_argument("--key", metavar="KEYCODE", default="M",
+                        help="the key every timer waits for (default M, as the "
+                             "loader block's own key mapper). --key none starts "
+                             "the song with the simulation instead")
+    parser.add_argument("--variable", metavar="NAME",
+                        help="the variable every timer waits for, instead of the "
+                             "keyboard -- what the loader block does when its own "
+                             "key is set to a variable rather than a key")
     parser.add_argument("--no-drums", action="store_true",
                         help="treat channel 10 as pitched, not as a kit")
     parser.add_argument("--install", action="store_true",
@@ -780,6 +797,22 @@ def self_test(options):
     # Timers start with the simulation unless a key is asked for.
     assert all(t.find("Data/Boolean[@key='%s']" % TIMER_AUTO) is not None
                for t in timers), "a timer does not start with the simulation"
+    # A variable in place of the keyboard: the timers listen to the name, and the
+    # keycode has to be there to be counted -- see variable_key.
+    options.key = keycode("M")
+    options.variable = "start-me"
+    varied, _, _ = build(notes, options, families)
+    started = [t for t in varied.iter("StringArray") if t.get("key") == TIMER_START]
+    assert len(started) == 10, "expected 10 started timers, got %d" % len(started)
+    said = [e.text for e in started[0]]
+    assert said == ["M", "Message=start-me", "Use=True"], \
+        "a timer on a variable reads %s" % said
+    assert not [t for t in varied.iter("Boolean") if t.get("key") == TIMER_AUTO], \
+        "a timer on a variable is still automatic"
+    options.variable = None
+
+    assert keycode("none") is None, "--key none should mean no key at all"
+    assert keycode("M") == "M", "a plain letter should stay itself"
     options.key = keycode("space")
     assert options.key == "Space", "key alias: %s" % options.key
     keyed, _, _ = build(notes, options, families)

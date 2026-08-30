@@ -25,6 +25,35 @@ Any of these can be the source; none is redistributed, only the cut samples.
 | GeneralUser GS | 29.8 MB | Permissive, unrestricted use |
 | MuseScore_General | 35.9 MB | MIT |
 
+## The pianos are not all cut
+
+GeneralUser GS gives GM presets 0, 1 and 3 -- Grand, Bright and Honky-tonk -- **the
+same sample set**. What separates them is the preset's *generators*: tuning, filter
+cutoff, envelope, and for honky-tonk a second instrument zone detuned against the
+first. `extract-samples.py` takes the sample a preset points at and drops the
+generators, so all three came out of it as one recording, byte for byte once
+decoded. Three of the four piano types sounded identical; only the Rhodes did not.
+
+`tools/derive-pianos.py` puts the difference back, from the grand:
+
+* **Honky-tonk** is a piano whose unison strings have drifted apart, so it is the
+  grand mixed against a copy of itself 14 cents sharp. The copy is faded out
+  before the sustain loop and is not inside it: `Voices` jumps from `loopEnd` back
+  to `loopStart` with no crossfade, and a second layer whose phase does not match
+  across that jump clicks once a bar. A struck piano is ringing out by then anyway.
+* **Upright** is a smaller instrument in a smaller box: two poles rolling off above
+  1800 Hz, which leaves it half the grand's 1--3 kHz and a twentieth of its top,
+  and a shorter `decay` in Piano.xml for the sustain.
+
+Both are built **from the grand every time**, not from the file they replace, so
+running the tool twice is the same as running it once -- a filter applied to its
+own output darkens further on every pass. All three types share the grand's
+lengths and therefore its loop points.
+
+The other 26 sampled instruments were checked the same way and are all distinct;
+the closest pair anywhere else is clean and steel guitar at note 40, which
+correlate at 0.51 and are plainly two recordings.
+
 ## Cutting them
 
 ```sh

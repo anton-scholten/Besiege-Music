@@ -421,14 +421,34 @@ namespace OrchestraMod
             return note;
         }
 
+        /// <summary>
+        /// Notes in playing order, ties broken all the way down.
+        ///
+        /// The same order `tools/make-song.py` gets, which sorts the tuple
+        /// `(start, length, pitch, velocity, channel, track)` -- so this compares
+        /// the same six things in the same order. It matters twice: the note limit
+        /// keeps the first N of this order, and voices are numbered in it, so two
+        /// notes struck at the same instant landing either way round is two
+        /// different machines.
+        ///
+        /// It has to be a total order, not just a nearly-total one. `List.Sort` is
+        /// not stable, so anything left tied here can come out differently between
+        /// two runs of the same file -- comparing only the start and the pitch left
+        /// that open, and left this converter disagreeing with the tool about which
+        /// note was the 1200th.
+        /// </summary>
         private static int ByStart(MidiNote a, MidiNote b)
         {
-            int first = a.Start.CompareTo(b.Start);
-            if (first != 0)
-            {
-                return first;
-            }
-            return a.Pitch.CompareTo(b.Pitch);
+            int order = a.Start.CompareTo(b.Start);
+            if (order != 0) { return order; }
+            order = a.Length.CompareTo(b.Length);
+            if (order != 0) { return order; }
+            order = a.Pitch.CompareTo(b.Pitch);
+            if (order != 0) { return order; }
+            order = a.Velocity.CompareTo(b.Velocity);
+            if (order != 0) { return order; }
+            order = a.Channel.CompareTo(b.Channel);
+            return order != 0 ? order : a.Track.CompareTo(b.Track);
         }
     }
 }

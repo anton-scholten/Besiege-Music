@@ -78,6 +78,22 @@ next one survivable -- and the summary line says which tempo the length above it
 was worked out at, so an absurd one shows up before a thousand blocks are placed
 for it.
 
+### The note limit
+
+A timer per note, so the note limit is most of the block count: 1200 notes is a
+machine of about 1260 blocks. It is the panel's NOTE LIMIT slider, 1200 by default
+and 10000 at the most, and `--limit` in `tools/make-song.py` with the same default.
+
+Unlike TEMPO it does not follow the file. What the number is for is how large a
+machine you are willing to run, which has nothing to do with how many notes the
+score happens to have; the summary says how many the current number leaves behind,
+redrawn when the drag settles rather than on every frame of it -- reading a long
+score is not something to do sixty times a second.
+
+Notes past the limit are dropped from the end, after everything else has been
+worked out, so a truncated song is the beginning of the piece rather than a thinned
+version of the whole of it.
+
 ### Songs that ship with the mod
 
 `ModIO` has two roots, chosen by the `data` flag every one of its methods takes:
@@ -166,9 +182,10 @@ on their sides:
 - an **instrument block** per distinct pitch, set to that note and nothing else —
   an Orchestra block plays one note, so a tune is a row of blocks;
 - a **timer block** per note in the score, `wait` set to the note's moment and
-  `emulation-time` to its length. It is `automatic`, so the song starts with the
-  simulation — unless `--key` is given, in which case each timer waits its own
-  time from that keypress instead and one press starts the band.
+  `emulation-time` to its length. Each timer waits its own time from the key --
+  `M` unless `--key` says otherwise -- so one press starts the band. With
+  `--key none` the timers are `automatic` instead and the song starts with the
+  simulation, which is what a loader block with nothing bound to its mapper does.
 
 They are joined by **variables**, not keys. A Besiege key can carry a *message* —
 a variable name — and `KeyInputController` keeps a table of which keys listen to
@@ -233,8 +250,8 @@ read from the block XMLs, so it is never out of date.
 | `--track N=FAMILY[:TYPE]` | the block for one track, repeatable |
 | `--tempo BPM` | ignore the file's tempo map |
 | `--transpose N` | in semitones |
-| `--offset S` | quiet before the first note (default 1 s) |
-| `--key KEYCODE` | start on a keypress rather than with the simulation |
+| `--offset S` | quiet before the first note (default 0 s) |
+| `--key KEYCODE` | the key every timer waits for (default `M`) |
 | `--from S`, `--seconds S` | play part of the score |
 | `--gap S` | silence between two notes on one block (default 0.06 s) |
 | `--limit N` | most notes to place (default 1200) |
@@ -244,6 +261,34 @@ read from the block XMLs, so it is never out of date.
 | `--no-drums` | treat channel 10 as pitched rather than as a kit |
 | `--install` | write into Besiege's `SavedMachines` as well |
 | `--self-test` | build from a made-up score and check the output |
+
+### Starting on a variable
+
+A Besiege key can carry a *message* — one or more variable names — and listen to
+that instead of the keyboard; `KeyInputController` keeps a table from name to the
+keys registered under it. Set the loader block's own Start mapping to a variable
+and the timers it writes are given the same name, so whatever raises that variable
+starts the song. `--variable NAME` does the same from the command line.
+
+**The timers still carry a keycode, and never answer to it.**
+`Machine.InitSimBlock` files a block's keys with `KeyInputController` inside
+`for (i = 0; i < key.KeysCount; i++)`, and it is that loop that puts a key into the
+by-name table. A key with no keycodes runs the loop no times, joins no table and
+hears nothing — silently, in a way that looks exactly like a block that does not
+support emulation. So a timer on a variable is written as
+
+```
+["M", "Message=start-me", "Use=True"]
+```
+
+where `M` is there to be counted. With `Use=True` the key answers to the name and
+not to the keyboard, so which keycode it is does not matter; the block's own is
+used when it has one, and `C` when it does not.
+
+The tool's defaults are the loader block's: instrument Piano, volume 1, range 120,
+transpose 0, offset 0, note limit 1200, and `M` as the key. `--key none` is how you
+ask for a song that starts with the simulation, which is what the block says by
+having nothing bound to its mapper.
 
 `--key` takes a Unity key name — `Space`, `Return`, `Alpha1`, `LeftShift`, or a
 single letter. Common spellings are corrected (`space`, `enter`, `1`, `k`), and

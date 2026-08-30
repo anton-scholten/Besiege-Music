@@ -100,33 +100,41 @@ copy.
 
 Place the **Loader** block — the download arrow in the toolbar — and click it.
 Besiege's menu above keeps **the key and nothing else**: every timer the block
-writes waits for that key, so binding it there binds the whole song. Everything
+writes waits for that key, so binding it there binds the whole song. Set that
+mapping to a **variable** instead of a key and the timers wait for the variable, so
+anything else on the machine can start the song — a trigger, a sensor, another
+block's key. Leave it unbound and the song starts with the simulation. Everything
 else is in the panel docked underneath:
 
 1. **INSTRUMENT** and **TYPE** are the block a score is written for and the
    instrument within it; changing the first refills the second. Percussion always
    goes to Drums and Cymbals whatever these say.
 2. **VOLUME**, **RANGE**, **TRANSPOSE** and **DELAY** are what every block it
-   writes is set to. Delay is the pause between the key and the first note — a
-   machine dropped into a level is usually still falling for the first second.
+   writes is set to. Delay is the pause between the key and the first note, nought
+   by default — turn it up for a machine that is still falling into the level when
+   its key goes.
 3. **TEMPO** is the speed in beats per minute. It follows the file — picking a new
    one puts it back to whatever that file says — until you move it or type a
    number, and then that is what gets built. Left alone it keeps a score's own
    tempo changes; set by hand it plays the whole thing at one speed.
-4. **FOLDER** is where MIDI files go:
+4. **NOTE LIMIT** is how many notes it will place, and so most of how many blocks
+   the machine has — a timer apiece. 1200 by default, up to 10000 typed into the
+   box; the handle covers the first 5000. Let go of it and the summary says how
+   many notes the new number leaves behind.
+5. **FOLDER** is where MIDI files go:
    `Besiege_Data/Mods/Data/Orchestra_<id>/Songs`. It can be typed into, to point
    at another folder *inside the mod's data directory* — Besiege lets a mod read
    nowhere else, which is also why there is no "browse" dialog. The two buttons
    open it in your file manager and list it again, for a file dropped in while the
    game is running.
-5. **FILE** lists what is in that folder — click it and pick one. Songs that ship
+6. **FILE** lists what is in that folder — click it and pick one. Songs that ship
    with the mod are listed after your own with **(built-in)** in front of them, so
    a bundled `waltz.mid` and one of yours by the same name are both there and
    neither hides the other.
-6. The summary says how long the song is, how many notes survived, and what it
+7. The summary says how long the song is, how many notes survived, and what it
    will cost in blocks — an instrument block per distinct voice, a timer per note
    — before you commit to any of it.
-7. **ADD TO MACHINE** drops those blocks into the machine you are building,
+8. **ADD TO MACHINE** drops those blocks into the machine you are building,
    already selected, so you can drag them where you want them. **SAVE AS MACHINE**
    does the same and then opens Besiege's own save screen over it, where
    **SELECTION ONLY** saves just those blocks — the game names the file, asks
@@ -136,6 +144,35 @@ With no key bound the song starts with the simulation instead.
 
 The loader needs UI Factory — Besiege's own menu has no text box, no list and no
 button. Without it, the tool below does the same job outside the game.
+
+### Where to get MIDI files
+
+All of these hand you a `.mid` with no account and no payment. Put it in the
+folder the FOLDER row names and press the reload arrow.
+
+- **[Online Sequencer](https://onlinesequencer.net/)** — a browser sequencer with a
+  large library of user-made arrangements; *Export → MIDI* on any sequence.
+- **[MIDI Toolbox](https://miditoolbox.com/)** — browse and download, and tools for
+  trimming and transposing a file before it gets here.
+- **[BitMidi](https://bitmidi.com/)** — around 113,000 files, the usual pop, film
+  and game standards, one click each.
+- **[MidiWorld](https://www.midiworld.com/)** — sorted by genre and by artist;
+  small, old, tidy files.
+- **[VGMusic](https://www.vgmusic.com/)** — video game music by console, which is
+  written for a handful of monophonic voices and so converts to a small machine.
+- **[Mutopia](https://www.mutopiaproject.org/)** and
+  **[mfiles](https://www.mfiles.co.uk/)** — public-domain classical, engraved from
+  the score rather than performed, so the timing is exact.
+
+Two things to look at before building a thousand blocks for a file:
+
+- **The tempo.** A MIDI file carries its own, and a badly exported one can carry
+  something absurd — the nocturne bundled with this mod arrived claiming 999 bpm,
+  which is a four-minute piece in thirteen seconds. The summary says what tempo the
+  length was worked out at, and TEMPO overrides it.
+- **The note count.** One timer per note. A dense orchestral arrangement is
+  thousands of blocks, where a game theme written for four voices is a few hundred;
+  the summary says which you have before anything is placed.
 
 ## Playing a song, from the command line
 
@@ -170,10 +207,11 @@ one track, where `--track` cannot separate them.
 | --- | --- |
 | `--instrument FAMILY[:TYPE]` | the block for every note (default `Piano`) |
 | `--track N=FAMILY[:TYPE]` | the block for one track, repeatable |
-| `--key KEYCODE` | start on a keypress rather than with the simulation |
+| `--key KEYCODE` | the key every timer waits for (default `M`; `--key none` starts with the simulation) |
+| `--variable NAME` | wait for a variable instead of the keyboard, as the block does when its key is set to one |
 | `--tempo BPM`, `--transpose N` | override the tempo; shift in semitones |
 | `--from S`, `--seconds S` | play part of the score |
-| `--offset S`, `--gap S` | quiet before the first note; silence between repeats |
+| `--offset S`, `--gap S` | quiet before the first note (default 0); silence between repeats |
 | `--limit N` | most notes to place (default 1200) |
 | `--columns N`, `--spacing N`, `--height N` | the grid, and where it spawns |
 | `--volume N`, `--range N` | scales every block's volume; how far they carry |

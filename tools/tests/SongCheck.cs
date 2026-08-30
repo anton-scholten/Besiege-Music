@@ -160,6 +160,26 @@ class SongCheck
            "no timer starts itself as well",
            "a keyed timer is automatic too");
 
+        // And with a variable, which is what the loader block's own key comes to
+        // when it is set to one: the timers listen to the name, and carry a keycode
+        // they never answer to so that `Machine.InitSimBlock` registers them at all.
+        options.StartVariable = "start-me";
+        SongPlan varied = Song.Plan(new Midi(file).Notes(0f), options);
+        XmlDocument third = new XmlDocument();
+        third.LoadXml(Bsg.Write(varied, "Self test"));
+        XmlNodeList started = third.SelectNodes("//StringArray[@key='bmt-activate']");
+        Is(started.Count == 10, "10 timers wait for the variable",
+           started.Count + " timers wait for the variable");
+        string said = started.Count == 0 ? "" : started[0].InnerXml;
+        Is(said.Contains("<String>Space</String>")
+           && said.Contains("<String>Message=start-me</String>")
+           && said.Contains("<String>Use=True</String>"),
+           "a timer on a variable carries the name, the flag and a keycode",
+           "a timer on a variable reads " + said);
+        Is(third.SelectNodes("//Boolean[@key='bmt-automatic']").Count == 0,
+           "no timer on a variable starts itself as well",
+           "a timer on a variable is automatic too");
+
         return Done();
     }
 

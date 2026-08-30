@@ -47,6 +47,14 @@ namespace OrchestraMod
         /// file is chosen.</summary>
         private const int SummaryLines = 4;
 
+        /// <summary>Room for three wrapped lines on the last of them, which carries
+        /// both note counts, a sentence for each, and the tempo. Three rather than
+        /// the two a mapper-width window needs: the rows are laid out to the
+        /// mapper, which is narrower on a smaller screen, and the overflow is
+        /// truncated rather than spilled. Fixed, like the rest of this window: the
+        /// same height whether anything was lost or not.</summary>
+        private const float LastLineHeight = 56f;
+
 
         /// <summary>
         /// The panel could not be built, so Besiege's own mapper is the only way to
@@ -407,6 +415,7 @@ namespace OrchestraMod
             y = AddSlider(y, "TRANSPOSE", block.Transpose, false);
             y = AddSlider(y, "DELAY", block.Delay, false);
             y = AddSlider(y, "TEMPO", block.Tempo, false);
+            y = AddSlider(y, "NOTE LIMIT", block.Limit, false, true);
             return y + RowGap;
         }
 
@@ -422,6 +431,16 @@ namespace OrchestraMod
             {
                 min = 20f;
                 max = 240f;
+                return;
+            }
+            if (block != null && bound != null && bound == block.Limit)
+            {
+                // Every score anybody is likely to feed this is inside the first
+                // five thousand -- the longest of the files this was written
+                // against is 5601 notes, and that is a machine of 5600 timers. The
+                // box takes the rest, up to ten thousand.
+                min = 50f;
+                max = 5000f;
                 return;
             }
             base.Span(bound, out min, out max);
@@ -461,10 +480,22 @@ namespace OrchestraMod
         {
             for (int i = 0; i < SummaryLines; i++)
             {
-                Text line = Label("", Margin, y, width - Margin * 2f, 18f, 12,
-                                  TextAnchor.MiddleLeft, UIF.QuietInk);
+                // The last line is the one that runs long -- two counts and a
+                // sentence about each -- so it is given the room to wrap and told
+                // to. The three above it are one measurement apiece and fit.
+                bool last = i == SummaryLines - 1;
+                float high = last ? LastLineHeight : 18f;
+                Text line = Label("", Margin, y, width - Margin * 2f, high, 12,
+                                  last ? TextAnchor.UpperLeft : TextAnchor.MiddleLeft,
+                                  UIF.QuietInk);
+                if (line != null && last)
+                {
+                    line.horizontalOverflow = HorizontalWrapMode.Wrap;
+                    line.verticalOverflow = VerticalWrapMode.Truncate;
+                    line.lineSpacing = 1.1f;
+                }
                 summary.Add(line);
-                y += 18f;
+                y += high;
             }
             y += RowGap;
             status = Label("", Margin, y, width - Margin * 2f, 20f, 12,
@@ -662,19 +693,24 @@ namespace OrchestraMod
             {
                 lost = plan.Crowded.ToString() + " note"
                      + (plan.Crowded == 1 ? "" : "s")
-                     + " fell inside another on the same block";
+                     + " inside another on the same block.";
             }
             if (plan.Dropped > 0)
             {
-                lost += (lost.Length > 0 ? ", and " : "")
-                     + plan.Dropped.ToString() + " past the note limit went";
+                lost += (lost.Length > 0 ? " " : "")
+                     + plan.Dropped.ToString() + " note"
+                     + (plan.Dropped == 1 ? " past the limit was dropped."
+                                          : "s past the limit were dropped.");
             }
             // The key is the one setting still in Besiege's own mapper, so the
             // panel says what it is set to rather than leaving the player to look.
+            string variable = block.KeyVariable();
             string starts = block.OnSimulationStart
                 ? "Starts with the simulation -- no key is bound."
                 : "Starts " + block.Delay.Value.ToString("0.0") + " s after "
-                  + block.KeyName() + " is pressed.";
+                  + (variable == null
+                        ? block.KeyName() + " is pressed."
+                        : "the variable " + variable + " is raised.");
             // Which tempo the length above was worked out at, and whose it is: a
             // file that says something absurd is worth catching before a thousand
             // blocks are placed for it.
@@ -1066,7 +1102,9 @@ namespace OrchestraMod
                  + block.Delay.Value.ToString("0.###") + "|"
                  + block.Tempo.Value.ToString("0.###") + "|"
                  + (block.TempoFromFile ? "file" : "set") + "|"
-                 + (block.KeyName() == null ? "-" : block.KeyName());
+                 + block.Limit.Value.ToString("0") + "|"
+                 + (block.KeyName() == null ? "-" : block.KeyName()) + "|"
+                 + (block.KeyVariable() == null ? "-" : block.KeyVariable());
         }
 
         /// <summary>

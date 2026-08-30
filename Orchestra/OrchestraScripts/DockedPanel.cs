@@ -116,6 +116,7 @@ namespace OrchestraMod
 
             public MSlider Bound;
             public bool Note;       // shown as a note name rather than a number
+            public bool Whole;      // a count: snapped, and shown without decimals
         }
 
         /// <summary>
@@ -160,6 +161,15 @@ namespace OrchestraMod
 
         protected float AddSlider(float y, string caption, MSlider bound, bool isNote)
         {
+            return AddSlider(y, caption, bound, isNote, false);
+        }
+
+        /// <param name="whole">The setting counts something, so the handle snaps to
+        /// integers and the box shows one. A limit of 1200.37 notes is not a number
+        /// anybody meant.</param>
+        protected float AddSlider(float y, string caption, MSlider bound, bool isNote,
+                                  bool whole)
+        {
             Text label = Label(caption, Margin, y, LabelWidth, RowHeight, 13,
                                TextAnchor.MiddleLeft, UIF.QuietInk);
 
@@ -182,6 +192,7 @@ namespace OrchestraMod
             row.Caption = label;
             row.Bound = bound;
             row.Note = isNote;
+            row.Whole = whole;
             AddValue(row, width - Margin - ValueWidth, y);
             if (control != null)
             {
@@ -190,8 +201,9 @@ namespace OrchestraMod
                 control.minValue = low;
                 control.maxValue = high;
                 // Notes snap: dragged freely a block lands a quarter-tone sharp and
-                // is unplayable beside another.
-                control.wholeNumbers = isNote;
+                // is unplayable beside another. So do counts, for the same reason
+                // in a different currency.
+                control.wholeNumbers = isNote || whole;
                 Row captured = row;
                 control.onValueChanged.AddListener(delegate(float v) { Dragged(captured, v); });
             }
@@ -256,7 +268,9 @@ namespace OrchestraMod
             }
             string shown = row.Note
                 ? NoteName(Mathf.RoundToInt(row.Bound.Value))
-                : row.Bound.Value.ToString("0.00");
+                : row.Whole
+                    ? Mathf.RoundToInt(row.Bound.Value).ToString()
+                    : row.Bound.Value.ToString("0.00");
             if (row.Box != null)
             {
                 // Not while it is being typed in: the box is the player's until they
@@ -287,7 +301,7 @@ namespace OrchestraMod
                 float value;
                 if (Read(row, text, out value))
                 {
-                    if (row.Note)
+                    if (row.Note || row.Whole)
                     {
                         value = Mathf.Round(value);
                     }

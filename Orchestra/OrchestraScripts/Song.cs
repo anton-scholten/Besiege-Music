@@ -16,8 +16,10 @@ namespace OrchestraMod
         /// <summary>Semitones, added to every pitched note.</summary>
         public int Transpose = 0;
 
-        /// <summary>Seconds of quiet before the first note.</summary>
-        public float Offset = 1f;
+        /// <summary>Seconds of quiet before the first note. Nought, as the
+        /// loader block's DELAY and `tools/make-song.py --offset` both are: a key
+        /// pressed is a song started.</summary>
+        public float Offset = 0f;
 
         /// <summary>Silence left between two notes on one block. An emulated key is
         /// reference counted, so a repeat that arrives while the name is still held
@@ -40,6 +42,11 @@ namespace OrchestraMod
         /// <summary>Unity's name for the key that starts the song, or null to start
         /// with the simulation.</summary>
         public string StartKey;
+
+        /// <summary>The variable the song waits for instead of a keypress, or null.
+        /// Takes precedence over <see cref="StartKey"/>, which is then only the
+        /// keycode the timers carry to be counted -- see the note in Plan.</summary>
+        public string StartVariable;
 
         /// <summary>Treat channel 10 as pitched rather than as a drum kit.</summary>
         public bool NoDrums = false;
@@ -312,7 +319,23 @@ namespace OrchestraMod
                 MidiNote note = kept[i];
                 SongBlock block = Place(plan, TimerBlock, 0, placed++, columns, spacing,
                                         playing.Count + kept.Count);
-                if (string.IsNullOrEmpty(options.StartKey))
+                if (!string.IsNullOrEmpty(options.StartVariable))
+                {
+                    // The block's own key listens to a variable rather than to the
+                    // keyboard, so the timers have to listen to the same name --
+                    // whatever presses that variable is what starts the song.
+                    //
+                    // A keycode goes in the array as well, and is never answered
+                    // to: `Machine.InitSimBlock` files a key with
+                    // `KeyInputController` once per keycode it holds, so a key with
+                    // none is registered under no name and hears nothing. With
+                    // `Use=True` the keycode itself is ignored -- it is there to be
+                    // counted.
+                    VariableKey(block.Data, TimerStart, options.StartVariable,
+                                string.IsNullOrEmpty(options.StartKey)
+                                    ? "C" : options.StartKey);
+                }
+                else if (string.IsNullOrEmpty(options.StartKey))
                 {
                     block.Data.Write(new XBoolean(TimerAuto, true));
                 }

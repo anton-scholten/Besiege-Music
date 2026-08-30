@@ -28,7 +28,8 @@
   every timer waits its own time from the key, so a key that is bound starts the
   song and one that is not leaves the timers starting with the simulation. Two
   sliders that both meant "quiet before the first note" would have been a bug
-  rather than a setting.
+  rather than a setting. It starts at nought: a key pressed is a song started,
+  and the seconds are for a machine still falling into a level when its key goes.
   The panel is one fixed height with no conditional rows, in the order
   instrument, type, the four sliders, the folder, the file, the summary and the two
   buttons. The folder is a box rather than a button -- it can be pointed at a
@@ -96,6 +97,41 @@
   it is filled: TEMPO is the first setting here the *block* moves rather than the
   player, and without that the handle kept the last file's number under a summary
   written for the new one until the reload button was pressed.
+- The loader block's Start mapping can be a **variable** rather than a key, and the
+  song now waits for it. A Besiege key set to a variable does not answer to its own
+  keycode at all, so timers written with the keycode were a song nothing could
+  start; they are now written with the same `Message=`/`Use=True` the block itself
+  carries. The keycode goes in beside it and is never answered to -- a key with no
+  keycodes is registered under no name at all, `Machine.InitSimBlock` filing keys
+  once per keycode they hold -- which is the trap this mod's emulate keys were
+  already written around. `--variable NAME` does the same from the command line,
+  and both converters are checked on it.
+- `tools/make-song.py` now matches the loader block. Three things differed, and
+  each would have made the same file come out as two different machines:
+  **`--offset`** defaulted to 1 second where DELAY is now nought; **`--key`**
+  defaulted to no key, starting the song with the simulation, where the block's
+  mapper starts bound to `M` (`--key none` is the new way to ask for the old
+  behaviour); and the two **ordered simultaneous notes differently** --
+  `Midi.ByStart` broke ties on pitch alone where the tool sorts the whole
+  `(start, length, pitch, velocity, channel, track)` tuple, so the note limit kept
+  a different 1200th note and one file came out half a second longer in game than
+  from the tool. `ByStart` now compares all six, which also makes it a total order:
+  `List.Sort` is unstable, so what it left tied could come out differently between
+  two runs of the same file. `SongOptions.Offset` follows the block to nought.
+  All four bundled songs now convert to the same note count, block count and length
+  in both.
+- A list of **where to get MIDI files** in the README -- Online Sequencer, MIDI
+  Toolbox, BitMidi, MidiWorld, VGMusic, Mutopia and mfiles. Each was checked by
+  fetching a file from it: all seven return a `.mid` with no account and no
+  payment. What to look at before converting one is there too, the tempo and the
+  note count being the two that decide whether a file is worth a thousand blocks.
+- A **NOTE LIMIT slider**, which was a hardcoded 1200 in `SongOptions`. Still
+  1200 by default -- it does not follow the file, the number that matters being how
+  many blocks the machine should have rather than how many notes somebody wrote --
+  with the handle over the first 5000 and up to 10000 typed into the box. The
+  summary redraws when the drag settles, so what a number costs in dropped notes is
+  visible before anything is placed. Slider rows can now be whole numbers: a count
+  snaps and is shown without decimals, where before only note rows snapped.
 - **Songs can ship with the mod.** Anything in `Orchestra/Songs/` is listed in the
   loader's file selector after the player's own, with `(built-in)` in front of it,
   and read out of the mod's own folder rather than its data one -- `ModIO`'s other
@@ -108,6 +144,28 @@
 
 **Fixed**
 
+- **Three of the four pianos were the same recording.** GeneralUser GS gives GM
+  presets 0, 1 and 3 one sample set and separates them with generators --
+  tuning, filter, envelope, and a detuned second zone for honky-tonk -- and
+  `extract-samples.py` keeps the sample and drops the generators. Grand, upright
+  and honky-tonk decoded byte for byte identical; only the Rhodes was its own
+  instrument. `tools/derive-pianos.py` now builds the other two from the grand:
+  honky-tonk against a copy of itself 14 cents sharp, faded out before the sustain
+  loop so the loop does not click, and upright two poles down from 1800 Hz with a
+  shorter decay. Both are made from the grand every time rather than from the file
+  they replace, so the tool is the same run twice as run once. Upright moves from
+  note 34 to 38 to share the grand's cut, which is a line each in Mod.xml and
+  Piano.xml and no change to the loops.
+  **The other 26 sampled instruments were checked and are all distinct** -- 84
+  samples, decoded and compared; the closest pair anywhere else is clean and steel
+  guitar at note 40 at r=0.51, which are two recordings of similar guitars.
+- The loader's summary ran off the end of the window. Its last line carries both
+  note counts and the tempo, which is more than a mapper-width row holds, and every
+  label in these panels was set to overflow rather than wrap. That line now wraps,
+  with three lines of room -- the rows are laid out to the mapper, which is
+  narrower on a smaller screen. It reads "N notes inside another on the same block.
+  M notes past the limit were dropped." rather than running the two together with
+  an "and".
 - The bundled **Chopin Nocturne declared 999 bpm** and played in 13 seconds. The
   fault was in the file, not the converter: Online Sequencer had written a tempo
   meta of 60060 microseconds per quarter where the sequence is 50 bpm (210 quarters

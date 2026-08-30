@@ -24,6 +24,7 @@ namespace OrchestraMod
         private MSlider TransposeSlider;
         private MSlider DelaySlider;
         private MSlider TempoSlider;
+        private MSlider LimitSlider;
         private MKey StartKeyBinding;
 
         /// <summary>Set when somebody has put a tempo in by hand, which is the
@@ -107,10 +108,13 @@ namespace OrchestraMod
             TransposeSlider = AddSlider("Transpose", "TransposeKey", 0f, -24f, 24f);
             // Seconds between the key being pressed -- or emulated by something
             // else on the machine -- and the first note. The timers each wait their
-            // own time from that press, so this shifts all of them together, and a
-            // machine dropped into a level is usually still falling for the first
-            // second of it.
-            DelaySlider = AddSlider("Delay", "LeadKey", 1f, 0f, 10f);
+            // own time from that press, so this shifts all of them together.
+            //
+            // Nought by default: a key pressed is a song started, which is what
+            // anybody expects of it. The seconds are here for the machine that is
+            // still falling into a level when its key goes, and that is a thing to
+            // ask for rather than a thing to be given.
+            DelaySlider = AddSlider("Delay", "LeadKey", 0f, 0f, 10f);
 
             // Beats per minute. Set to whatever the file says as soon as one is
             // read, and left alone after that until another file is picked -- so
@@ -120,6 +124,12 @@ namespace OrchestraMod
             // score this was written for arrived claiming 999.
             TempoSlider = AddSlider("Tempo", "TempoKey", 120f, 5f, 999f);
             TempoSetToggle = AddToggle("Tempo set by hand", "TempoSetKey", false);
+
+            // Most notes to place. A timer apiece, so this is most of the block
+            // count and most of what a long song costs to run. It does not follow
+            // the file: the number that matters is how many blocks this machine
+            // should have, not how many notes somebody wrote.
+            LimitSlider = AddSlider("Note limit", "LimitKey", 1200f, 50f, 10000f);
 
             // The one control left in Besiege's own mapper: every timer this block
             // writes waits for this key, so binding it here binds the whole song.
@@ -203,6 +213,7 @@ namespace OrchestraMod
             DelaySlider.DisplayInMapper = show;
             TempoSlider.DisplayInMapper = show;
             TempoSetToggle.DisplayInMapper = show;
+            LimitSlider.DisplayInMapper = show;
             // StartKeyBinding is deliberately untouched: the panel shows no key,
             // and Besiege's own key capture is the only thing that can rebind one.
         }
@@ -237,6 +248,7 @@ namespace OrchestraMod
         public MSlider Transpose { get { return TransposeSlider; } }
         public MSlider Delay { get { return DelaySlider; } }
         public MSlider Tempo { get { return TempoSlider; } }
+        public MSlider Limit { get { return LimitSlider; } }
 
         /// <summary>The instrument every pitched part goes to, as the converter
         /// wants it: the block, and the instrument within it after a colon.</summary>
@@ -269,18 +281,21 @@ namespace OrchestraMod
             options.Range = RangeSlider == null ? 120f : RangeSlider.Value;
             options.Transpose = TransposeSlider == null
                 ? 0 : Mathf.RoundToInt(TransposeSlider.Value);
-            options.Offset = DelaySlider == null ? 1f : DelaySlider.Value;
+            options.Offset = DelaySlider == null ? 0f : DelaySlider.Value;
             // Nought means "follow the file", which is not the same as asking for
             // the tempo the file starts at: a score that changes tempo part way
             // through keeps every one of its changes, where a number here flattens
             // the whole of it to one speed.
             options.Tempo = TempoFromFile || TempoSlider == null
                 ? 0f : TempoSlider.Value;
+            options.Limit = LimitSlider == null
+                ? 1200 : Mathf.RoundToInt(LimitSlider.Value);
             // Every timer waits its own time from that key, so one press -- by hand
             // or emulated by anything else on the machine -- starts the whole song.
             // With no key bound there is nothing to wait for, and the timers start
             // with the simulation instead.
             options.StartKey = KeyName();
+            options.StartVariable = KeyVariable();
             return options;
         }
 
@@ -288,7 +303,31 @@ namespace OrchestraMod
         /// keypress, which is what an unbound key comes to.</summary>
         public bool OnSimulationStart
         {
-            get { return KeyName() == null; }
+            get { return KeyName() == null && KeyVariable() == null; }
+        }
+
+        /// <summary>
+        /// The variable this block's Start key listens to, or null.
+        ///
+        /// A Besiege key can carry a *message* -- one or more variable names --
+        /// instead of answering the keyboard, which is how one block on a machine
+        /// starts another. `useMessage` is the flag that says listen to the name;
+        /// `message` holds the names, and `MKey.CombineVariables` joins them the
+        /// way a save spells them.
+        ///
+        /// When there is one, that is what the song has to wait for: a block set to
+        /// a variable does not answer to its own keycode at all, so timers written
+        /// with the keycode would be a song nothing starts.
+        /// </summary>
+        public string KeyVariable()
+        {
+            if (StartKeyBinding == null || !StartKeyBinding.useMessage
+                || StartKeyBinding.message == null)
+            {
+                return null;
+            }
+            string joined = MKey.CombineVariables(StartKeyBinding.message);
+            return string.IsNullOrEmpty(joined) ? null : joined;
         }
 
         /// <summary>
