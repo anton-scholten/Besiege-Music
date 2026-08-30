@@ -28,6 +28,11 @@ namespace OrchestraMod
             // Besiege would otherwise repaint the toolbar's models with.
             host.AddComponent<Prefabs>();
 
+            // The last stop before the speakers. Master shares one gain between the
+            // blocks from an estimate; this one reads the finished mix and is the
+            // reason a chord on one instrument cannot clip however in phase it is.
+            host.AddComponent<Ears>();
+
             // The loader block's panel is a second window of its own: it draws
             // something else, on its own canvas, for one block rather than nine.
             GameObject loader = new GameObject("OrchestraLoaderPanel");

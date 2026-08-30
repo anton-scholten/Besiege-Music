@@ -102,6 +102,95 @@ about to be played — and `wantLeft`/`wantRight`, a gain per ear worked out eac
 frame on the game thread from where the block stands relative to the listener.
 Doppler is what that costs, and it is the only thing.
 
+## One limiter for the whole band
+
+A block's own output is kept inside a soft knee, and that is not enough. What
+clips a song is Unity's mix: sixty `AudioSource`s each handing over a signal that
+peaks near one add up to a signal that peaks near sixty, and nothing inside a
+block can see that, because a block only ever sees itself.
+
+`Master` is the one number they share. Each block reports the loudest sample it is
+about to play and is given the gain everybody is using; the gain is worked out from
+the **power** sum, `sqrt(sum of squares)`, because separate notes are not in phase.
+Adding peaks instead would say eight notes at 0.7 reach 5.6 and pull the song down
+to a sixth, where they really reach about 2.
+
+Three things it has to get right, all of which were wrong first:
+
+* **The release is per buffer, not per block.** Every block asks once a buffer, so
+  the step each takes is the release divided between them. Without that, a
+  sixty-block machine released sixty times faster than a one-block one — the same
+  limiter pumping on the song rather than riding the note.
+* **A stopped source has to let go.** Besiege stops an `AudioSource` with nothing
+  to play, and a stopped source's filter is never called, so the last peak it
+  reported would sit in the total for as long as it stayed quiet. `Master.Quiet`
+  is called wherever the source is stopped.
+* **It is a buffer late, deliberately.** Waiting for the other blocks would mean
+  blocking the audio thread on sixty other callbacks. One buffer is about twenty
+  milliseconds and the per-block knee covers the transient inside it.
+
+Measured, with every block at 0.7: one block is left alone, eight are cut to 0.429
+and sixty to 0.157, and in both cases the band sums to the 0.85 ceiling exactly.
+Silence releases in about 0.8 seconds whether there are eight blocks or sixty.
+
+### And an estimate is not enough
+
+`Master` works from the power sum because separate notes are not in phase. Notes of
+*one* instrument in a chord are more in phase than that. Measured on the overdriven
+guitar, a six-note chord of one sample reaches 2.75 where the power sum says 2.40 —
+so holding the estimate to 0.85 lets the real signal reach 0.98, and a saturated
+waveform arriving inside the one buffer `Master` runs late puts it over. That is
+clipping you hear standing next to the blocks and not from across the level, where
+the distance falloff has already taken it down.
+
+No estimate fixes that, because the size of the error depends on what the notes
+are. `BandLimiter` does not estimate: it is a `MonoBehaviour` on the object
+carrying the `AudioListener`, so Unity hands it the finished mix and it reads the
+peak of the very samples it is about to pass on. Output cannot exceed the ceiling —
+the gain for a buffer comes from that buffer's own peak, and the release rises only
+as far as that same peak allows.
+
+That last clause is the whole of it, and it was wrong first: computing the headroom
+only when the *current* gain would clip left the release free to climb past what the
+buffer allowed, and a rising signal walked out over the ceiling one buffer at a
+time. It took random noise to show it — every musical test case passed.
+
+It sees the whole game and touches it only when the whole game is about to clip.
+Under the ceiling the buffer is passed through untouched rather than multiplied by
+one, so Besiege's own audio is bit for bit what it was.
+
+### Why both
+
+`Master` is not made redundant by `BandLimiter`; they do different jobs and the
+second is much worse on its own. `BandLimiter` is the last thing before the
+speakers, so everything it pulls down it pulls down *including Besiege's own audio*.
+Left to face an unlimited band — sixty blocks arriving at several times the ceiling
+— it would duck the whole game by fifteen or twenty decibels every time the song
+played.
+
+`Master` keeps this mod's own contribution near the ceiling before the mix, where
+it can only affect this mod's blocks, and keeps their balance while it does. The
+limiter is then trimming a few per cent rather than holding the door shut. Coarse
+stage on our own audio, fine stage on the truth.
+
+## Two kinds of volume slider
+
+Besiege has two, and they reach a modded block differently:
+
+* **The per-category sliders** — BLOCKS, SFX, MUSIC — are exposed parameters on an
+  `AudioMixer`, written by `MusicController.LateUpdate`. They reach an instrument
+  block because its `AudioSource` is routed through a mixer group like any other
+  block's.
+* **The master slider** sets `AudioListener.volume`
+  (`OptionsMaster.SetMasterVolume`, and the slider's own callback). **Unity does not
+  apply that to audio coming out of a mixer**, so the one slider a player reaches
+  for first did nothing to the band — and does nothing for any mod that gives a
+  block an `AudioSource`.
+
+So the block applies it, from `OptionsMaster.BesiegeConfig.MasterVolume`, and only
+where the game does not: a source with no mixer group is one the listener's own
+volume still scales, and applying it there as well would work the slider twice.
+
 ## Blocks
 
 Nine, each a separate block so the toolbar reads like an instrument list.

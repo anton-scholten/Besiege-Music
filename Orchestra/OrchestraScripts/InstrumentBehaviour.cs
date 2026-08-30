@@ -97,10 +97,29 @@ namespace OrchestraMod
         private volatile float wantLeft = 1f;
         private volatile float wantRight = 1f;
 
+        /// <summary>Besiege's own master volume, or 1 where the game is already
+        /// applying it. Read on the game thread by <see cref="Place"/>, which is
+        /// where every other number the audio thread uses is read.</summary>
+        private volatile float wantMaster = 1f;
+
+        /// <summary>Said once, so the log records which of the two cases this
+        /// install turned out to be rather than leaving it to be guessed at.</summary>
+        private static bool saidMaster;
+
         // Audio thread only: the gains the last buffer ended on, so the next one
         // slides onto the new pair rather than stepping onto it.
         private float heldLeft = 1f;
         private float heldRight = 1f;
+
+        /// <summary>This block's place in the shared limiter, or -1 if it could not
+        /// have one. See <see cref="Master"/>: what clips a song is the sum of sixty
+        /// blocks, which no block can see by itself.</summary>
+        private int masterSlot = -1;
+
+        /// <summary>The limiter's gain as this block last left it, so a change is
+        /// slid onto across a buffer rather than stepped into. A gain that jumps
+        /// between buffers is heard as a click, exactly as the placement is.</summary>
+        private float heldGain = 1f;
 
         // Single producer, single consumer. The game thread pushes note-ons and
         // note-offs; the audio thread drains them at the head of each buffer, so a
@@ -170,6 +189,11 @@ namespace OrchestraMod
         {
             sampleRate = AudioSettings.outputSampleRate;
             NoSkins();
+
+            // A place in the band, so this block's loudness is counted into what
+            // they are all held to. Taken here rather than on the first note: the
+            // audio thread must not be the one asking for it.
+            masterSlot = Master.Join();
 
             PlayKey = AddKey("Play", "Activate", KeyCode.N);
 
@@ -499,8 +523,10 @@ namespace OrchestraMod
             if (!source.isPlaying)
             {
                 // Nothing is driving the audio callback now, so it cannot clear this
-                // itself.
+                // itself -- nor its place in the band, which would otherwise hold the
+                // others down for a note that finished when this source stopped.
                 sounding = false;
+                Master.Quiet(masterSlot);
             }
         }
 
@@ -604,6 +630,7 @@ namespace OrchestraMod
             sounding = false;
             Settle();
             source.Stop();
+            Master.Quiet(masterSlot);
         }
 
         /// <summary>
@@ -686,8 +713,55 @@ namespace OrchestraMod
         ///
         /// Game thread only: a transform may not be touched from the audio thread.
         /// </summary>
+        /// <summary>
+        /// Besiege's master volume, when the game is not applying it to this block.
+        ///
+        /// Besiege has two kinds of volume control and they work in different ways.
+        /// The per-category sliders -- BLOCKS, SFX, MUSIC -- are exposed parameters
+        /// on an `AudioMixer`, set by `MusicController.LateUpdate`, and they reach
+        /// this block because its `AudioSource` is routed through a mixer group like
+        /// any other block's. The **master** slider is not: it sets
+        /// `AudioListener.volume`, and Unity does not apply that to audio coming out
+        /// of a mixer. So the one slider a player reaches for first was the one that
+        /// did nothing here -- and does nothing for any mod that gives a block an
+        /// `AudioSource`.
+        ///
+        /// So this block applies it itself, and only in the case where the game does
+        /// not: a source with no mixer group is one the listener's own volume still
+        /// scales, and doubling it there would make the slider act twice.
+        /// </summary>
+        private float MasterVolume()
+        {
+            if (source == null || source.outputAudioMixerGroup == null)
+            {
+                // Straight to the listener, which applies its own volume. Nothing
+                // to do, and doing something would halve it twice over.
+                return 1f;
+            }
+            BesiegeConfig config = OptionsMaster.BesiegeConfig;
+            if (config == null)
+            {
+                return 1f;
+            }
+            if (!saidMaster)
+            {
+                saidMaster = true;
+                Log.Info("the master volume slider does not reach audio through "
+                         + "Besiege's mixer, so the instrument blocks apply it "
+                         + "themselves.");
+            }
+            // The config holds it as a percentage, as `OptionsMaster.SetMasterVolume`
+            // reads it.
+            return Mathf.Clamp01(config.MasterVolume / 100f);
+        }
+
         private void Place()
         {
+            // Before the listener is looked for, not after: there is no listener
+            // during a scene change and the early return below would leave this
+            // holding whatever the last level's slider was.
+            wantMaster = MasterVolume();
+
             if (ear == null || !ear.isActiveAndEnabled)
             {
                 // Besiege swaps cameras between building and running, and the
@@ -816,6 +890,20 @@ namespace OrchestraMod
             {
                 visualScales[i] = visuals[i].localScale;
             }
+        }
+
+        /// <summary>
+        /// Gives this block's place in the band back.
+        ///
+        /// A simulation runs on a clone and throws it away at the end of the run, so
+        /// without this every run would take slots and never return them -- and a
+        /// slot still holding a loud note would hold the whole band down after the
+        /// block that played it had gone.
+        /// </summary>
+        private void OnDestroy()
+        {
+            Master.Leave(masterSlot);
+            masterSlot = -1;
         }
 
         /// <summary>
@@ -1031,11 +1119,27 @@ namespace OrchestraMod
             float right = heldRight;
             float leftStep = (leftTo - left) / frames;
             float rightStep = (rightTo - right) / frames;
-            float volume = wantVolume;
+            float volume = wantVolume * wantMaster;
+
+            // What this block is about to be, before the band's own gain: the
+            // loudest sample in the buffer, which is what the shared limiter adds
+            // up. Cheap -- one pass over a buffer that is about to be walked again
+            // anyway -- and it is the only thing Master needs to know.
+            float peak = 0f;
+            for (int i = 0; i < frames; i++)
+            {
+                float a = mix[i] * volume;
+                if (a < 0f) { a = -a; }
+                if (a > peak) { peak = a; }
+            }
+            float gainTo = Master.Ask(masterSlot, peak);
+            float gain = heldGain;
+            float gainStep = (gainTo - gain) / frames;
 
             for (int i = 0; i < frames; i++)
             {
-                float s = mix[i] * volume;
+                gain += gainStep;
+                float s = mix[i] * volume * gain;
                 // The tanh knee keeps eight voices at once from clipping hard.
                 if (s > 0.7f || s < -0.7f)
                 {
@@ -1063,6 +1167,7 @@ namespace OrchestraMod
             }
             heldLeft = leftTo;
             heldRight = rightTo;
+            heldGain = gainTo;
         }
 
         /// <summary>Leaves the mixer's buffer empty. The source's own clip is

@@ -144,6 +144,52 @@
 
 **Fixed**
 
+- **Besiege's master volume slider did not reach the instrument blocks.** The
+  per-category sliders do -- BLOCKS and SFX are exposed parameters on an
+  `AudioMixer` and a block's `AudioSource` is routed through a mixer group -- but
+  the master slider sets `AudioListener.volume`, and Unity does not apply that to
+  audio coming out of a mixer. The blocks apply it themselves now, read from
+  `OptionsMaster.BesiegeConfig.MasterVolume` on the game thread, and only where the
+  game does not: a source with no mixer group is still scaled by the listener, and
+  applying it there too would work the slider twice. Any mod that gives a block an
+  `AudioSource` has the same hole, Braids Synth included; it is the same three
+  lines there.
+- **A loud song still clipped up close**, with one instrument playing chords --
+  the anthem on the overdriven guitar, standing next to the blocks. `Master`
+  estimates the band's total as a power sum, which is right for notes that are not
+  in phase and wrong for a chord of one sample: measured, six notes of the
+  overdriven guitar reach 2.75 where the power sum says 2.40, so the estimate was
+  held to 0.85 and the signal reached 0.98. `BandLimiter` sits on the object
+  carrying the `AudioListener`, where Unity hands over the finished mix, and limits
+  what it can actually see -- no estimate, and no sample can leave above the
+  ceiling. It touches the game's audio only above that ceiling; below it the buffer
+  is passed through rather than multiplied by one. Checked outside Unity against
+  chords, steps, spikes, square waves and noise: nothing gets past, and a quiet
+  buffer comes back bit for bit identical. Noise is what caught the one bug --
+  taking the headroom only when the current gain would clip let the release climb
+  past what the buffer allowed, one buffer at a time.
+- **A loud song clipped**, and not in any one block: each keeps itself inside a
+  soft knee, but Unity's mix adds sixty of them together and a sixty-block machine
+  peaks near sixty. `Master` is one limiter they share -- every block reports the
+  loudest sample it is about to play and is handed the gain they are all using, so
+  the band gets quieter together rather than the loudest instrument being singled
+  out. The total is the power sum, `sqrt(sum of squares)`, because separate notes
+  are not in phase; adding peaks would have cut eight notes at 0.7 to a sixth
+  rather than to the 0.43 they need. The release is divided between the blocks --
+  a first version released sixty times faster on a sixty-block machine than on a
+  one-block one -- and a block whose `AudioSource` is stopped gives its place up,
+  or the last peak it reported would have held the rest down indefinitely.
+- Each loader block keeps **its own file**, saved with the machine. The chosen song
+  was a plain field, so the one setting that matters most was the one a saved
+  machine forgot, and two loader blocks were handed the same remembered file rather
+  than each keeping its own. It is an `MText` now, like every other setting on the
+  block: saved, loaded, undone and sent over multiplayer. The last song converted is
+  what a *newly placed* block starts with, which is a default rather than an
+  override.
+- The loader's default **volume is 0.7 and range 300**, matched by
+  `SongOptions` and `tools/make-song.py --volume/--range`. Range is wider than an
+  instrument block's own default: a song is a field of sixty blocks and is usually
+  looked at from further away than it was built at.
 - **Three of the four pianos were the same recording.** GeneralUser GS gives GM
   presets 0, 1 and 3 one sample set and separates them with generators --
   tuning, filter, envelope, and a detuned second zone for honky-tonk -- and

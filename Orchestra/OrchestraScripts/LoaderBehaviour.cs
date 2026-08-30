@@ -67,8 +67,30 @@ namespace OrchestraMod
         private float mapperAskAt;
         private const float MapperAskEvery = 0.5f;
 
-        /// <summary>The file the panel is showing, as typed or as picked.</summary>
-        public string Path = "";
+        /// <summary>Which song this block is set to, held in a mapper control.
+        ///
+        /// A plain field would have been simpler and was wrong: mapper controls are
+        /// what Besiege saves, loads, undoes and sends over multiplayer, so a field
+        /// makes the one setting that matters most the one setting a saved machine
+        /// forgets -- and two loader blocks on the same machine would have been
+        /// handed the same remembered file rather than each keeping its own. `MText`
+        /// is the mapper type for a string, and `ModBlockBehaviour.AddText` adds one.
+        /// Hidden from Besiege's own mapper with the rest; the panel is where a file
+        /// is chosen.</summary>
+        private MText FileText;
+
+        /// <summary>The file the panel is showing, as picked.</summary>
+        public string Path
+        {
+            get { return FileText == null ? "" : (FileText.Value ?? ""); }
+            set
+            {
+                if (FileText != null)
+                {
+                    FileText.Value = value ?? "";
+                }
+            }
+        }
 
         /// <summary>What the last conversion came to, or null if there has not been
         /// one since the file changed.</summary>
@@ -103,8 +125,11 @@ namespace OrchestraMod
             // instrument block's own type menu is.
             TypeMenu = AddMenu("TypeKey", 0, TypesOf(Wanted()), false);
 
-            VolumeSlider = AddSlider("Volume", "VolumeKey", 1f, 0f, 1f);
-            RangeSlider = AddSlider("Range", "RangeKey", 120f, 0.5f, 2000f);
+            VolumeSlider = AddSlider("Volume", "VolumeKey", 0.7f, 0f, 1f);
+            // Wider than an instrument block's own default. A song is a field of
+            // sixty blocks rather than one, and a machine is usually looked at from
+            // further away than it is built at.
+            RangeSlider = AddSlider("Range", "RangeKey", 300f, 0.5f, 2000f);
             TransposeSlider = AddSlider("Transpose", "TransposeKey", 0f, -24f, 24f);
             // Seconds between the key being pressed -- or emulated by something
             // else on the machine -- and the first note. The timers each wait their
@@ -135,8 +160,12 @@ namespace OrchestraMod
             // writes waits for this key, so binding it here binds the whole song.
             StartKeyBinding = AddKey("Start", "StartKey", KeyCode.M);
 
+            // The last song converted is the *default* for a block placed now, not
+            // something written over one being loaded: a machine coming back out of
+            // a save brings its own, and DeSerialize puts it here after this runs.
+            FileText = AddText("File", "FileKey", Files.Remembered());
+
             RetypeMenu();
-            Path = Files.Remembered();
         }
 
         /// <summary>The instruments in one block, for the type menu.</summary>
@@ -211,6 +240,7 @@ namespace OrchestraMod
             RangeSlider.DisplayInMapper = show;
             TransposeSlider.DisplayInMapper = show;
             DelaySlider.DisplayInMapper = show;
+            FileText.DisplayInMapper = show;
             TempoSlider.DisplayInMapper = show;
             TempoSetToggle.DisplayInMapper = show;
             LimitSlider.DisplayInMapper = show;
@@ -277,8 +307,8 @@ namespace OrchestraMod
         {
             SongOptions options = new SongOptions();
             options.Instrument = Instrument;
-            options.Volume = VolumeSlider == null ? 1f : VolumeSlider.Value;
-            options.Range = RangeSlider == null ? 120f : RangeSlider.Value;
+            options.Volume = VolumeSlider == null ? 0.7f : VolumeSlider.Value;
+            options.Range = RangeSlider == null ? 300f : RangeSlider.Value;
             options.Transpose = TransposeSlider == null
                 ? 0 : Mathf.RoundToInt(TransposeSlider.Value);
             options.Offset = DelaySlider == null ? 0f : DelaySlider.Value;

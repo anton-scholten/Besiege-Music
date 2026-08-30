@@ -36,8 +36,8 @@ namespace OrchestraMod
         /// <summary>Block widths between neighbours.</summary>
         public float Spacing = 1f;
 
-        public float Volume = 1f;
-        public float Range = 120f;
+        public float Volume = 0.7f;
+        public float Range = 300f;
 
         /// <summary>Unity's name for the key that starts the song, or null to start
         /// with the simulation.</summary>

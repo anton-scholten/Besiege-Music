@@ -622,9 +622,9 @@ def main():
                         help="blocks apart, in block widths")
     parser.add_argument("--height", type=float, default=5.05,
                         help="where the machine spawns")
-    parser.add_argument("--volume", type=float, default=1.0,
+    parser.add_argument("--volume", type=float, default=0.7,
                         help="scales every block's volume")
-    parser.add_argument("--range", type=float, default=120.0,
+    parser.add_argument("--range", type=float, default=300.0,
                         help="how far each block carries")
     parser.add_argument("--key", metavar="KEYCODE", default="M",
                         help="the key every timer waits for (default M, as the "
