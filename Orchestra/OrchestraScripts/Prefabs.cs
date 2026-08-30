@@ -42,6 +42,9 @@ namespace OrchestraMod
             askAt = Time.unscaledTime + AskEvery;
             tried++;
             Catalogue.Resolve();
+            // And whether the sibling synth mod is here, which decides where a
+            // score's synth parts go. Same table, same moment.
+            Braids.Look();
             if (tried >= Attempts && !Catalogue.Settled)
             {
                 Log.Warn("gave up looking for this mod's block prefabs; the MIDI "

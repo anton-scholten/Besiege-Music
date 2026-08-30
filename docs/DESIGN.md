@@ -59,7 +59,7 @@ is what makes cheap samplers sound like chipmunks.
 
 ### B. Synthesis on the fly
 
-No data at all. We already have the DSP for it in the Braids mod: Karplus–Strong
+No data at all. We already have the DSP for it in the Braids sources: Karplus–Strong
 for plucked and struck strings, modal synthesis for bells, cymbals and mallets,
 noise plus a shaped envelope for drums, and the blown and bowed models from
 `digital_oscillator.cc`.
@@ -173,6 +173,53 @@ it can only affect this mod's blocks, and keeps their balance while it does. The
 limiter is then trimming a few per cent rather than holding the door shut. Coarse
 stage on our own audio, fine stage on the truth.
 
+## The engines, and what each is for
+
+Three ways of making a note, chosen per instrument by `engine` in the block XML.
+**One recorded instrument uses anything but the sampler** — the tubular bells, on
+modal. What decided each was a comparison against a recording, and the recordings
+won everywhere a font had more than one of them; see [SAMPLES.md](SAMPLES.md).
+
+There were five. `drum` (a swept sine body plus filtered noise) and `plucked`
+(Karplus-Strong) both lost to recordings of the real thing, and were deleted with
+the blocks that used them: an engine nothing plays is a page of arithmetic to
+maintain and a claim in the documentation nobody can hear.
+
+* **sampler** plays recordings, looped for the ones that sustain.
+* **modal** rings a bank of twenty-four partials and lets them die. Right for a
+  struck bar or a plate; its partials are *stretched* by `inharmonicity`, which is
+  what a bell is and what a string is not.
+* **fm** is two operators, one sine bending the phase of another, from a
+  4096-entry table. `ratio` is what the sound is — a whole number gives a harmonic
+  tone, 3.5 gives the bell everybody knows — and `index` is how hard it bends. The
+  index *falls* across the note, from its start towards `brightness` of it, which
+  is what a recording cannot do and why this engine exists at all: measured on the
+  Bell type, the partials at 0.05 s are `1.0 2.5 4.5 6.0 8.0 9.5 11.5` and by
+  1.5 s the top two are gone. Each type carries a measured `level` so seven very
+  different spectra arrive at the same 0.20 rms as the rest of the mod.
+
+**Modal cannot be a string, which is why the Plucked block was never modal for
+long.** Its partial amplitudes are one smooth tilt, so every instrument built on it
+is the same sound with the treble moved, and `inharmonicity` slides the partials
+about but cannot make a harmonic series. Measured on middle C, partials as a
+multiple of the fundamental — the middle row is what a plucked string was given
+before it got recordings of one:
+
+```
+Karplus-Strong banjo   0.99, 1.98, 2.96, 3.95, 4.94, 5.93   <- a string
+modal vibraphone       1.00, 2.26, 3.66, 5.13, 6.68, 8.28   <- a bar
+modal glockenspiel     1.00, 2.55, 4.41, 6.50, 8.78, 11.23
+```
+
+**Modal is also the expensive one, and was much worse.** It called `Mathf.Sin` per
+partial per sample: twenty-four transcendentals a sample, 44% of a core for one
+block's eight voices — four blocks ringing at once was a whole core, which is what
+a machine full of mallets sounds like when the frame rate drops. Each partial is
+now a coupled-form resonator (the "magic circle"): two multiplies and two adds for
+the same sine, from arithmetic that cannot drift out because the pair walks round a
+circle. That is 11.2%. It is also the engine with one instrument left on it, so
+the whole of that cost now belongs to the tubular bells.
+
 ## Two kinds of volume slider
 
 Besiege has two, and they reach a modded block differently:
@@ -193,17 +240,18 @@ volume still scales, and applying it there as well would work the slider twice.
 
 ## Blocks
 
-Nine, each a separate block so the toolbar reads like an instrument list.
+Ten, each a separate block so the toolbar reads like an instrument list.
 
 | Block | Types | Beyond the common settings |
 | --- | --- | --- |
 | Piano | Grand, Upright, Electric, Honky-tonk | Sustain pedal, release length |
 | Guitar | Nylon, Steel, Jazz, Clean electric, Overdriven | Pluck position, palm mute |
 | Bass | Acoustic, Fingered, Picked, Fretless, Synth | Slap |
-| Strings | Violin, Viola, Cello, Double bass, Ensemble | Bowed or pizzicato, vibrato depth and rate |
+| Strings | Violin, Viola, Cello, Double bass, Ensemble, Choir | Bowed or pizzicato, vibrato depth and rate |
 | Brass | Trumpet, Trombone, French horn, Tuba, Section | Mute, attack hardness, vibrato |
-| Woodwind | Flute, Clarinet, Oboe, Bassoon, Sax | Breath noise, vibrato |
-| Mallets | Glockenspiel, Vibraphone, Marimba, Xylophone, Tubular bells | Hardness, motor speed on vibes |
+| Woodwind | Flute, Clarinet, Oboe, Bassoon, Sax, Organ | Breath noise, vibrato |
+| Plucked | Harp, Koto, Pizzicato, Banjo, Sitar | Hardness, motor |
+| Mallets | Glockenspiel, Vibraphone, Marimba, Xylophone, Tubular bells, Steel drum | Hardness, motor speed on vibes |
 | Drums | Kick, Snare, Tom, Rim, Clap | Tuning, decay, damping |
 | Cymbals | Crash, Ride, Hi-hat, Splash, Gong | Size, open or closed, choke key |
 

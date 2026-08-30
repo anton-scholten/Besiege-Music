@@ -12,11 +12,11 @@
 	<Modules>
 		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Bass">
 			<Types>
-			<Type name="Acoustic" engine="sampler" samples="bass_acoustic_36 bass_acoustic_64" loops="6568-6906 4272-4340" decay="1.6" />
-			<Type name="Fingered" engine="sampler" samples="bass_finger_54 bass_finger_64 bass_finger_69" loops="5150-5270 5114-5182 5074-5125" decay="1.4" />
-			<Type name="Picked"   engine="sampler" samples="bass_pick_42 bass_pick_52 bass_pick_57" loops="9765-10007 8856-8992 8873-8975" decay="1.3" />
-			<Type name="Fretless" engine="sampler" samples="bass_fretless_32 bass_fretless_50 bass_fretless_44" loops="14200-14624 13929-14080 14855-15068" decay="1.8" />
-			<Type name="Synth"    engine="sampler" samples="bass_synth_33 bass_synth_39 bass_synth_51" loops="400-801 294-588 147-294" decay="1.2" />
+			<Type name="Acoustic" engine="sampler" samples="bass_acoustic_28 bass_acoustic_41 bass_acoustic_54" loops="38280-39350 26451-26704 17857-18096" decay="1.6" />
+			<Type name="Fingered" engine="sampler" samples="bass_finger_28 bass_finger_41 bass_finger_48" loops="84046-84581 64937-65190 63955-64461" decay="1.4" />
+			<Type name="Picked"   engine="sampler" samples="bass_pick_28 bass_pick_41 bass_pick_48" loops="126173-126705 87285-87792 73976-74482" decay="1.3" />
+			<Type name="Fretless" engine="sampler" samples="bass_fretless_28 bass_fretless_44 bass_fretless_62" loops="68532-69069 28856-29488 31020-31394" decay="1.8" />
+			<Type name="Synth"    engine="sampler" samples="bass_synth_30 bass_synth_42 bass_synth_54" loops="915-6159 472-3571 234-2022" decay="1.2" />
 			</Types>
 			<Extras>
 			<Extra kind="toggle" key="SlapKey" name="Slap" default="0" />

@@ -128,7 +128,7 @@ namespace OrchestraMod
         /// forty files, and its drop-down cousin draws its list inside whatever
         /// mask it is under -- which, in a window built on a scroll view, means
         /// clipped. The Chooser hangs its list off the canvas instead. It is the
-        /// same control Braids Synth and Special Effects use, kept in step with
+        /// same control Special Effects uses, kept in step with
         /// them.
         /// </summary>
         protected Chooser AddSelector(string caption, float y, List<string> choices,

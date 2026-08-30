@@ -13,10 +13,10 @@
 	<Modules>
 		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Piano" default="Upright piano">
 			<Types>
-			<Type name="Grand piano"    engine="sampler" samples="piano_grand_38 piano_grand_60 piano_grand_86" loops="33983-55757 21957-44474 12297-22425" decay="3.5" damped="true" release="0.5" />
-			<Type name="Upright piano"  engine="sampler" samples="piano_upright_38 piano_upright_60 piano_upright_86" loops="33983-55757 21957-44474 12297-22425" decay="2.4" damped="true" release="0.4" />
-			<Type name="Electric piano" engine="sampler" samples="piano_rhodes_38 piano_rhodes_55 piano_rhodes_80" loops="4571-4872 3325-3437 1255-1281" decay="3" damped="true" release="0.6" />
-			<Type name="Honky-tonk"     engine="sampler" samples="piano_honky_38 piano_honky_60 piano_honky_86" loops="33983-55757 21957-44474 12297-22425" decay="2.5" damped="true" release="0.4" />
+			<Type name="Grand piano"    engine="sampler" samples="piano_grand_35 piano_grand_60 piano_grand_85" loops="253762-296195 120348-160902 75746-85558" decay="3.5" damped="true" release="0.5" />
+			<Type name="Upright piano"  engine="sampler" samples="piano_upright_35 piano_upright_60 piano_upright_85" loops="253762-296195 120348-160902 75746-85558" decay="2.4" damped="true" release="0.4" />
+			<Type name="Electric piano" engine="sampler" samples="piano_rhodes_36 piano_rhodes_60 piano_rhodes_84" loops="102184-102857 31525-32030 45976-46649" decay="3" damped="true" release="0.6" />
+			<Type name="Honky-tonk"     engine="sampler" samples="piano_honky_35 piano_honky_60 piano_honky_85" loops="253762-296195 120348-160902 75746-85558" decay="2.5" damped="true" release="0.4" />
 			</Types>
 			<Extras>
 			<Extra kind="toggle" key="SustainKey" name="Sustain" default="0" />

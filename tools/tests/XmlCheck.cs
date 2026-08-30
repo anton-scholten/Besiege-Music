@@ -53,6 +53,7 @@ static class XmlCheck
         Dictionary<string, float[]> poses = IconPoses(args);
         int checkedFiles = 0;
         int icons = 0;
+        int clips = 0;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -95,6 +96,13 @@ static class XmlCheck
             bad += Wears(root, "Mesh", resources, args[i]);
             bad += Wears(root, "Texture", resources, args[i]);
 
+            // And what it plays. A sampled type names its recordings, and a name
+            // Mod.xml does not declare is not an error anywhere: `SampleBank` logs
+            // one line and the block is silent, which looks like a dozen other
+            // faults. Loops are counted against samples in the same pass, a loop
+            // list one short putting every loop after it on the wrong recording.
+            bad += Plays(root, resources, args[i], ref clips);
+
             // The toolbar's view of a block is written twice: here, and in the
             // mesh tool, which renders a preview from it. Neither can be judged
             // without the other -- a preview drawn from a stale pose is a picture
@@ -128,6 +136,15 @@ static class XmlCheck
                     // from here: the modding API's only name for a block is the id
                     // of the mod that owns it. Two places, so they are checked
                     // against one another rather than trusted.
+                    //
+                    // Only for a module that carries the attribute at all: the mod
+                    // holds a block whose module is somebody else's design and has
+                    // no `block` of its own, and holding that to this rule reported
+                    // a fault in a block that was correct.
+                    if (!module.HasAttribute("block"))
+                    {
+                        continue;
+                    }
                     XmlNode named = root.SelectSingleNode("Name");
                     string family = module.GetAttribute("block");
                     if (named != null && family != named.InnerText.Trim())
@@ -147,6 +164,7 @@ static class XmlCheck
         Console.WriteLine("XML check: " + checkedFiles + " file(s) parse, blocks complete"
                           + schema.Summary()
                           + (icons > 0 ? ", " + icons + " icon pose(s) as posed" : "")
+                          + (clips > 0 ? ", " + clips + " sample(s) declared and present" : "")
                           + ".");
         return 0;
     }
@@ -233,7 +251,7 @@ static class XmlCheck
                 continue;
             }
             MatchCollection rows = Regex.Matches(table.Groups[1].Value,
-                "\"([A-Za-z]+)\"\\s*:\\s*(DEFAULT_ICON|" + tuple + ")");
+                "\"([A-Za-z ]+)\"\\s*:\\s*(DEFAULT_ICON|" + tuple + ")");
             for (int r = 0; r < rows.Count; r++)
             {
                 Match row = rows[r];
@@ -297,7 +315,64 @@ static class XmlCheck
         return 0;
     }
 
-    /// <summary>Every mesh and texture Mod.xml declares, as kind:name -> path.</summary>
+    /// <summary>
+    /// Checks every recording a block's types name: declared in Mod.xml, present
+    /// on disk, and matched one for one by the loop list beside it.
+    /// </summary>
+    static int Plays(XmlElement root, Dictionary<string, string> resources,
+                     string path, ref int counted)
+    {
+        int bad = 0;
+        XmlNodeList types = root.SelectNodes("Modules/*/Types/Type");
+        for (int t = 0; t < types.Count; t++)
+        {
+            XmlElement type = types[t] as XmlElement;
+            if (type == null || !type.HasAttribute("samples"))
+            {
+                continue;
+            }
+            string[] names = type.GetAttribute("samples")
+                .Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string loops = type.GetAttribute("loops");
+            if (loops.Length > 0)
+            {
+                string[] parts = loops.Split(
+                    new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length != names.Length)
+                {
+                    Console.Error.WriteLine("  " + path + ": <Type name=\""
+                        + type.GetAttribute("name") + "\"> names " + names.Length
+                        + " sample(s) and " + parts.Length + " loop(s)");
+                    bad++;
+                }
+            }
+            for (int n = 0; n < names.Length; n++)
+            {
+                string file;
+                if (!resources.TryGetValue("AudioClip:" + names[n], out file))
+                {
+                    Console.Error.WriteLine("  " + path + ": sample \"" + names[n]
+                        + "\" is not an AudioClip Mod.xml declares");
+                    bad++;
+                    continue;
+                }
+                string here = Path.Combine(
+                    Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)), "Resources"),
+                    file.Replace('\\', Path.DirectorySeparatorChar));
+                if (!File.Exists(here))
+                {
+                    Console.Error.WriteLine("  " + path + ": sample \"" + names[n]
+                        + "\" points at " + file + ", which is not there");
+                    bad++;
+                    continue;
+                }
+                counted++;
+            }
+        }
+        return bad;
+    }
+
+    /// <summary>Every mesh, texture and clip Mod.xml declares, as kind:name -> path.</summary>
     static Dictionary<string, string> Resources(string[] args)
     {
         Dictionary<string, string> found = new Dictionary<string, string>();
@@ -319,7 +394,8 @@ static class XmlCheck
                 foreach (XmlNode node in list.ChildNodes)
                 {
                     XmlElement res = node as XmlElement;
-                    if (res == null || (res.Name != "Mesh" && res.Name != "Texture"))
+                    if (res == null || (res.Name != "Mesh" && res.Name != "Texture"
+                                        && res.Name != "AudioClip"))
                     {
                         continue;
                     }

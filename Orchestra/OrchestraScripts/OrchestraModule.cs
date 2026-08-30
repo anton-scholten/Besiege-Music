@@ -129,10 +129,37 @@ namespace OrchestraMod
         [DefaultValue(0.5f)]
         public float Noise = 0.5f;
 
-        /// <summary>Semitones the body falls over the note. Drum voice.</summary>
-        [XmlAttribute("pitchDrop")]
+        /// <summary>
+        /// FM: the modulator's frequency as a multiple of the carrier's. A whole
+        /// number is a harmonic tone, anything else a bell.
+        /// </summary>
+        [XmlAttribute("ratio")]
+        [DefaultValue(1f)]
+        public float Ratio = 1f;
+
+        /// <summary>FM: how far the modulator bends the carrier's phase, in
+        /// radians, at the start of the note. `brightness` is the fraction of it
+        /// left once the note has settled.</summary>
+        [XmlAttribute("index")]
+        [DefaultValue(2f)]
+        public float Index = 2f;
+
+        /// <summary>
+        /// FM: what this type is turned down by, so that seven timbres of wildly
+        /// different spectral density come out at one loudness. Measured rather
+        /// than guessed -- see the table in Synth.xml -- because an operator pair
+        /// at index 5 spreads its energy over a dozen partials and one at index 1
+        /// puts it all in the fundamental.
+        /// </summary>
+        [XmlAttribute("level")]
+        [DefaultValue(1f)]
+        public float Level = 1f;
+
+        /// <summary>FM: how much of the modulator's own output goes back into it,
+        /// 0 to 1. A little takes a sine towards a saw.</summary>
+        [XmlAttribute("feedback")]
         [DefaultValue(0f)]
-        public float PitchDrop = 0f;
+        public float Feedback = 0f;
 
         /// <summary>Envelope, in seconds, for the sampler.</summary>
         [XmlAttribute("attack")]

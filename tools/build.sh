@@ -135,6 +135,7 @@ if [[ -f "$XMLCHECK" ]]; then
     set +e
     TARGET_ASM="$XMLCHECK" "$BUILD_DIR/monohost" "$REPO_DIR/Orchestra"/*.xml \
         "$SRC_DIR/OrchestraModule.cs" "$SRC_DIR/LoaderModule.cs" \
+        "$SRC_DIR/Braids/SynthModule.cs" \
         "$REPO_DIR/tools/make-block-meshes.py" "$REPO_DIR/tools/make-arrow-mesh.py"
     xml_rc=$?
     set -e
@@ -156,7 +157,7 @@ fi
 # is not a blacklist violation: the loader's AssemblyScanner walks field types,
 # locals and IL operands, and never enumerates custom attributes -- and the
 # module system has no other way to name the XML elements it deserialises.
-echo "Compiling $(ls "$SRC_DIR"/*.cs | wc -l) source files with Besiege's compiler..."
+echo "Compiling $(ls "$SRC_DIR"/*.cs "$SRC_DIR"/Braids/*.cs | wc -l) source files with Besiege's compiler..."
 set +e
 "$HOST" -target:library -out:"$TMP_OUT" \
     -lib:"$MANAGED" -lib:"$UIFACTORY" \
@@ -164,7 +165,7 @@ set +e
     -r:Assembly-CSharp.dll -r:Assembly-CSharp-firstpass.dll \
     -r:System.dll -r:System.Core.dll -r:System.Xml.dll \
     -r:Besiege.UI.dll -r:Besiege.UI.Bridge.dll \
-    "$SRC_DIR"/*.cs
+    "$SRC_DIR"/*.cs "$SRC_DIR"/Braids/*.cs
 rc=$?
 set -e
 

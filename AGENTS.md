@@ -1,7 +1,8 @@
 # Working notes
 
-Nine instrument blocks for Besiege, one shared behaviour, two synthesis engines
-and a sampler -- plus a tenth block, the MIDI loader, which reads a score off the
+Twelve instrument blocks for Besiege, one shared behaviour, a sampler and two
+synthesis engines behind it -- modal and FM -- plus Braids' macro-oscillator,
+which came in whole from the mod it used to be -- plus an eleventh block, the MIDI loader, which reads a score off the
 disk and writes the machine that plays it.
 
 ## Layout
@@ -21,7 +22,7 @@ The sources fall into three groups:
 
 | Files | What they are |
 | --- | --- |
-| `InstrumentBehaviour`, `Voices`, `SampleBank`, `OrchestraModule` | the nine instruments and their sound |
+| `InstrumentBehaviour`, `Voices`, `SampleBank`, `OrchestraModule` | the eleven instruments and their sound |
 | `Midi`, `Song`, `Bsg`, `Drop`, `Catalogue`, `Files` | the converter: a score in, blocks out |
 | `DockedPanel`, `OrchestraPanel`, `LoaderPanel`, `UIF`, `IconArt`, `ClickShield` | the two panels, and the UI Factory they need |
 
@@ -81,7 +82,7 @@ their own.
 
 ### The block meshes
 
-`tools/make-block-meshes.py` fetches nine low-poly instruments from Poly Pizza
+`tools/make-block-meshes.py` fetches eleven low-poly instruments from Poly Pizza
 and converts them. The models are not in the repository — they are third-party
 CC-BY work and the script re-downloads what is missing — and `tools/models/` is
 ignored.
@@ -101,10 +102,19 @@ Three things it has to get right, and the reasons are worth keeping:
   there. Watch the yaws in `POSE` if this line ever changes again: a reflection
   does not commute with a turn, so mirroring the models reverses which way a given
   yaw carries an instrument's face, and all six had to change sign.
-* **These models have no texture, only a flat colour per material.** A Besiege
-  block wants a texture, so the colours go into a palette a few pixels across and
-  every triangle points at the middle of its own patch. A block's texture is
-  therefore about eighty bytes.
+* **Nine of the models have no texture, only a flat colour per material.** A
+  Besiege block wants a texture, so the colours go into a palette a few pixels
+  across and every triangle points at the middle of its own patch. A block's
+  texture is therefore about eighty bytes. **The harp is the exception**, and it
+  cost a shipped block to find out: it carries a 2048-square baked image and a
+  `baseColorFactor` of white, so reading the factor -- which is all there was to
+  read for the other nine -- put a white harp in the game where the model is
+  mahogany with pale strings. Where a material has a `baseColorTexture`, each
+  triangle now takes the texel under its own middle: the models are low-poly
+  enough that a triangle is one flat area of the image, and everything downstream
+  goes on working in the one flat colour per triangle it always has. Quantised to
+  sixteen levels a channel, which folds the wood grain away and keeps the palette
+  to fifty patches in a 64-pixel PNG.
 * **The toolbar photographs a block from the *opposite* side to the one the
   arithmetic says.** The camera is fixed and `<Icon><Rotation>` turns the block in
   front of it, so where it stands in the block's own frame is that rotation
@@ -115,7 +125,14 @@ Three things it has to get right, and the reasons are worth keeping:
   `icon_camera` undoes the rotation and then negates, and the poses below are read
   off that.
 
-* **The nine icon poses are a camera, not a magic number.** x is how far above the
+* **An instrument's authored front is not the same for every model, and the
+  bounding box says which way it faces.** Seven of the ten take a quarter turn to
+  face the block's +y; the harp took the same one and went into the game edge-on,
+  presenting the thin side of its string plane, which is the one view of a harp
+  that reads as a stick. The check is the printed size: a flat instrument should
+  come out thin in **y**, and the harp was 0.28 x 0.71 x 1.60 -- thin in x -- until
+  its yaw became a half turn.
+* **The ten icon poses are a camera, not a magic number.** x is how far above the
   block it sits, y and z which side it looks from -- z spins the block under the
   camera, being the turn Unity applies first. `-65,210,180` is Besiege's own
   three-quarter, a third of the way up; `-25,210,115` is half above, for the three
@@ -293,7 +310,7 @@ mentioning it is compiled, so confining the mentions means one guarded call,
 every selector is a `Chooser` (with arrows, or without for the file list), and
 every toggle has the prefab's swell destroyed and a `Swell` put on its caption so
 the lettering grows and the row does not. `Chooser.cs`, `Swell.cs` and
-`ZoomGuard.cs` are copies -- keep them in step with Braids Synth and Special
+`ZoomGuard.cs` are copies -- keep them in step with Special
 Effects rather than editing one of them here.
 
 **Use UI Factory's controls, not lookalikes.** It ships Besiege's own widgets as
@@ -496,9 +513,6 @@ what `SongCheck.cs <file.mid>` is for.
 `inharmonicity`. 1 is a harmonic series; above it the partials stretch and go
 metallic, which is what a cymbal or a bell actually does. `brightness` tilts the
 top partials up and makes them die first.
-
-`drum` — a sine body swept down by `pitchDrop` over the note, plus one-pole
-filtered noise for the skin.
 
 `sampler` — nearest recorded note from `SampleBank`, Catmull-Rom interpolation
 (linear costs audible high end when shifting down), ADSR. Sustaining types hold

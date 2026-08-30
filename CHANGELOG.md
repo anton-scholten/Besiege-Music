@@ -4,6 +4,35 @@
 
 **Added**
 
+- **The Braids Synth mod is now a block in this one.** Mutable Instruments'
+  macro-oscillator, twenty-three models and its own panel, moved in whole: the
+  sources sit under `Orchestra/OrchestraScripts/Braids/` unchanged from the mod
+  they came from, licence file included, and the only edit is that what was their
+  `Mod.OnLoad` is two lines of this mod's. Its block XML is the same file with a
+  new local id and this mod's guid on the module element.
+  So the mod no longer *asks* whether Braids is installed: it is here. A machine
+  holding synth blocks names one mod where it used to name two, `make-song.py`
+  writes them by default (`--no-braids` is what asks for the other block now), and
+  `Braids.RequiredMods` is gone. The family a score asks for is called **Braids**
+  rather than "Synth", because the FM block took that name and two families
+  sharing one would have filled an FM block with Braids' mapper keys.
+
+- **A Synth block**, and the one engine in the mod that is not a recording:
+  two-operator FM, a sine bending the phase of another sine, from a 4096-entry
+  table. It exists because **22.5% of the notes in the bundled songs -- 10,484 of
+  46,638 -- are General MIDI's synth leads, pads and effects**, and nothing
+  acoustic stands in for those: without it they went to an overdriven guitar
+  (5442 notes) or a string ensemble (5042). Seven types -- Lead, Square lead, Pad,
+  Choir pad, Bell, Electric piano, Bass -- and the thing they can do that a sample
+  cannot is move while they sound: the modulation index falls from its start
+  towards `brightness` of it, so the Bell's partials are
+  `1.0 2.5 4.5 6.0 8.0 9.5 11.5` at 0.05 s and have lost their top two by 1.5 s.
+  `ratio` is what each sound *is* -- whole numbers harmonic, 3.5 the bell everyone
+  knows, 14 the tine of an electric piano -- and each type carries a **measured**
+  `level` so seven very different spectra arrive at the 0.20 rms the recorded
+  blocks come to. The Braids Synth mod is still preferred where it is installed.
+  Model is a MIDI controller by Gabriel Ibias, from Poly Pizza, CC-BY 3.0.
+
 - A **MIDI loader block** -- a download arrow, built out of boxes by
   `tools/make-arrow-mesh.py` rather than modelled -- which does inside the game
   what `tools/make-song.py` does outside it. Click it and Besiege's own menu holds
@@ -142,7 +171,121 @@
   the name has to say which folder to read it back from, and a bundled `waltz.mid`
   and a player's own of the same name can both be in the list.
 
+**Removed**
+
+- **The `drum` and `plucked` engines**, with the blocks that used them now playing
+  recordings. Karplus-Strong was three weeks old and measured well -- it is a real
+  string where modal is a bar -- and it still lost to a recording of a harp. An
+  engine nothing plays is a page of arithmetic to keep working and a claim in the
+  documentation nobody can hear. `pitchDrop`, which only the drum engine read, goes
+  with them.
+- **Braids' copies of six files this mod already had**: `Log`, `UIF`, `Chooser`,
+  `Swell`, `ZoomGuard` and `ClickShield` came across with the block and were the
+  same code in another namespace. Four were identical but for the namespace line;
+  `UIF` differed by five members, which moved into this mod's; `Chooser` differed by
+  a row height and a font size, which are the caller's argument now, so the Braids
+  panel draws exactly what it drew before. 46 source files to 40, and the assembly
+  from 177 KB to 167 KB.
+- Four accessors nothing read: `Catalogue.ModAuthor`, `Master.Reduction`,
+  `Master.Playing`, `Midi.TrackCount`, and `UIF.UntranslateAll`, which was dead in
+  the mod it arrived from too.
+**Changed**
+
+- The two synth blocks are called **FM Synth** and **Braids** now, rather than
+  "Synth" and "Synth Block", which named neither of them and read as a pair of
+  the same thing in the toolbar. The FM block's family in a score is `FM Synth`,
+  its mesh and texture `FMSynth`, and the converters' General MIDI tables moved
+  with it.
+- **The FM Synth block faced backwards.** Its model is authored the other way
+  round from the instruments, so the quarter turn they take put the keyboard's
+  keys on the far side of the block -- a keyboard seen from behind. It takes a
+  half turn, and the toolbar tile follows it.
+
 **Fixed**
+
+- **The Braids block turned its own toolbar tile into the loading texture.** It
+  cleared `SkinCanBeChanged` to hide the skin picker, and `BlockPrefab.SetIcons`
+  calls `VisualController.SetPrefabIcons()` only while that flag is true -- the
+  same fault every block in this mod had and the same fix: `Skins.Hide`, which
+  builds the MVisual the mapper reads and marks it not for display. It shipped
+  that way for as long as Braids was a mod of its own.
+
+- **Every block control was driven through the sampler and measured**, after the
+  switch to recordings changed what each one has to act on. Thirteen of them do
+  what they say -- Brass MUTE, Guitar PLUCK and palm mute, Strings PIZZICATO,
+  Piano SUSTAIN and RELEASE, Brass ATTACK, VIBRATO, Woodwind BREATH, Bass SLAP,
+  Drums TUNE and DECAY and DAMPING, Cymbals SIZE -- and three did not:
+  * **Hi-hat OPEN could only close.** The recording was a closed hat, so the
+    control had nothing to open. The block carries **both hats** now and picks by
+    note -- 60 closed, 72 open, each played as recorded -- because a closed hi-hat
+    is not an open one with the ring taken off. Both converters write 72 where a
+    score names General MIDI's open hat, and OPEN still chokes either of them.
+  * **HARDNESS did nothing above half.** It mapped to a lowpass, which clamps at
+    nothing once the recording is unfiltered. `Damping` is signed for the sampler
+    now: a lowpass one way, and the other way what is left after that pole added
+    back, which leans on the top of the recording. A hard beater cannot put
+    partials into a sample that has none, but it can lean on the ones there.
+  * **Plucked had a Motor slider**, inherited from the mallets' engine, and a
+    vibraphone's motor means nothing on a harp. It is **Pluck** now -- where along
+    the string it was plucked, the Guitar block's own control -- which is the one
+    thing a single recording cannot already be.
+
+- **Every instrument that was synthesised now plays recordings, bar one.** The
+  mod had four engines' worth of synthesis in it and each was put beside a cut of
+  the real instrument: the cymbals (twenty-four partials against a disc with
+  hundreds of modes), the kit, the mallets, and the plucked strings the last
+  release added. The recordings win every time, and the two written by hand --
+  the organ's sine drawbars and the choir's formant-filtered saws -- are now a
+  church organ and a choir. `tools/make-voices.py` is gone with them.
+  The one that stayed synthesised is the **tubular bells**: every General MIDI
+  font has a single recording of them for the whole range, and a bell pitched
+  three octaves down is a slow, dull imitation of a bell, where modal rings real
+  partials at whatever pitch it is asked for.
+- **The samples are cut from MuseScore_General now**, 215 MB against
+  GeneralUser GS's 30, and the whole set was re-cut: 131 clips, 1.6 MB. The
+  blocks' own controls still reach the recordings -- Size and Decay set how long a
+  cymbal rings on past the end of the cut, Damping is a hand on the head,
+  Hardness is the beater, and the vibraphone's Motor is put back by a tremolo in
+  the sampler voice, a font having no way to record one.
+- **The extractor picks the zone whose root is nearest the note**, where it used
+  to take the first zone that covered it. That is how a trumpet at note 54 came
+  out of a recording of note 64 -- right instrument, stretched down most of an
+  octave. Mean stretch across the set is now 2.8 semitones.
+- The kit is cut from bank 128 and published at note 60, which is where a block's
+  NOTE slider starts, so a drum placed by hand plays what was recorded. Both
+  converters write 60 for every unpitched piece and offset the toms around it by
+  their General MIDI note, so a kit's six toms stay six toms. They were written
+  at 36 to 78 -- pitches chosen for the synthesised engines, and two octaves down
+  and an octave and a half up against a recording.
+- Cymbals, the snare, the glockenspiel and the xylophone are cut at 44.1 kHz
+  where the rest of the mod is at 22.05: a cymbal is mostly above 8 kHz, and at
+  the lower rate half of it is not there at all.
+- The build now checks that every recording a block names is declared in `Mod.xml`
+  and present on disk, and that a type's loop list is the same length as its
+  sample list. A name nothing declares is not an error anywhere in the game: the
+  block is simply silent.
+
+- **The harp faced the wrong way and was the wrong colour**, both from the same
+  assumption: that the tenth model would be like the other nine. It faces a half
+  turn round from theirs, so at the quarter turn the rest take it stood on the
+  block edge-on, showing the thin side of its string plane -- the one view of a
+  harp that reads as a stick. And it is the only one of the ten with a real baked
+  texture rather than a flat colour per material: its `baseColorFactor` is white,
+  which is all the converter read, so the game got a white harp where the model is
+  mahogany with pale strings. `tools/make-block-meshes.py` now paints a triangle
+  with the texel under its own middle wherever a material has an image, quantised
+  to sixteen levels a channel; the harp comes to fifty colours in a 64-pixel PNG,
+  and the other nine convert byte for byte as before.
+- **A synth block was three to four times as loud as the orchestra around it.**
+  Both converters wrote Braids' volume slider at the same number as this mod's
+  own, and the two do not mean the same thing: a raw saw at full scale against a
+  struck bar that decays. Measured, by compiling Braids' oscillator out of its own
+  source and rendering it beside this mod's voices -- one second of middle C, RMS:
+  raw saw 0.574, raw square 0.863, sine 0.704, triple saw 0.524, saw swarm 0.162,
+  against 0.04 to 0.29 for this mod's blocks and about 0.2 for the modal ones. Each
+  model is now written with its own trim onto that 0.2, so a synth part sits in the
+  band; the swarm, already the quieter, is left alone. `Braids.Trim` and
+  `make-song.py`'s table are held together by `SongCheck`, which reads the Python.
 
 - A newly placed loader block starts on **As the file says**, so a song plays on
   its own instruments unless you ask for one block for all of it. Declared in
@@ -152,6 +295,59 @@
   name it does not hold falls back to the first family, which is Bass
   alphabetically, so a typo would have been a silent change of instrument rather
   than an error.
+- A **Plucked** block -- harp, koto, pizzicato, banjo, sitar, and it starts on the
+  harp -- with **an engine of its own**. It takes the parts that were the worst
+  served by the stand-ins: 3661 notes across the bundled songs were going to a
+  nylon guitar or, for pizzicato, to a *bowed* violin sample. It was built on the
+  modal engine first and sounded like the mallets, because it *was* the mallets:
+  modal rings a bank of partials on one smooth tilt, so everything on it is the
+  same sound with the treble moved, and no setting there can make a harmonic
+  series. The new `plucked` engine is Karplus-Strong -- a burst going round a
+  delay line one period long, damped a little each trip -- which is a string
+  rather than a struck bar, and the partials say so: banjo comes out
+  `0.99, 1.98, 2.96, 3.95` against the modal vibraphone's
+  `1.00, 2.26, 3.66, 5.13`. It is also **19 times cheaper than the modal engine**
+  it replaced: 0.58% of a core for eight voices. `noise` is now the plectrum
+  against the fingertip, `brightness` how dull the loop damping is, and
+  `inharmonicity` drives an allpass that stiffens the string, which is what makes
+  a sitar buzz.
+- **Organ** on Woodwind (a flue pipe is a whistle), **Choir** on Strings and
+  **Steel drum** on Mallets. The steel drum is modal like the rest of that block;
+  the other two hold a note rather than decaying, which the modal engine cannot do,
+  so they are sampled -- and the samples are **written by
+  `tools/make-voices.py`** rather than cut from a SoundFont. An organ is a sum of
+  sine drawbars, which is what an organ literally is; a choir is detuned saws
+  through three formants. No permissively licensed font was on hand to cut from,
+  and the one that was is GPL, which is not a licence to ship samples under.
+  They loop exactly: the loop length is chosen first and every partial snapped onto
+  its grid, because a whole number of *fundamental* periods still clicks -- an
+  organ's 16' drawbar is an octave below the fundamental.
+- **Synth parts go to the Braids Synth block when that mod is installed.** The
+  loader looks for its prefab by the same guid-and-id name this mod finds its own
+  by, and writes Braids' own mapper keys -- model, pitch, timbre, colour, attack,
+  release -- with the model chosen from the General MIDI program: a raw saw for a
+  saw lead, a raw square for a square lead, the saw swarm for a pad, a triple saw
+  for the effects. A note outside the five octaves Braids accepts is folded by
+  octaves rather than clamped flat, which would turn a bass line into a drone. The
+  machine then names both mods in `requiredMods`, or the game would swap those
+  blocks for a ballast without saying so. Nothing is referenced at compile time and
+  nothing breaks when the mod is absent: the synth parts go to the nearest
+  Orchestra block, as before. `tools/make-song.py --braids` does the same, and asks
+  rather than detects, a command-line tool having no way to see what is installed.
+  On Shelter, with Braids: 70 synth blocks where there were none, and the guitar
+  drops from 50 blocks to 22.
+- **The modal engine was most of the lag.** It called `Mathf.Sin` once per partial
+  per sample -- twenty-four transcendentals a sample -- which measured at **44% of
+  a core for one block's eight voices**: four blocks ringing at once was a core
+  gone, and a machine full of mallets and cymbals is many more than four. Each
+  partial is now a coupled-form resonator, two multiplies and two adds, which is
+  the same sine from bounded arithmetic: **11.2%**, near four times faster. The
+  bank also shortens as a note dies rather than testing every partial to skip it.
+- The master volume read added last time was **a call into Unity per block per
+  frame** -- `AudioSource.outputAudioMixerGroup` is native, and
+  `SimulateUpdateAlways` runs for every block. The routing cannot change under a
+  running block, so it is asked once, and the slider is asked ten times a second
+  rather than sixty times a second per block.
 - **Songs can play on the instruments they name.** A MIDI file declares what each
   part is with a program change, and the converter threw all of it away: every
   melodic part went to whichever single block was chosen, so a file naming eight

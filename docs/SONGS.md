@@ -92,12 +92,16 @@ goes where it says. `Gm` is a 128-entry table from General MIDI's instruments to
 `Family:Type`, and `SongCheck` holds every one of its entries to a block and an
 instrument this mod actually has.
 
-Nine blocks against 128 instruments means some of it is approximation: the organs
-go to the string ensemble because that is what sustains, the synth leads to the
-overdriven guitar because that is what cuts, the pads and effects to the ensemble
-as well. Every entry in `Gm.cs` carries the reasoning, and the guesses say they are
-guesses. The families that map exactly — guitars, basses, solo strings, brass,
-reeds, pipes, tuned percussion — are most of what a real score uses.
+Eleven blocks against 128 instruments, and the approximations are down to the
+sound effects: General MIDI's synth leads, pads and effects have the **FM Synth**
+block, which is what most of those presets were on the machines they came from.
+The **Braids** block takes them by default -- twenty-three models against two
+operators is the fuller synthesiser -- and the FM block is what they fall back to.
+Braids was a mod of its own and had to be asked for with `--braids`; it is one of
+these blocks now, and `--no-braids` is what asks for the other one. Every entry in
+`Gm.cs` carries the reasoning, and the guesses say they are guesses. The families
+that map exactly — guitars, basses, solo strings, brass, reeds, pipes, tuned and
+plucked percussion, organs, choirs — are most of what a real score uses.
 
 **It costs blocks.** A part per instrument is a block per instrument *per pitch*,
 so the same note limit covers less music:

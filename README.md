@@ -1,11 +1,12 @@
 # Besiege Orchestra
 
-Nine instrument blocks, and a tenth that turns a MIDI file into a machine that
+Twelve instrument blocks, and a thirteenth that turns a MIDI file into a machine that
 plays them, in [Besiege](https://store.steampowered.com/app/346010/Besiege/).
 
 ![The nine blocks: piano, electric guitar, acoustic bass, violin, trumpet, saxophone, xylophone, drum and cymbal](Promo_1.jpg)
 
-Piano, guitar, bass, strings, brass, woodwind, mallets, drums and cymbals. Each
+Piano, guitar, bass, strings, brass, woodwind, plucked, mallets, drums, cymbals,
+an FM synth and Braids. Each
 block plays one note on one key, heard from where the block stands — so a machine
 can carry a band, and you hear it move.
 
@@ -29,7 +30,7 @@ Either subscribe to the mod on Steam, or if you don't use Steam you can clone th
 ```
 
 Set `BESIEGE_DIR` if your install isn't found automatically. Start Besiege, enable
-**Orchestra** in the mods menu, and the nine blocks appear in the toolbar. No C#
+**Orchestra** in the mods menu, and the twelve blocks appear in the toolbar. No C#
 toolchain is needed; the build uses Besiege's own compiler.
 
 ## Options
@@ -219,6 +220,7 @@ one track, where `--track` cannot separate them.
 | `--key KEYCODE` | the key every timer waits for (default `M`; `--key none` starts with the simulation) |
 | `--variable NAME` | wait for a variable instead of the keyboard, as the block does when its key is set to one |
 | `--prefix NAME` | what the song's variables are named after (default `orch_`) |
+| `--no-braids` | write the synth parts for the FM synth block rather than the Braids one |
 | `--tempo BPM`, `--transpose N` | override the tempo; shift in semitones |
 | `--from S`, `--seconds S` | play part of the score |
 | `--offset S`, `--gap S` | quiet before the first note (default 0); silence between repeats |
@@ -250,17 +252,34 @@ because it is playing.
 
 ## Sound
 
-**Synthesised** — mallets, drums, cymbals. A bank of decaying partials for
-anything metal: rigid metal rings at frequencies that are not harmonics, which is
-why a crash starts bright and ends as a hum, and why **Size** and **Decay** here
-change the physics rather than pick a different recording. Drums are a pitched
-body that falls as it decays, plus noise for the skin.
+**Sampled** — everything but one. Three recorded notes per pitched instrument, so
+pitch-shifting stretches 2.8 semitones on average, and one recording per kit
+piece. The 131 clips are cut from
+[MuseScore_General](https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/)
+at build time and come to 1.6 MB; see [docs/SAMPLES.md](docs/SAMPLES.md) for how,
+and how to cut them from a different font. The blocks' own controls still reach
+them: **Size** and **Decay** set how long a cymbal rings on past the recording,
+**Damping** puts a hand on the head, **Hardness** changes the beater in both
+directions, and **Motor** puts a vibraphone's discs back. The hi-hat carries both
+recordings — 60 is the closed one, 72 the open — because a closed hat is not an
+open one with the ring taken off.
 
-**Sampled** — piano, guitar, bass, strings, brass, woodwind. Three recorded notes
-per instrument, so pitch-shifting never stretches more than about three semitones.
-The 84 clips are cut from [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS)
-at build time and come to 776 KB; see [docs/SAMPLES.md](docs/SAMPLES.md) for how,
-and how to cut them from a different font.
+**Synthesised** — the **FM Synth** block, and the tubular bells. The bells because
+every General MIDI font has one recording of them for the whole range, and a bell
+pitched three octaves down is a slow, dull imitation of a bell. The **FM Synth**
+block because a fifth of the notes in a modern score are General MIDI's synth leads and
+pads, and nothing acoustic stands in for those: it is two-operator FM, where the
+modulation index falls across the note, which is the one thing a recording cannot
+do. Seven types — lead, square lead, pad, choir pad, bell, electric piano, bass —
+each trimmed by measurement to the same loudness as the recorded blocks.
+
+**Braids** — the twelfth block, and the fullest synthesiser here: Mutable
+Instruments' macro-oscillator, ported, with twenty-three models and a panel of its
+own. It was [a separate mod](https://github.com/anton-scholten/Besiege-Braids-Synth)
+and is now one of these, block, panel and DSP unchanged; its sources live under
+`Orchestra/OrchestraScripts/Braids/` and carry their own licence. A converted score
+sends General MIDI's synth leads and pads here, and to the FM block only if this
+one is somehow not registered.
 
 Sound is generated in `OnAudioFilterRead`, which the mixer calls on the buffer it
 is about to play, so a note starts when the key does. The obvious alternative — a
@@ -278,18 +297,20 @@ No code. Each block's XML declares its own types and controls:
 <Extra kind="slider" key="MotorKey" name="Motor" min="0" max="1" default="0" />
 ```
 
-`engine` is `modal`, `drum` or `sampler`. A sampled type names its clips instead,
-`samples="piano_grand_36 piano_grand_60 piano_grand_84"`, where the trailing
-number is the MIDI note each was recorded at.
+`engine` is `sampler`, `fm` or `modal`. A sampled type names its
+clips instead, `samples="piano_grand_35 piano_grand_60 piano_grand_85"`, where the
+trailing number is the MIDI note each was recorded at.
 
 Each block wears its own instrument: low-poly models from
 [Poly Pizza](https://poly.pizza), converted and stood upright by
 `tools/make-block-meshes.py`. The loader block's download arrow is not a model at
 all — `tools/make-arrow-mesh.py` builds it out of boxes, in the same conventions,
-and can render it as the toolbar will see it. They carry no textures of their own, only a flat
-colour per material, so the tool gathers those into a small palette and points
-each triangle at its own patch — which is why a block's texture is a few dozen
-bytes.
+and can render it as the toolbar will see it. Nine of the models carry no texture
+at all, only a flat colour per material, so the tool gathers those into a small
+palette and points each triangle at its own patch — which is why a block's texture
+is a few dozen bytes. The harp is the exception: it has a real baked image, so
+each of its triangles is painted with the texel under its middle and joins the
+same palette.
 
 ## Notes
 
@@ -317,12 +338,19 @@ The block models are Creative Commons Attribution (CC-BY 3.0), from Poly Pizza:
 | Drums | [Drum](https://poly.pizza/m/5Wp2emwd7xw) | jeremy |
 | Mallets | [Xylophone](https://poly.pizza/m/a-OYg3WVXfV) | Daniel Melchior |
 | Cymbals | [Cymbal](https://poly.pizza/m/f8SdBE98BXE) | Poly by Google |
+| Plucked | [Harp](https://poly.pizza/m/102E7hcxEPT) | Poly by Google |
+| FM Synth | [Midi controller](https://poly.pizza/m/155LOgjwUy2) | Gabriel Ibias |
 
-Sampled instruments are cut from [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS),
-which is permissively licensed; only the cut samples are redistributed.
+Sampled instruments are cut from [MuseScore_General](https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/),
+which is MIT; only the cut samples are redistributed.
 
 ## Licence
 
 MIT. Besiege is Spiderling Studios'; nothing of theirs is redistributed here.
 Sampled instruments are cut from an open SoundFont — see
 [docs/SAMPLES.md](docs/SAMPLES.md) for which, and under what terms.
+
+The Braids block's oscillator and its lookup tables are derived from **Braids by
+Mutable Instruments**, copyright 2012 Emilie Gillet, MIT — the licence travels
+with the source, in
+[Orchestra/OrchestraScripts/Braids/BRAIDS-LICENSE.txt](Orchestra/OrchestraScripts/Braids/BRAIDS-LICENSE.txt).

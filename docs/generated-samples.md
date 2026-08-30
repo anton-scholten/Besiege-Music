@@ -3,122 +3,193 @@
 ## Mod.xml resources
 
 ```xml
-		<AudioClip name="bass_acoustic_36" path="Samples\bass_acoustic_36.ogg" />
-		<AudioClip name="bass_acoustic_64" path="Samples\bass_acoustic_64.ogg" />
-		<AudioClip name="bass_finger_54" path="Samples\bass_finger_54.ogg" />
-		<AudioClip name="bass_finger_64" path="Samples\bass_finger_64.ogg" />
-		<AudioClip name="bass_finger_69" path="Samples\bass_finger_69.ogg" />
-		<AudioClip name="bass_fretless_32" path="Samples\bass_fretless_32.ogg" />
-		<AudioClip name="bass_fretless_50" path="Samples\bass_fretless_50.ogg" />
+		<AudioClip name="bass_acoustic_28" path="Samples\bass_acoustic_28.ogg" />
+		<AudioClip name="bass_acoustic_41" path="Samples\bass_acoustic_41.ogg" />
+		<AudioClip name="bass_acoustic_54" path="Samples\bass_acoustic_54.ogg" />
+		<AudioClip name="bass_finger_28" path="Samples\bass_finger_28.ogg" />
+		<AudioClip name="bass_finger_41" path="Samples\bass_finger_41.ogg" />
+		<AudioClip name="bass_finger_48" path="Samples\bass_finger_48.ogg" />
+		<AudioClip name="bass_fretless_28" path="Samples\bass_fretless_28.ogg" />
 		<AudioClip name="bass_fretless_44" path="Samples\bass_fretless_44.ogg" />
-		<AudioClip name="bass_pick_42" path="Samples\bass_pick_42.ogg" />
-		<AudioClip name="bass_pick_52" path="Samples\bass_pick_52.ogg" />
-		<AudioClip name="bass_pick_57" path="Samples\bass_pick_57.ogg" />
-		<AudioClip name="bass_synth_33" path="Samples\bass_synth_33.ogg" />
-		<AudioClip name="bass_synth_39" path="Samples\bass_synth_39.ogg" />
-		<AudioClip name="bass_synth_51" path="Samples\bass_synth_51.ogg" />
-		<AudioClip name="brass_horn_63" path="Samples\brass_horn_63.ogg" />
-		<AudioClip name="brass_horn_70" path="Samples\brass_horn_70.ogg" />
+		<AudioClip name="bass_fretless_62" path="Samples\bass_fretless_62.ogg" />
+		<AudioClip name="bass_pick_28" path="Samples\bass_pick_28.ogg" />
+		<AudioClip name="bass_pick_41" path="Samples\bass_pick_41.ogg" />
+		<AudioClip name="bass_pick_48" path="Samples\bass_pick_48.ogg" />
+		<AudioClip name="bass_synth_30" path="Samples\bass_synth_30.ogg" />
+		<AudioClip name="bass_synth_42" path="Samples\bass_synth_42.ogg" />
+		<AudioClip name="bass_synth_54" path="Samples\bass_synth_54.ogg" />
+		<AudioClip name="brass_horn_45" path="Samples\brass_horn_45.ogg" />
+		<AudioClip name="brass_horn_57" path="Samples\brass_horn_57.ogg" />
+		<AudioClip name="brass_horn_69" path="Samples\brass_horn_69.ogg" />
+		<AudioClip name="brass_section_48" path="Samples\brass_section_48.ogg" />
 		<AudioClip name="brass_section_60" path="Samples\brass_section_60.ogg" />
 		<AudioClip name="brass_section_72" path="Samples\brass_section_72.ogg" />
-		<AudioClip name="brass_trombone_37" path="Samples\brass_trombone_37.ogg" />
-		<AudioClip name="brass_trombone_52" path="Samples\brass_trombone_52.ogg" />
-		<AudioClip name="brass_trombone_62" path="Samples\brass_trombone_62.ogg" />
-		<AudioClip name="brass_trumpet_58" path="Samples\brass_trumpet_58.ogg" />
+		<AudioClip name="brass_trombone_43" path="Samples\brass_trombone_43.ogg" />
+		<AudioClip name="brass_trombone_53" path="Samples\brass_trombone_53.ogg" />
+		<AudioClip name="brass_trombone_65" path="Samples\brass_trombone_65.ogg" />
 		<AudioClip name="brass_trumpet_64" path="Samples\brass_trumpet_64.ogg" />
-		<AudioClip name="brass_trumpet_78" path="Samples\brass_trumpet_78.ogg" />
-		<AudioClip name="brass_tuba_30" path="Samples\brass_tuba_30.ogg" />
-		<AudioClip name="brass_tuba_38" path="Samples\brass_tuba_38.ogg" />
-		<AudioClip name="brass_tuba_46" path="Samples\brass_tuba_46.ogg" />
+		<AudioClip name="brass_trumpet_79" path="Samples\brass_trumpet_79.ogg" />
+		<AudioClip name="brass_tuba_29" path="Samples\brass_tuba_29.ogg" />
+		<AudioClip name="brass_tuba_44" path="Samples\brass_tuba_44.ogg" />
+		<AudioClip name="brass_tuba_54" path="Samples\brass_tuba_54.ogg" />
 		<AudioClip name="guitar_clean_40" path="Samples\guitar_clean_40.ogg" />
 		<AudioClip name="guitar_clean_50" path="Samples\guitar_clean_50.ogg" />
 		<AudioClip name="guitar_clean_64" path="Samples\guitar_clean_64.ogg" />
 		<AudioClip name="guitar_drive_40" path="Samples\guitar_drive_40.ogg" />
-		<AudioClip name="guitar_drive_52" path="Samples\guitar_drive_52.ogg" />
-		<AudioClip name="guitar_drive_62" path="Samples\guitar_drive_62.ogg" />
+		<AudioClip name="guitar_drive_50" path="Samples\guitar_drive_50.ogg" />
+		<AudioClip name="guitar_drive_64" path="Samples\guitar_drive_64.ogg" />
 		<AudioClip name="guitar_jazz_40" path="Samples\guitar_jazz_40.ogg" />
-		<AudioClip name="guitar_jazz_53" path="Samples\guitar_jazz_53.ogg" />
-		<AudioClip name="guitar_jazz_63" path="Samples\guitar_jazz_63.ogg" />
-		<AudioClip name="guitar_nylon_53" path="Samples\guitar_nylon_53.ogg" />
-		<AudioClip name="guitar_nylon_63" path="Samples\guitar_nylon_63.ogg" />
-		<AudioClip name="guitar_nylon_76" path="Samples\guitar_nylon_76.ogg" />
+		<AudioClip name="guitar_jazz_54" path="Samples\guitar_jazz_54.ogg" />
+		<AudioClip name="guitar_jazz_64" path="Samples\guitar_jazz_64.ogg" />
+		<AudioClip name="guitar_nylon_40" path="Samples\guitar_nylon_40.ogg" />
+		<AudioClip name="guitar_nylon_50" path="Samples\guitar_nylon_50.ogg" />
+		<AudioClip name="guitar_nylon_64" path="Samples\guitar_nylon_64.ogg" />
 		<AudioClip name="guitar_steel_40" path="Samples\guitar_steel_40.ogg" />
 		<AudioClip name="guitar_steel_50" path="Samples\guitar_steel_50.ogg" />
 		<AudioClip name="guitar_steel_64" path="Samples\guitar_steel_64.ogg" />
-		<AudioClip name="piano_grand_38" path="Samples\piano_grand_38.ogg" />
+		<AudioClip name="mallet_glock_79" path="Samples\mallet_glock_79.ogg" />
+		<AudioClip name="mallet_glock_84" path="Samples\mallet_glock_84.ogg" />
+		<AudioClip name="mallet_glock_96" path="Samples\mallet_glock_96.ogg" />
+		<AudioClip name="mallet_marimba_48" path="Samples\mallet_marimba_48.ogg" />
+		<AudioClip name="mallet_marimba_60" path="Samples\mallet_marimba_60.ogg" />
+		<AudioClip name="mallet_marimba_66" path="Samples\mallet_marimba_66.ogg" />
+		<AudioClip name="mallet_steel_66" path="Samples\mallet_steel_66.ogg" />
+		<AudioClip name="mallet_steel_72" path="Samples\mallet_steel_72.ogg" />
+		<AudioClip name="mallet_steel_84" path="Samples\mallet_steel_84.ogg" />
+		<AudioClip name="mallet_vibes_57" path="Samples\mallet_vibes_57.ogg" />
+		<AudioClip name="mallet_vibes_66" path="Samples\mallet_vibes_66.ogg" />
+		<AudioClip name="mallet_vibes_78" path="Samples\mallet_vibes_78.ogg" />
+		<AudioClip name="mallet_xylo_60" path="Samples\mallet_xylo_60.ogg" />
+		<AudioClip name="mallet_xylo_72" path="Samples\mallet_xylo_72.ogg" />
+		<AudioClip name="mallet_xylo_84" path="Samples\mallet_xylo_84.ogg" />
+		<AudioClip name="piano_grand_35" path="Samples\piano_grand_35.ogg" />
 		<AudioClip name="piano_grand_60" path="Samples\piano_grand_60.ogg" />
-		<AudioClip name="piano_grand_86" path="Samples\piano_grand_86.ogg" />
-		<AudioClip name="piano_honky_38" path="Samples\piano_honky_38.ogg" />
+		<AudioClip name="piano_grand_85" path="Samples\piano_grand_85.ogg" />
+		<AudioClip name="piano_honky_35" path="Samples\piano_honky_35.ogg" />
 		<AudioClip name="piano_honky_60" path="Samples\piano_honky_60.ogg" />
-		<AudioClip name="piano_honky_86" path="Samples\piano_honky_86.ogg" />
-		<AudioClip name="piano_rhodes_38" path="Samples\piano_rhodes_38.ogg" />
-		<AudioClip name="piano_rhodes_55" path="Samples\piano_rhodes_55.ogg" />
-		<AudioClip name="piano_rhodes_80" path="Samples\piano_rhodes_80.ogg" />
-		<AudioClip name="piano_upright_34" path="Samples\piano_upright_34.ogg" />
-		<AudioClip name="piano_upright_60" path="Samples\piano_upright_60.ogg" />
-		<AudioClip name="piano_upright_86" path="Samples\piano_upright_86.ogg" />
+		<AudioClip name="piano_honky_83" path="Samples\piano_honky_83.ogg" />
+		<AudioClip name="piano_rhodes_36" path="Samples\piano_rhodes_36.ogg" />
+		<AudioClip name="piano_rhodes_60" path="Samples\piano_rhodes_60.ogg" />
+		<AudioClip name="piano_rhodes_84" path="Samples\piano_rhodes_84.ogg" />
+		<AudioClip name="piano_upright_33" path="Samples\piano_upright_33.ogg" />
+		<AudioClip name="piano_upright_57" path="Samples\piano_upright_57.ogg" />
+		<AudioClip name="piano_upright_83" path="Samples\piano_upright_83.ogg" />
+		<AudioClip name="pluck_banjo_50" path="Samples\pluck_banjo_50.ogg" />
+		<AudioClip name="pluck_banjo_59" path="Samples\pluck_banjo_59.ogg" />
+		<AudioClip name="pluck_banjo_62" path="Samples\pluck_banjo_62.ogg" />
+		<AudioClip name="pluck_harp_34" path="Samples\pluck_harp_34.ogg" />
+		<AudioClip name="pluck_harp_54" path="Samples\pluck_harp_54.ogg" />
+		<AudioClip name="pluck_harp_73" path="Samples\pluck_harp_73.ogg" />
+		<AudioClip name="pluck_koto_60" path="Samples\pluck_koto_60.ogg" />
+		<AudioClip name="pluck_koto_78" path="Samples\pluck_koto_78.ogg" />
+		<AudioClip name="pluck_pizz_39" path="Samples\pluck_pizz_39.ogg" />
+		<AudioClip name="pluck_pizz_52" path="Samples\pluck_pizz_52.ogg" />
+		<AudioClip name="pluck_pizz_66" path="Samples\pluck_pizz_66.ogg" />
+		<AudioClip name="pluck_sitar_52" path="Samples\pluck_sitar_52.ogg" />
+		<AudioClip name="pluck_sitar_60" path="Samples\pluck_sitar_60.ogg" />
+		<AudioClip name="pluck_sitar_72" path="Samples\pluck_sitar_72.ogg" />
 		<AudioClip name="strings_cello_37" path="Samples\strings_cello_37.ogg" />
 		<AudioClip name="strings_cello_47" path="Samples\strings_cello_47.ogg" />
 		<AudioClip name="strings_cello_59" path="Samples\strings_cello_59.ogg" />
-		<AudioClip name="strings_dbass_31" path="Samples\strings_dbass_31.ogg" />
-		<AudioClip name="strings_dbass_39" path="Samples\strings_dbass_39.ogg" />
-		<AudioClip name="strings_dbass_50" path="Samples\strings_dbass_50.ogg" />
-		<AudioClip name="strings_ens_48" path="Samples\strings_ens_48.ogg" />
-		<AudioClip name="strings_ens_60" path="Samples\strings_ens_60.ogg" />
-		<AudioClip name="strings_ens_72" path="Samples\strings_ens_72.ogg" />
+		<AudioClip name="strings_choir_48" path="Samples\strings_choir_48.ogg" />
+		<AudioClip name="strings_choir_60" path="Samples\strings_choir_60.ogg" />
+		<AudioClip name="strings_choir_72" path="Samples\strings_choir_72.ogg" />
+		<AudioClip name="strings_dbass_29" path="Samples\strings_dbass_29.ogg" />
+		<AudioClip name="strings_dbass_41" path="Samples\strings_dbass_41.ogg" />
+		<AudioClip name="strings_dbass_52" path="Samples\strings_dbass_52.ogg" />
+		<AudioClip name="strings_ens_49" path="Samples\strings_ens_49.ogg" />
+		<AudioClip name="strings_ens_61" path="Samples\strings_ens_61.ogg" />
+		<AudioClip name="strings_ens_73" path="Samples\strings_ens_73.ogg" />
 		<AudioClip name="strings_viola_49" path="Samples\strings_viola_49.ogg" />
-		<AudioClip name="strings_viola_60" path="Samples\strings_viola_60.ogg" />
-		<AudioClip name="strings_viola_72" path="Samples\strings_viola_72.ogg" />
+		<AudioClip name="strings_viola_61" path="Samples\strings_viola_61.ogg" />
+		<AudioClip name="strings_viola_73" path="Samples\strings_viola_73.ogg" />
 		<AudioClip name="strings_violin_56" path="Samples\strings_violin_56.ogg" />
-		<AudioClip name="strings_violin_66" path="Samples\strings_violin_66.ogg" />
-		<AudioClip name="strings_violin_77" path="Samples\strings_violin_77.ogg" />
-		<AudioClip name="wind_bassoon_36" path="Samples\wind_bassoon_36.ogg" />
-		<AudioClip name="wind_bassoon_48" path="Samples\wind_bassoon_48.ogg" />
+		<AudioClip name="strings_violin_65" path="Samples\strings_violin_65.ogg" />
+		<AudioClip name="strings_violin_80" path="Samples\strings_violin_80.ogg" />
+		<AudioClip name="wind_bassoon_35" path="Samples\wind_bassoon_35.ogg" />
+		<AudioClip name="wind_bassoon_46" path="Samples\wind_bassoon_46.ogg" />
 		<AudioClip name="wind_bassoon_58" path="Samples\wind_bassoon_58.ogg" />
-		<AudioClip name="wind_clarinet_53" path="Samples\wind_clarinet_53.ogg" />
-		<AudioClip name="wind_clarinet_64" path="Samples\wind_clarinet_64.ogg" />
-		<AudioClip name="wind_clarinet_76" path="Samples\wind_clarinet_76.ogg" />
+		<AudioClip name="wind_clarinet_52" path="Samples\wind_clarinet_52.ogg" />
+		<AudioClip name="wind_clarinet_61" path="Samples\wind_clarinet_61.ogg" />
+		<AudioClip name="wind_clarinet_74" path="Samples\wind_clarinet_74.ogg" />
 		<AudioClip name="wind_flute_61" path="Samples\wind_flute_61.ogg" />
-		<AudioClip name="wind_flute_70" path="Samples\wind_flute_70.ogg" />
-		<AudioClip name="wind_flute_82" path="Samples\wind_flute_82.ogg" />
-		<AudioClip name="wind_oboe_61" path="Samples\wind_oboe_61.ogg" />
+		<AudioClip name="wind_flute_74" path="Samples\wind_flute_74.ogg" />
+		<AudioClip name="wind_flute_84" path="Samples\wind_flute_84.ogg" />
+		<AudioClip name="wind_oboe_63" path="Samples\wind_oboe_63.ogg" />
 		<AudioClip name="wind_oboe_70" path="Samples\wind_oboe_70.ogg" />
-		<AudioClip name="wind_oboe_81" path="Samples\wind_oboe_81.ogg" />
-		<AudioClip name="wind_sax_53" path="Samples\wind_sax_53.ogg" />
-		<AudioClip name="wind_sax_62" path="Samples\wind_sax_62.ogg" />
+		<AudioClip name="wind_oboe_82" path="Samples\wind_oboe_82.ogg" />
+		<AudioClip name="wind_organ_36" path="Samples\wind_organ_36.ogg" />
+		<AudioClip name="wind_organ_60" path="Samples\wind_organ_60.ogg" />
+		<AudioClip name="wind_organ_84" path="Samples\wind_organ_84.ogg" />
+		<AudioClip name="wind_sax_50" path="Samples\wind_sax_50.ogg" />
+		<AudioClip name="wind_sax_60" path="Samples\wind_sax_60.ogg" />
 		<AudioClip name="wind_sax_72" path="Samples\wind_sax_72.ogg" />
+		<AudioClip name="cymbal_crash_60" path="Samples\cymbal_crash_60.ogg" />
+		<AudioClip name="cymbal_gong_72" path="Samples\cymbal_gong_72.ogg" />
+		<AudioClip name="cymbal_hihat_60" path="Samples\cymbal_hihat_60.ogg" />
+		<AudioClip name="cymbal_hihatopen_72" path="Samples\cymbal_hihatopen_72.ogg" />
+		<AudioClip name="cymbal_ride_60" path="Samples\cymbal_ride_60.ogg" />
+		<AudioClip name="cymbal_splash_60" path="Samples\cymbal_splash_60.ogg" />
+		<AudioClip name="drum_clap_60" path="Samples\drum_clap_60.ogg" />
+		<AudioClip name="drum_kick_60" path="Samples\drum_kick_60.ogg" />
+		<AudioClip name="drum_rim_60" path="Samples\drum_rim_60.ogg" />
+		<AudioClip name="drum_snare_60" path="Samples\drum_snare_60.ogg" />
+		<AudioClip name="drum_tom_60" path="Samples\drum_tom_60.ogg" />
 ```
 
 ## Block XML attributes
 
 ```
-bass_acoustic    samples="bass_acoustic_36 bass_acoustic_64" loops="6568-6906 4272-4340"
-bass_finger      samples="bass_finger_54 bass_finger_64 bass_finger_69" loops="5150-5270 5114-5182 5074-5125"
-bass_fretless    samples="bass_fretless_32 bass_fretless_50 bass_fretless_44" loops="14200-14624 13929-14080 14855-15068"
-bass_pick        samples="bass_pick_42 bass_pick_52 bass_pick_57" loops="9765-10007 8856-8992 8873-8975"
-bass_synth       samples="bass_synth_33 bass_synth_39 bass_synth_51" loops="400-801 294-588 147-294"
-brass_horn       samples="brass_horn_63 brass_horn_70" loops="9278-19785 9075-14860"
-brass_section    samples="brass_section_60 brass_section_72" loops="13012-50212 6235-37782"
-brass_trombone   samples="brass_trombone_37 brass_trombone_52 brass_trombone_62" loops="7625-7942 5194-5328 4333-4408"
-brass_trumpet    samples="brass_trumpet_58 brass_trumpet_64 brass_trumpet_78" loops="7627-7721 7602-7669 9333-9363"
-brass_tuba       samples="brass_tuba_30 brass_tuba_38 brass_tuba_46" loops="5105-5582 5705-6005 6255-6444"
-guitar_clean     samples="guitar_clean_40 guitar_clean_50 guitar_clean_64" loops="16889-18222 30166-31362 30125-31326"
-guitar_drive     samples="guitar_drive_40 guitar_drive_52 guitar_drive_62" loops="17910-18177 14345-14745 24207-24887"
-guitar_jazz      samples="guitar_jazz_40 guitar_jazz_53 guitar_jazz_63" loops="9131-9398 10117-10368 9789-9930"
-guitar_nylon     samples="guitar_nylon_53 guitar_nylon_63 guitar_nylon_76" loops="11673-11799 12757-12898 5730-5797"
-guitar_steel     samples="guitar_steel_40 guitar_steel_50 guitar_steel_64" loops="18168-25091 13783-16185 10224-15567"
-piano_grand      samples="piano_grand_38 piano_grand_60 piano_grand_86" loops="33983-55757 21957-44474 12297-22425"
-piano_honky      samples="piano_honky_38 piano_honky_60 piano_honky_86" loops="33983-55757 21957-44474 12297-22425"
-piano_rhodes     samples="piano_rhodes_38 piano_rhodes_55 piano_rhodes_80" loops="4571-4872 3325-3437 1255-1281"
-piano_upright    samples="piano_upright_34 piano_upright_60 piano_upright_86" loops="35979-58106 21957-44474 12297-22425"
+bass_acoustic    samples="bass_acoustic_28 bass_acoustic_41 bass_acoustic_54" loops="38280-39350 26451-26704 17857-18096"
+bass_finger      samples="bass_finger_28 bass_finger_41 bass_finger_48" loops="84046-84581 64937-65190 63955-64461"
+bass_fretless    samples="bass_fretless_28 bass_fretless_44 bass_fretless_62" loops="68532-69069 28856-29488 31020-31394"
+bass_pick        samples="bass_pick_28 bass_pick_41 bass_pick_48" loops="126173-126705 87285-87792 73976-74482"
+bass_synth       samples="bass_synth_30 bass_synth_42 bass_synth_54" loops="915-6159 472-3571 234-2022"
+brass_horn       samples="brass_horn_45 brass_horn_57 brass_horn_69" loops="26773-66048 15265-54943 25392-58021"
+brass_section    samples="brass_section_48 brass_section_60 brass_section_72" loops="47397-108565 29196-81664 10242-49912"
+brass_trombone   samples="brass_trombone_43 brass_trombone_53 brass_trombone_65" loops="14069-14296 11525-11777 6203-6329"
+brass_trumpet    samples="brass_trumpet_64 brass_trumpet_79" loops="3592-9148 5314-9930"
+brass_tuba       samples="brass_tuba_29 brass_tuba_44 brass_tuba_54" loops="8477-9500 2531-2745 2764-3000"
+cymbal_crash     samples="cymbal_crash_60"
+cymbal_gong      samples="cymbal_gong_72"
+cymbal_hihat     samples="cymbal_hihat_60"
+cymbal_hihatopen samples="cymbal_hihatopen_72"
+cymbal_ride      samples="cymbal_ride_60"
+cymbal_splash    samples="cymbal_splash_60"
+drum_clap        samples="drum_clap_60"
+drum_kick        samples="drum_kick_60"
+drum_rim         samples="drum_rim_60"
+drum_snare       samples="drum_snare_60"
+drum_tom         samples="drum_tom_60"
+guitar_clean     samples="guitar_clean_40 guitar_clean_50 guitar_clean_64" loops="35331-35859 38255-39300 21373-21705"
+guitar_drive     samples="guitar_drive_40 guitar_drive_50 guitar_drive_64" loops="245954-247023 238520-239122 75802-76273"
+guitar_jazz      samples="guitar_jazz_40 guitar_jazz_54 guitar_jazz_64" loops="37973-38505 34602-35191 19667-20124"
+guitar_nylon     samples="guitar_nylon_40 guitar_nylon_50 guitar_nylon_64" loops="96405-96672 99417-100018 19416-19684"
+guitar_steel     samples="guitar_steel_40 guitar_steel_50 guitar_steel_64" loops="110261-111340 94186-94787 33370-33904"
+mallet_glock     samples="mallet_glock_79 mallet_glock_84 mallet_glock_96" loops="34974-35873 35074-35873 34909-35873"
+mallet_marimba   samples="mallet_marimba_48 mallet_marimba_60 mallet_marimba_66" loops="4-47612 4-37948 4-37045"
+mallet_steel     samples="mallet_steel_66 mallet_steel_72 mallet_steel_84" loops="7-13415 - 5-4792"
+mallet_vibes     samples="mallet_vibes_57 mallet_vibes_66 mallet_vibes_78" loops="7338-8842 4680-4800 2748-2807"
+mallet_xylo      samples="mallet_xylo_60 mallet_xylo_72 mallet_xylo_84" loops="8-71032 8-56631 -"
+piano_grand      samples="piano_grand_35 piano_grand_60 piano_grand_85" loops="253762-296195 120348-160902 75746-85558"
+piano_honky      samples="piano_honky_35 piano_honky_60 piano_honky_83" loops="253762-296195 120348-160902 74073-99918"
+piano_rhodes     samples="piano_rhodes_36 piano_rhodes_60 piano_rhodes_84" loops="102184-102857 31525-32030 45976-46649"
+piano_upright    samples="piano_upright_33 piano_upright_57 piano_upright_83" loops="264182-316412 175830-229498 74073-99918"
+pluck_banjo      samples="pluck_banjo_50 pluck_banjo_59 pluck_banjo_62" loops="35971-37012 39436-40148 35933-36527"
+pluck_harp       samples="pluck_harp_34 pluck_harp_54 pluck_harp_73" loops="26188-26944 25664-26139 11424-11623"
+pluck_koto       samples="pluck_koto_60 pluck_koto_78" loops="7909-8078 3804-3923"
+pluck_pizz       samples="pluck_pizz_39 pluck_pizz_52 pluck_pizz_66" loops="5-41095 5-38537 5-30291"
+pluck_sitar      samples="pluck_sitar_52 pluck_sitar_60 pluck_sitar_72" loops="14499-15837 11657-14775 6693-8336"
 strings_cello    samples="strings_cello_37 strings_cello_47 strings_cello_59" loops="24938-29733 19852-24504 22779-26975"
-strings_dbass    samples="strings_dbass_31 strings_dbass_39 strings_dbass_50" loops="5131-9408 8781-13359 8356-12819"
-strings_ens      samples="strings_ens_48 strings_ens_60 strings_ens_72" loops="12501-61643 13023-39042 11089-36245"
-strings_viola    samples="strings_viola_49 strings_viola_60 strings_viola_72" loops="17635-21775 17698-21567 18741-22151"
-strings_violin   samples="strings_violin_56 strings_violin_66 strings_violin_77" loops="18615-29695 16462-28616 18575-30234"
-wind_bassoon     samples="wind_bassoon_36 wind_bassoon_48 wind_bassoon_58" loops="3634-3969 4474-4644 4034-4129"
-wind_clarinet    samples="wind_clarinet_53 wind_clarinet_64 wind_clarinet_76" loops="3337-5593 3337-5520 3336-5534"
-wind_flute       samples="wind_flute_61 wind_flute_70 wind_flute_82" loops="12004-20422 12718-20536 14760-22336"
-wind_oboe        samples="wind_oboe_61 wind_oboe_70 wind_oboe_81" loops="22139-27004 14521-19121 19301-23560"
-wind_sax         samples="wind_sax_53 wind_sax_62 wind_sax_72" loops="10731-10857 7278-15597 6320-6445"
+strings_choir    samples="strings_choir_48 strings_choir_60 strings_choir_72" loops="31399-66481 28702-56398 12397-36607"
+strings_dbass    samples="strings_dbass_29 strings_dbass_41 strings_dbass_52" loops="21274-26360 15684-21287 18835-23010"
+strings_ens      samples="strings_ens_49 strings_ens_61 strings_ens_73" loops="37629-69761 26280-47534 7300-28698"
+strings_viola    samples="strings_viola_49 strings_viola_61 strings_viola_73" loops="18421-22739 24574-29405 25831-30753"
+strings_violin   samples="strings_violin_56 strings_violin_65 strings_violin_80" loops="27987-32058 25385-29549 21641-25492"
+wind_bassoon     samples="wind_bassoon_35 wind_bassoon_46 wind_bassoon_58" loops="23746-29755 23346-28970 17764-23658"
+wind_clarinet    samples="wind_clarinet_52 wind_clarinet_61 wind_clarinet_74" loops="13027-13561 7035-7193 2933-3119"
+wind_flute       samples="wind_flute_61 wind_flute_74 wind_flute_84" loops="14542-20096 22401-27648 11264-16256"
+wind_oboe        samples="wind_oboe_63 wind_oboe_70 wind_oboe_82" loops="14681-19200 14853-19200 9872-14464"
+wind_organ       samples="wind_organ_36 wind_organ_60 wind_organ_84" loops="24522-61248 45472-90380 13633-54976"
+wind_sax         samples="wind_sax_50 wind_sax_60 wind_sax_72" loops="10228-15565 19914-24941 9085-13568"
 ```

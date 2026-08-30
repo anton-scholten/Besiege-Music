@@ -408,12 +408,6 @@ namespace OrchestraMod
             modName = name;
         }
 
-        /// <summary>The mod's author, as its manifest gives it.</summary>
-        public static string ModAuthor
-        {
-            get { Load(); return modAuthor; }
-        }
-
         // ---- reading the mod's own files -------------------------------------
 
         /// <summary>

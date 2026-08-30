@@ -58,7 +58,76 @@ INSTRUMENTS = {
     "wind_oboe":      (68, [58, 70, 82]),
     "wind_bassoon":   (70, [34, 46, 58]),
     "wind_sax":       (65, [49, 61, 73]),
+    "wind_organ":     (19, [36, 60, 84]),
+
+    # The six that were rung on the modal engine until this. A bar or a bell is
+    # what modal synthesis is *for*, and it still came second: what it cannot do
+    # is the mallet against the bar, the resonator tube under it, or a tubular
+    # bell's strike note sitting a twelfth under the hum.
+    "mallet_glock":   (9,  [72, 84, 96]),
+    "mallet_vibes":   (11, [53, 65, 77]),
+    "mallet_marimba": (12, [45, 57, 69]),
+    "mallet_xylo":    (13, [65, 77, 89]),
+    "mallet_steel":   (114, [60, 72, 84]),
+
+    # And the five that were plucked by delay line. Karplus-Strong is a real
+    # string and it has no body: a harp's soundboard, a banjo's head and a
+    # sitar's sympathetic strings are the whole character of those instruments.
+    "pluck_harp":     (46, [36, 55, 74]),
+    "pluck_koto":     (107, [48, 60, 72]),
+    "pluck_pizz":     (45, [40, 52, 64]),
+    "pluck_banjo":    (105, [48, 60, 72]),
+    "pluck_sitar":    (104, [48, 60, 72]),
+
+    "strings_choir":  (52, [48, 60, 72]),
 }
+
+# The kit, from bank 128 -- General MIDI's percussion, which is addressed by note
+# number rather than by program. Each is one recording rather than three: a drum
+# has no range to cover, and what a block's NOTE does to it is tune it, which is
+# what a drummer does to a kit.
+#
+# stem -> (note in the kit, the root it is published at)
+#
+# Published at 60 because that is where a block's NOTE slider starts, so a drum
+# placed by hand plays the recording as it was recorded. `Song.PieceNotes` writes
+# the same 60 for everything unpitched, and offsets the toms around it.
+PERCUSSION = {
+    "drum_kick":     (36, 60),
+    "drum_snare":    (38, 60),
+    "drum_tom":      (45, 60),
+    "drum_rim":      (37, 60),      # side stick
+    "drum_clap":     (39, 60),
+    "cymbal_crash":  (49, 60),
+    "cymbal_ride":   (51, 60),
+    # Both hats. A closed hi-hat is not an open one with the ring taken off -- it
+    # is a different sound, tighter and drier -- so the block carries both
+    # recordings and picks between them by note: 60 is the closed one, 72 the
+    # open. `Song.PieceNotes` writes 72 for General MIDI's open hat.
+    "cymbal_hihat":  (42, 60),
+    "cymbal_hihatopen": (46, 72),
+    "cymbal_splash": (55, 60),
+    # No General MIDI font has a gong. The Chinese cymbal is the nearest thing --
+    # a big thin bronze disc with a long, dark wash -- and it is published an
+    # octave high so that a block at its own default note plays it an octave down,
+    # which is most of what separates a gong from a cymbal.
+    "cymbal_gong":   (52, 72),
+}
+
+DRUM_BANK = 128
+DRUM_PRESET = 0         # "Standard", the kit General MIDI means by default
+
+# Where the default rate is not enough. A cymbal is mostly above 8 kHz and a
+# glockenspiel's partials run past 12: at 22050 the top of both is simply not
+# there, and a crash cut that way is a hiss. These cost about twice the bytes of
+# the rest and are the samples most worth the room.
+BRIGHT = ("cymbal_", "mallet_glock", "mallet_xylo", "drum_snare")
+BRIGHT_RATE = 44100
+
+# Long enough for the ring, per stem prefix. A crash is still sounding after two
+# seconds; a side stick is over in a tenth of one.
+LONGER = {"cymbal_crash": 3.5, "cymbal_gong": 3.5, "cymbal_ride": 3.0,
+          "cymbal_splash": 2.5, "cymbal_hihatopen": 1.5}
 
 RATE = 22050        # plenty for these ranges, half the size of 44.1k
 SECONDS = 2.0
@@ -172,7 +241,17 @@ class SoundFont(object):
         return out
 
     def find_sample(self, preset_number, note, bank=0):
-        """The sample header and root key that a GM preset uses for one note."""
+        """The sample header and root key a GM preset uses for one note.
+
+        Where several zones cover the note -- which is most of a well built font,
+        the ranges overlapping so that a player can be given whichever suits --
+        the one whose **root key is nearest the note** wins. Taking the first that
+        covered it, which is what this did at first, is how a trumpet at note 54
+        came out of a recording of note 64: right instrument, stretched down most
+        of an octave, and audibly slower and duller than the real one. Nearest
+        root keeps every cut inside a few semitones of what was recorded.
+        """
+        best = None
         for i, p in enumerate(self.phdr):
             if p["preset"] != preset_number or p["bank"] != bank:
                 continue
@@ -182,15 +261,19 @@ class SoundFont(object):
                 if inst_id is None or not self._covers(gens, note):
                     continue                      # global zone, or wrong range
                 hit = self._instrument_sample(inst_id, note)
-                if hit is not None:
-                    return hit
-        return None
+                if hit is None:
+                    continue
+                away = abs(hit[1] - note)
+                if best is None or away < best[0]:
+                    best = (away, hit)
+        return best[1] if best is not None else None
 
     def _instrument_sample(self, inst_id, note):
         if inst_id >= len(self.inst):
             return None
         start = self.inst[inst_id]["bag"]
         end = self.inst[inst_id + 1]["bag"] if inst_id + 1 < len(self.inst) else len(self.ibag)
+        best = None
         for gens in self._zone_gens(self.ibag, self.igen, start, end):
             sample_id = self._value(gens, GEN_SAMPLEID)
             if sample_id is None or not self._covers(gens, note):
@@ -201,8 +284,10 @@ class SoundFont(object):
             root = self._value(gens, GEN_ROOTKEY)
             if root is None or root > 127:
                 root = header["pitch"]
-            return header, root
-        return None
+            away = abs(root - note)
+            if best is None or away < best[0]:
+                best = (away, (header, root))
+        return best[1] if best is not None else None
 
     def pcm(self, header):
         """The sample's frames, as signed 16-bit ints."""
@@ -245,6 +330,86 @@ def write_wav(path, frames, rate):
         f.write(b"data" + struct.pack("<I", len(body)) + body)
 
 
+def resource(name):
+    return '\t\t<AudioClip name="%s" path="Samples\\%s.ogg" />' % (name, name)
+
+
+def rate_for(stem):
+    for prefix in BRIGHT:
+        if stem.startswith(prefix):
+            return BRIGHT_RATE
+    return RATE
+
+
+def seconds_for(stem):
+    return LONGER.get(stem, SECONDS)
+
+
+def one(font, stem, preset, note, bank, publish, already):
+    """Cuts one clip. Returns (name, loop or None, bytes), or None for no zone.
+
+    `publish` overrides the root key the clip is named at, which is what a drum
+    wants: the recording has no pitch to be right about, so it is published where
+    a block's own NOTE plays it untransposed. `already` is the names cut for this
+    instrument so far, so two wanted notes landing in one zone cut it once.
+    """
+    hit = font.find_sample(preset, note, bank)
+    if hit is None:
+        print("  %-16s note %-3d  no zone covers it" % (stem, note))
+        return None
+    header, root = hit
+    frames, rate = font.pcm(header)
+    if not frames:
+        return None
+    if publish is not None:
+        root = publish
+
+    out_rate = rate_for(stem)
+    scale = out_rate / float(rate)
+    loop = None
+    ls = header["loop_start"] - header["start"]
+    le = header["loop_end"] - header["start"]
+    # A drum is a one-shot: the font loops some of them, and a looped cymbal is a
+    # cymbal that never stops. Percussion is published unlooped and rings out on
+    # the recording's own tail, which is what SampleBank.FindTail is for.
+    if publish is None and 0 <= ls < le <= len(frames):
+        keep = le
+        loop = (int(ls * scale), int(le * scale))
+    else:
+        keep = int(min(len(frames), seconds_for(stem) * rate))
+
+    frames = list(frames[:keep])
+    if loop is None:
+        # A hard cut is a click; ten milliseconds of fade is not audible as
+        # anything but the end of the note. A looped sample must not be faded --
+        # the loop is what the note goes on sounding with, whether it is being
+        # held or dying away.
+        fade = min(int(rate * 0.01), keep)
+        for i in range(fade):
+            frames[keep - fade + i] = int(frames[keep - fade + i]
+                                          * (1.0 - i / float(fade)))
+
+    name = "%s_%d" % (stem, root)
+    if name in already:
+        print("  %-16s note %-3d  already covered by %s" % (stem, note, name))
+        return None
+    wav = os.path.join(OUT, name + ".wav")
+    ogg = os.path.join(OUT, name + ".ogg")
+    write_wav(wav, frames, rate)
+    subprocess.check_call(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", wav,
+         "-ar", str(out_rate), "-ac", "1", "-c:a", "libvorbis", "-q:a", QUALITY, ogg])
+    os.remove(wav)
+    if loop is not None:
+        loop = decoded_loop(ogg, loop)
+
+    size = os.path.getsize(ogg)
+    print("  %-16s note %-3d  root %-3d  %-28s %5.1f KB  %5d Hz%s"
+          % (stem, note, root, header["name"], size / 1024.0, out_rate,
+             "  looped" if loop is not None else ""))
+    return name, loop, size
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
@@ -272,65 +437,29 @@ def main():
         names = []
         loops = []
         for note in notes:
-            hit = font.find_sample(preset, note)
-            if hit is None:
-                print("  %-16s note %-3d  no zone covers it" % (stem, note))
+            cut = one(font, stem, preset, note, 0, None, names)
+            if cut is None:
                 continue
-            header, root = hit
-            frames, rate = font.pcm(header)
-            if not frames:
-                continue
-
-            # Loop points are absolute into the font's sample block; ours are
-            # relative to the cut, and at the output rate rather than the font's.
-            scale = RATE / float(rate)
-            loop = None
-            ls = header["loop_start"] - header["start"]
-            le = header["loop_end"] - header["start"]
-            if 0 <= ls < le <= len(frames):
-                keep = le
-                loop = (int(ls * scale), int(le * scale))
-            else:
-                keep = int(min(len(frames), SECONDS * rate))
-
-            frames = list(frames[:keep])
-            if loop is None:
-                # A hard cut is a click; ten milliseconds of fade is not audible
-                # as anything but the end of the note. A looped sample must not
-                # be faded -- the loop is what the note goes on sounding with,
-                # whether it is being held or dying away.
-                fade = min(int(rate * 0.01), keep)
-                for i in range(fade):
-                    frames[keep - fade + i] = int(frames[keep - fade + i] * (1.0 - i / float(fade)))
-
-            name = "%s_%d" % (stem, root)
-            if name in names:
-                # Two wanted notes landed in the same zone, so the font has only
-                # one recording between them. Nothing gained by cutting it twice.
-                print("  %-16s note %-3d  already covered by %s" % (stem, note, name))
-                continue
-            wav = os.path.join(OUT, name + ".wav")
-            ogg = os.path.join(OUT, name + ".ogg")
-            write_wav(wav, frames, rate)
-            subprocess.check_call(
-                ["ffmpeg", "-y", "-loglevel", "error", "-i", wav,
-                 "-ar", str(RATE), "-ac", "1", "-c:a", "libvorbis", "-q:a", QUALITY, ogg])
-            os.remove(wav)
-
-            if loop is not None:
-                loop = decoded_loop(ogg, loop)
-
-            size = os.path.getsize(ogg)
+            name, loop, size = cut
             total += size
             names.append(name)
             loops.append("%d-%d" % loop if loop is not None else "-")
-            resources.append('\t\t<AudioClip name="%s" path="Samples\\%s.ogg" />' % (name, name))
-            print("  %-16s note %-3d  root %-3d  %-28s %5.1f KB%s"
-                  % (stem, note, root, header["name"], size / 1024.0,
-                     "  looped" if loop is not None else ""))
+            resources.append(resource(name))
         if names:
             attributes[stem] = (" ".join(names),
                                 " ".join(loops) if any(l != "-" for l in loops) else "")
+
+    for stem in sorted(PERCUSSION):
+        if only and stem != only:
+            continue
+        note, root = PERCUSSION[stem]
+        cut = one(font, stem, DRUM_PRESET, note, DRUM_BANK, root, [])
+        if cut is None:
+            continue
+        name, loop, size = cut
+        total += size
+        resources.append(resource(name))
+        attributes[stem] = (name, "%d-%d" % loop if loop is not None else "")
 
     print()
     print("%d clips, %.1f KB total" % (len(resources), total / 1024.0))

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Builds the nine instrument blocks' meshes and textures.
+"""Builds the ten instrument blocks' meshes and textures.
 
     ./tools/make-block-meshes.py              convert (downloading what is missing)
     ./tools/make-block-meshes.py --preview    also render each block to a PNG
 
-The models are low-poly instruments from Poly Pizza, seven of the nine by the
+The models are low-poly instruments from Poly Pizza, seven of the ten by the
 same author, all CC-BY 3.0. They are *not* in the repository: this fetches them
 into tools/models/ by id and converts, which keeps the shipped folder to what
 Besiege loads and leaves the licences with their source. Credit is in the README.
@@ -19,8 +19,8 @@ What conversion means here:
   * These models carry no texture at all, only a flat colour per material. A
     block needs a texture, so the colours are collected into a palette a few
     pixels across and every triangle is pointed at its own patch. Point-sampled
-    by Besiege, so nothing bleeds between patches; and it means nine blocks cost
-    nine tiny PNGs rather than nine atlases.
+    by Besiege, so nothing bleeds between patches; and it means ten blocks cost
+    ten tiny PNGs rather than ten atlases.
 
   * Each instrument is centred, scaled to the block, and turned upright by the
     table below, which is the only part of this that is taste rather than
@@ -45,6 +45,8 @@ SOURCES = {
     "Drums":    ("5Wp2emwd7xw", "58bd1985-0f3e-47f3-8c36-c19f958eea74", "Drum", "jeremy", "CC-BY 3.0"),
     "Mallets":  ("a-OYg3WVXfV", "f3f55659-b705-4877-ae87-27a5426d4b3e", "Xylophone", "Daniel Melchior", "CC-BY 3.0"),
     "Cymbals":  ("f8SdBE98BXE", "2d44ab30-ffe7-4ad4-8b5b-7f4ff66e1aac", "Cymbal", "Poly by Google", "CC-BY 3.0"),
+    "Plucked":  ("102E7hcxEPT", "bdccab14-4489-48e2-ad91-5d7905109d9a", "Harp", "Poly by Google", "CC-BY 3.0"),
+    "FM Synth": ("155LOgjwUy2", "aa6e638c-eb3e-4660-98c0-71b74ee1ed7d", "Midi controller", "Gabriel Ibias", "CC-BY 3.0"),
 }
 
 # How each model is stood up on its block, after the axis swap: degrees about the
@@ -73,6 +75,15 @@ POSE = {
     "Drums":    (0.0, 0.0),
     "Mallets":  (0.0, 0.0),
     "Cymbals":  (0.0, 0.0),
+    # The harp is the one model whose authored front is not the others', so it
+    # takes a half turn rather than their quarter: at -90 it stood on the block
+    # edge-on, presenting the thin side of the string plane to the front, which
+    # is the one view of a harp that reads as a stick.
+    "Plucked":  (180.0, 0.0),
+    # The keyboard faces the block's front, as the piano's does. At 0 it faced
+    # away: the model is authored the other way round, and on the block that put
+    # the keys on the far side, which is a keyboard seen from behind.
+    "FM Synth": (180.0, 0.0),
 }
 
 # What each block XML gives its <Icon> rotation, kept here so `--preview` can
@@ -114,6 +125,8 @@ ICON = {
     "Drums":    (-31.3, 156.7, -151.6),
     "Mallets":  (-36.1, 166.3, -168.7),
     "Cymbals":  (-31.3, 156.7, -151.6),
+    "Plucked":  DEFAULT_ICON,
+    "FM Synth": (-36.1, 166.3, -168.7),
 }
 
 # The mesh is worn at half scale by the block XML, as the synth block's is, so a
@@ -189,15 +202,51 @@ def apply(m, v, point=True):
     return tuple(sum(m[k][r] * (list(v) + [w])[k] for k in range(4)) for r in range(3))
 
 
+# How finely a baked texture is read back. A flat colour per triangle is what the
+# rest of this tool works in, so a sampled model's grain has to collapse to a few
+# colours or the palette grows a patch per triangle; sixteen levels a channel is
+# far more than a low-poly instrument uses and still folds the grain away.
+LEVELS = 16
+
+
+def sample(image, u, v):
+    """The texel at (u, v), as the linear colour the palette wants.
+
+    Nearest, wrapped, and quantised. Point sampling is what Besiege does with
+    these textures anyway, and a triangle is about to be painted one flat colour
+    regardless -- so the question is only which texel that colour comes from.
+    """
+    width, height, rows = image
+    x = int(u * width) % width
+    # v counts up from the bottom of a texture and down through the image.
+    y = int((1.0 - v) * height) % height
+    step = 255.0 / (LEVELS - 1)
+    return tuple(linear(round(round(c / step) * step))
+                 for c in rows[y][x][:3])
+
+
 def triangles(path):
-    """Every triangle in the file, as (three positions, three normals, colour)."""
+    """Every triangle in the file, as (three positions, three normals, colour).
+
+    Nine of the ten models carry no texture at all, only a flat colour per
+    material. The harp is the exception -- one material, a 2048-square baked
+    image, and a `baseColorFactor` of white, so reading the factor alone gave a
+    white harp where the model is mahogany with pale strings. Where there is an
+    image, each triangle is painted with the texel under its middle: the models
+    are low-poly enough that a triangle is one flat area of that image, and it
+    keeps everything downstream -- the palette, the preview, the `.obj` -- working
+    in the one flat colour per triangle it always has.
+    """
     js, blob = read_glb(path)
-    colours = []
+    colours, images = [], []
     for mat in js.get("materials", [{}]):
-        base = mat.get("pbrMetallicRoughness", {}).get("baseColorFactor", [0.8, 0.8, 0.8, 1])
+        pbr = mat.get("pbrMetallicRoughness", {})
+        base = pbr.get("baseColorFactor", [0.8, 0.8, 0.8, 1])
         colours.append(tuple(base[:3]))
+        images.append(baked(js, blob, pbr.get("baseColorTexture")))
     if not colours:
         colours = [(0.8, 0.8, 0.8)]
+        images = [None]
 
     scene = js.get("scenes", [{}])[js.get("scene", 0)]
     out = []
@@ -214,13 +263,23 @@ def triangles(path):
                        if "NORMAL" in prim["attributes"] else None)
                 idx = ([i[0] for i in accessor(js, blob, prim["indices"])]
                        if "indices" in prim else list(range(len(pos))))
-                colour = colours[prim.get("material", 0) % len(colours)]
+                which = prim.get("material", 0) % len(colours)
+                colour = colours[which]
+                image = images[which]
+                uvs = (accessor(js, blob, prim["attributes"]["TEXCOORD_0"])
+                       if image is not None and "TEXCOORD_0" in prim["attributes"]
+                       else None)
                 for t in range(0, len(idx) - 2, 3):
                     tri = [idx[t], idx[t + 1], idx[t + 2]]
                     ps = [apply(world, pos[i]) for i in tri]
                     ns = ([apply(world, nrm[i], False) for i in tri] if nrm
                           else [face_normal(ps)] * 3)
-                    out.append((ps, ns, colour))
+                    paint = colour
+                    if uvs is not None:
+                        middle = [sum(uvs[i][k] for i in tri) / 3.0 for k in (0, 1)]
+                        texel = sample(image, middle[0], middle[1])
+                        paint = tuple(texel[k] * colour[k] for k in range(3))
+                    out.append((ps, ns, paint))
         for child in node.get("children", []):
             walk(child, world)
 
@@ -228,6 +287,30 @@ def triangles(path):
     for root in scene.get("nodes", range(len(js.get("nodes", [])))):
         walk(root, unit)
     return out
+
+
+def baked(js, blob, reference):
+    """A material's base-colour image, decoded, or None where it has none.
+
+    Decoded once per material and remembered: the harp's is a 2048-square PNG,
+    and a decoder written in Python is not something to run per triangle.
+    """
+    if reference is None:
+        return None
+    texture = js["textures"][reference["index"]]
+    image = js["images"][texture["source"]]
+    if "bufferView" not in image:
+        return None                 # an external file: not how Poly Pizza ships
+    key = ("baked", id(blob), texture["source"])
+    if key in _decoded:
+        return _decoded[key]
+    view = js["bufferViews"][image["bufferView"]]
+    start = view.get("byteOffset", 0)
+    _decoded[key] = read_png(blob[start:start + view["byteLength"]])
+    return _decoded[key]
+
+
+_decoded = {}
 
 
 def face_normal(p):
@@ -321,6 +404,70 @@ def srgb(linear):
     if linear <= 0.0031308:
         return max(0.0, 12.92 * linear)
     return min(1.0, 1.055 * (linear ** (1 / 2.4)) - 0.055)
+
+
+def linear(channel):
+    """The other way: a texel, 0..255, back to the linear colour `srgb` expects."""
+    v = channel / 255.0
+    if v <= 0.04045:
+        return v / 12.92
+    return ((v + 0.055) / 1.055) ** 2.4
+
+
+def read_png(data):
+    """A baked base-colour image, as (width, height, rows of (r, g, b)).
+
+    Eight-bit RGB or RGBA, not interlaced, which is what the one textured model
+    here is and what any glTF exporter writes. Enough of PNG to read a texture,
+    and no more -- a decoder is not what this tool is for.
+    """
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SystemExit("the model's texture is not a PNG")
+    at, header, idat = 8, None, b""
+    while at < len(data):
+        size = struct.unpack_from(">I", data, at)[0]
+        kind = data[at + 4:at + 8]
+        body = data[at + 8:at + 8 + size]
+        if kind == b"IHDR":
+            header = struct.unpack(">IIBBBBB", body)
+        elif kind == b"IDAT":
+            idat += body
+        at += 12 + size
+    width, height, depth, colour, _, _, interlace = header
+    if depth != 8 or interlace != 0 or colour not in (2, 6):
+        raise SystemExit("unsupported PNG: depth %d, colour type %d, interlace %d"
+                         % (depth, colour, interlace))
+    step = 4 if colour == 6 else 3
+    raw = zlib.decompress(idat)
+    stride = width * step
+    out, previous = [], bytearray(stride)
+    at = 0
+    for _ in range(height):
+        filt = raw[at]
+        line = bytearray(raw[at + 1:at + 1 + stride])
+        at += 1 + stride
+        # The five PNG filters, undone. Each byte is predicted from the one a
+        # pixel to its left, the one above, or both.
+        for i in range(stride):
+            left = line[i - step] if i >= step else 0
+            up = previous[i]
+            corner = previous[i - step] if i >= step else 0
+            if filt == 1:
+                line[i] = (line[i] + left) & 0xff
+            elif filt == 2:
+                line[i] = (line[i] + up) & 0xff
+            elif filt == 3:
+                line[i] = (line[i] + (left + up) // 2) & 0xff
+            elif filt == 4:
+                p = left + up - corner
+                pa, pb, pc = abs(p - left), abs(p - up), abs(p - corner)
+                best = left if (pa <= pb and pa <= pc) else (up if pb <= pc else corner)
+                line[i] = (line[i] + best) & 0xff
+            elif filt != 0:
+                raise SystemExit("unknown PNG filter %d" % filt)
+        out.append([tuple(line[x * step:x * step + 3]) for x in range(width)])
+        previous = line
+    return width, height, out
 
 
 def write_png(path, rows):
@@ -525,9 +672,15 @@ def rolled(pose, degrees):
     return [round(v, 1) for v in out]
 
 
+def stem(block):
+    """The block's name as a file name: no spaces, so a resource path stays one
+    word and Mod.xml can name it without quoting."""
+    return block.replace(" ", "")
+
+
 def fetch(block):
     pid, uuid = SOURCES[block][0], SOURCES[block][1]
-    path = os.path.join(CACHE, block + ".glb")
+    path = os.path.join(CACHE, stem(block) + ".glb")
     if not os.path.exists(path):
         if not os.path.isdir(CACHE):
             os.makedirs(CACHE)
@@ -561,12 +714,12 @@ def main():
 
         colours = sorted(set(c for _, _, c in tris))
         rows, uv = palette(colours)
-        write_png(os.path.join(OUT, block + ".png"), rows)
-        verts, faces = write_obj(os.path.join(OUT, block + ".obj"), tris, uv,
+        write_png(os.path.join(OUT, stem(block) + ".png"), rows)
+        verts, faces = write_obj(os.path.join(OUT, stem(block) + ".obj"), tris, uv,
                                  (title, author, licence, pid))
         if want_preview:
-            preview(os.path.join(shots, block + ".png"), tris, block)
-            preview(os.path.join(shots, block + "-icon.png"), tris, block, icon=True)
+            preview(os.path.join(shots, stem(block) + ".png"), tris, block)
+            preview(os.path.join(shots, stem(block) + "-icon.png"), tris, block, icon=True)
         print("  %-9s %-16s %5d faces, %2d colour(s), %s"
               % (block, title, faces, len(colours),
                  " x ".join("%.2f" % s for s in size)))

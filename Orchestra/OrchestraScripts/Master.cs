@@ -167,12 +167,5 @@ namespace OrchestraMod
                 squares[slot] = 0f;
             }
         }
-
-        /// <summary>What the limiter is doing, for the log and for a test. Not used
-        /// while anything is playing.</summary>
-        public static float Reduction { get { return gain; } }
-
-        /// <summary>How many blocks are in the band, for a test.</summary>
-        public static int Playing { get { return live; } }
     }
 }

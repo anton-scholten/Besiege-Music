@@ -92,6 +92,11 @@ namespace OrchestraMod
         /// converted at: the number the panel's TEMPO slider goes back to.</summary>
         public float FileBpm = 120f;
 
+        /// <summary>This machine holds Braids blocks. It once meant a save had to
+        /// name that mod as well as this one; the block is this mod's now, so what
+        /// is left is the summary telling the player what was written.</summary>
+        public bool NeedsBraids;
+
         /// <summary>Notes that fell inside another note on the same block and went.</summary>
         public int Crowded;
 
@@ -170,11 +175,35 @@ namespace OrchestraMod
             "Ride", "Ride"
         };
 
-        /// <summary>What note each kit piece is asked for: these engines are
-        /// pitched, and a kick wants to be lower than a tom.</summary>
+        /// <summary>
+        /// What note each kit piece is asked for. Sixty for all of them, because a
+        /// kit block plays a recording and sixty is the note it was published at:
+        /// the block plays it as it was recorded rather than transposed.
+        ///
+        /// It was not always so. These blocks were synthesised, and a synthesised
+        /// kick wants to be lower than a synthesised tom, so each piece carried its
+        /// own pitch -- 36 for a kick, 78 for a hi-hat. Against a recording those
+        /// numbers are two octaves down and an octave and a half up, which is a
+        /// kick that arrives late and a hi-hat that whistles.
+        /// </summary>
         private static readonly string[] PieceNames =
         { "Kick", "Snare", "Tom", "Hi-hat", "Crash", "Ride" };
-        private static readonly int[] PieceNotes = { 36, 50, 45, 78, 72, 76 };
+        private static readonly int[] PieceNotes = { 60, 60, 60, 60, 60, 60 };
+
+        /// <summary>
+        /// Where the toms sit around that, by their General MIDI note. A kit really
+        /// is tuned: the six toms General MIDI names run low to high, they all come
+        /// to one block here, and this is what keeps them apart -- the recording is
+        /// a mid tom, so the low ones are pitched down from it and the high ones up.
+        /// </summary>
+        private const int TomRoot = 45;
+
+        /// <summary>General MIDI's open hi-hat, and the note the Cymbals block
+        /// keeps that recording at. The block carries both hats -- a closed one is
+        /// not an open one with the ring taken off -- and picks between them by
+        /// note, so this is how a score asks for the open one.</summary>
+        private const int OpenHatNote = 46;
+        private const int OpenHat = 72;
 
         /// <summary>Which block plays a note, as family, instrument and pitch.</summary>
         private class Voice
@@ -304,20 +333,34 @@ namespace OrchestraMod
                 SongBlock block = Place(plan, voice.Block.BlockType, voice.Block.LocalId,
                                         placed++, columns, spacing,
                                         playing.Count + kept.Count);
-                VariableKey(block.Data, "bmt-Activate",
-                            Variable(options.Prefix, voice.Index), "N");
-                block.Data.Write(new XInteger("bmt-TypeKey", voice.TypeIndex));
-                block.Data.Write(new XSingle("bmt-NoteKey", voice.Pitch));
                 // One block, one note, one loudness: a block cannot be struck
                 // harder, so the velocities sent to it are averaged. Onto a third
                 // of the way up and no further than full -- a passage set to its
                 // raw velocity is a passage nobody hears, and the dynamics that
                 // matter are between the parts rather than within one.
                 float mean = voice.Loudness / Mathf.Max(1, voice.Hits);
-                float level = options.Volume * (0.35f + 0.65f * mean / 127f);
-                block.Data.Write(new XSingle("bmt-VolumeKey",
-                                             Mathf.Clamp(level, 0.05f, 1f)));
-                block.Data.Write(new XSingle("bmt-RangeKey", options.Range));
+                float level = Mathf.Clamp(
+                    options.Volume * (0.35f + 0.65f * mean / 127f), 0.05f, 1f);
+                string name = Variable(options.Prefix, voice.Index);
+
+                if (voice.Block.Name == Braids.FamilyName)
+                {
+                    // Another mod's block, filled in with its own mapper keys.
+                    // Everything else about it -- where it sits, which variable it
+                    // listens to, how loud it is -- is the same decision as for
+                    // one of ours.
+                    Braids.Fill(block.Data, voice.TypeIndex, voice.Pitch, name,
+                                level, options.Range);
+                    plan.NeedsBraids = true;
+                }
+                else
+                {
+                    VariableKey(block.Data, "bmt-Activate", name, "N");
+                    block.Data.Write(new XInteger("bmt-TypeKey", voice.TypeIndex));
+                    block.Data.Write(new XSingle("bmt-NoteKey", voice.Pitch));
+                    block.Data.Write(new XSingle("bmt-VolumeKey", level));
+                    block.Data.Write(new XSingle("bmt-RangeKey", options.Range));
+                }
 
                 plan.Parts.Add(voice.Block.Name
                     + (voice.TypeIndex < voice.Block.Types.Count
@@ -471,6 +514,14 @@ namespace OrchestraMod
                 familyName = DrumFamilies[piece];
                 typeName = DrumPieces[piece];
                 pitch = PieceNote(typeName);
+                if (typeName == "Tom")
+                {
+                    pitch += note.Pitch - TomRoot;
+                }
+                else if (note.Pitch == OpenHatNote)
+                {
+                    pitch = OpenHat;
+                }
             }
             else
             {
@@ -478,6 +529,16 @@ namespace OrchestraMod
                 // which is how a score with a violin part, a bass part and a sax
                 // part comes out as three different blocks rather than three
                 // tracks of piano. Anything else names one block for everything.
+                if (options.Instrument == Gm.FromFile && Braids.Available
+                    && Synth(note.Program))
+                {
+                    // A synth part, and the mod that renders those is installed.
+                    Braids.Note();
+                    Family synth = Braids.AsFamily();
+                    int model = Braids.TypeFor(note.Program);
+                    int at = Mathf.Clamp(note.Pitch + options.Transpose, 0, 127);
+                    return Keep(voices, synth, model, at);
+                }
                 string wanted = options.Instrument == Gm.FromFile
                     ? Gm.Instrument(note.Program) : options.Instrument;
                 Split(wanted, out familyName, out typeName);
@@ -493,7 +554,16 @@ namespace OrchestraMod
                 family = Catalogue.Families[0];
             }
             int typeIndex = Catalogue.TypeIndex(family, typeName);
+            return Keep(voices, family, typeIndex, pitch);
+        }
 
+        /// <summary>The voice for one block, instrument and note -- made the first
+        /// time that combination is asked for, and the same one every time
+        /// after, which is how a tune becomes a row of blocks rather than a block
+        /// per note.</summary>
+        private static Voice Keep(Dictionary<string, Voice> voices, Family family,
+                                  int typeIndex, int pitch)
+        {
             string key = family.Name + "|" + typeIndex + "|" + pitch;
             Voice voice;
             if (!voices.TryGetValue(key, out voice))
@@ -506,6 +576,14 @@ namespace OrchestraMod
                 voices[key] = voice;
             }
             return voice;
+        }
+
+        /// <summary>Whether a General MIDI program is one of the synth ranges: the
+        /// leads, the pads and the effects, which are the parts with no home among
+        /// nine acoustic blocks.</summary>
+        private static bool Synth(int program)
+        {
+            return program >= 80 && program <= 103;
         }
 
         /// <summary>"Strings:Cello" as its two halves.</summary>

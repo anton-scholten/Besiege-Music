@@ -14,11 +14,11 @@
 	<Modules>
 		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Brass">
 			<Types>
-			<Type name="Trumpet"     engine="sampler" samples="brass_trumpet_58 brass_trumpet_64 brass_trumpet_78" loops="7627-7721 7602-7669 9333-9363" damped="true" holds="true" attack="0.03" release="0.2" />
-			<Type name="Trombone"    engine="sampler" samples="brass_trombone_37 brass_trombone_52 brass_trombone_62" loops="7625-7942 5194-5328 4333-4408" damped="true" holds="true" attack="0.04" release="0.25" />
-			<Type name="French horn" engine="sampler" samples="brass_horn_63 brass_horn_70" loops="9278-19785 9075-14860" damped="true" holds="true" attack="0.05" release="0.3" />
-			<Type name="Tuba"        engine="sampler" samples="brass_tuba_30 brass_tuba_38 brass_tuba_46" loops="5105-5582 5705-6005 6255-6444" damped="true" holds="true" attack="0.05" release="0.3" />
-			<Type name="Section"     engine="sampler" samples="brass_section_60 brass_section_72" loops="13012-50212 6235-37782" damped="true" holds="true" attack="0.04" release="0.3" />
+			<Type name="Trumpet"     engine="sampler" samples="brass_trumpet_64 brass_trumpet_79" loops="3592-9148 5314-9930" damped="true" holds="true" attack="0.03" release="0.2" />
+			<Type name="Trombone"    engine="sampler" samples="brass_trombone_43 brass_trombone_53 brass_trombone_65" loops="14069-14296 11525-11777 6203-6329" damped="true" holds="true" attack="0.04" release="0.25" />
+			<Type name="French horn" engine="sampler" samples="brass_horn_45 brass_horn_57 brass_horn_69" loops="26773-66048 15265-54943 25392-58021" damped="true" holds="true" attack="0.05" release="0.3" />
+			<Type name="Tuba"        engine="sampler" samples="brass_tuba_29 brass_tuba_44 brass_tuba_54" loops="8477-9500 2531-2745 2764-3000" damped="true" holds="true" attack="0.05" release="0.3" />
+			<Type name="Section"     engine="sampler" samples="brass_section_48 brass_section_60 brass_section_72" loops="47397-108565 29196-81664 10242-49912" damped="true" holds="true" attack="0.04" release="0.3" />
 			</Types>
 			<Extras>
 			<Extra kind="toggle" key="MuteKey" name="Mute" default="0" />

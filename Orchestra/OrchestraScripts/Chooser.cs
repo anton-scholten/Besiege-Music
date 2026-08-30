@@ -7,9 +7,10 @@ namespace OrchestraMod
     // A menu control: `< choice >`, and the choice opens a list of all of them.
     //
     // Taken from Special Effects by way of Braids Synth, by the same author, where
-    // it was written for the same reason and works. Keep it in step with those
-    // copies rather than letting the three drift -- the only thing added here is
-    // the font size, this mod's rows being shorter than theirs.
+    // it was written for the same reason and works. Keep it in step with that copy
+    // rather than letting the two drift. Braids brought a second copy of this file
+    // when it became a block here; the two were the same but for the row height and
+    // the lettering, which are the caller's now.
     //
     // Built out of plain uGUI rather than a UI Factory prefab. The prefab
     // drop-down had two faults in parts a mod cannot reach: its list drew through
@@ -24,7 +25,10 @@ namespace OrchestraMod
         public const float ArrowWidth = 30f;
         public const float ArrowGap = 2f;
 
-        private const float ItemHeight = 22f;
+        /// <summary>How tall a row is. The caller's, because the two panels this
+        /// serves are different widths: the mapper-width one draws 22 and the
+        /// Braids panel, which came with a copy of this file, drew 26.</summary>
+        private float itemHeight = 22f;
         private const float MaxListHeight = 264f;
         private const float BarWidth = 8f;
 
@@ -81,6 +85,13 @@ namespace OrchestraMod
         public static Chooser Make(Transform host, Transform root, float x, float y,
             float w, float h, List<string> choices, int picked, bool arrows, int size)
         {
+            return Make(host, root, x, y, w, h, choices, picked, arrows, size, 22f);
+        }
+
+        public static Chooser Make(Transform host, Transform root, float x, float y,
+            float w, float h, List<string> choices, int picked, bool arrows, int size,
+            float rowHeight)
+        {
             GameObject go = new GameObject("Chooser");
             go.transform.SetParent(host, false);
             Fit(go.AddComponent<RectTransform>(), x, y, w, h);
@@ -88,6 +99,7 @@ namespace OrchestraMod
             Chooser self = go.AddComponent<Chooser>();
             self.root = root;
             self.size = size;
+            self.itemHeight = rowHeight;
 
             if (arrows)
             {
@@ -228,7 +240,7 @@ namespace OrchestraMod
             inside.anchorMin = new Vector2(0f, 1f);
             inside.anchorMax = new Vector2(1f, 1f);
             inside.pivot = new Vector2(0.5f, 1f);
-            inside.sizeDelta = new Vector2(0f, items.Count * ItemHeight);
+            inside.sizeDelta = new Vector2(0f, items.Count * itemHeight);
             inside.anchoredPosition = Vector2.zero;
 
             for (int i = 0; i < items.Count; i++) Item(content.transform, i);
@@ -239,14 +251,14 @@ namespace OrchestraMod
             scroll.horizontal = false;
             scroll.vertical = true;
             scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.scrollSensitivity = ItemHeight;
+            scroll.scrollSensitivity = itemHeight;
             scroll.inertia = false;
 
-            listHeight = Mathf.Min(items.Count * ItemHeight + 2f, MaxListHeight);
+            listHeight = Mathf.Min(items.Count * itemHeight + 2f, MaxListHeight);
 
             // A scrollbar only where the choices do not all fit, and the items
             // narrowed to leave room for it.
-            if (items.Count * ItemHeight > listHeight)
+            if (items.Count * itemHeight > listHeight)
             {
                 view.offsetMax = new Vector2(-(BarWidth + 1f), -1f);
                 scroll.verticalScrollbar = Rung(list.transform);
@@ -268,8 +280,8 @@ namespace OrchestraMod
             rect.anchorMin = new Vector2(0f, 1f);
             rect.anchorMax = new Vector2(1f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
-            rect.sizeDelta = new Vector2(0f, ItemHeight);
-            rect.anchoredPosition = new Vector2(0f, -i * ItemHeight);
+            rect.sizeDelta = new Vector2(0f, itemHeight);
+            rect.anchoredPosition = new Vector2(0f, -i * itemHeight);
             Word(go, items[i], TextAnchor.MiddleLeft);
 
             // The plate is white and the tint decides what is seen of it, so an

@@ -45,12 +45,37 @@ namespace OrchestraMod
             // What the game writes when it saves a machine with modded blocks in
             // it, so opening this one without Orchestra warns rather than quietly
             // swapping every instrument for a ballast.
-            string mods = Catalogue.RequiredMods;
-            if (mods != null)
+            List<string> mods = new List<string>();
+            if (Catalogue.RequiredMods != null)
+            {
+                mods.Add(Catalogue.RequiredMods);
+            }
+            // The Braids block used to be another mod's, and a machine holding it
+            // had to name that mod too or the game would swap it for the fallback
+            // without saying so. It is one of these blocks now, so this mod's own
+            // entry covers it and there is nothing else to name.
+            if (mods.Count > 0)
             {
                 out_.Append("    <Data>\n");
-                out_.Append("        <StringArray key=\"requiredMods\">")
-                    .Append(Escaped(mods)).Append("</StringArray>\n");
+                out_.Append("        <StringArray key=\"requiredMods\">");
+                if (mods.Count == 1)
+                {
+                    // One mod is written inline, which is what the game writes and
+                    // what every machine this mod has produced so far holds.
+                    out_.Append(Escaped(mods[0]));
+                }
+                else
+                {
+                    // More than one needs the array spelled out, an entry each.
+                    out_.Append("\n");
+                    for (int i = 0; i < mods.Count; i++)
+                    {
+                        out_.Append("            <String>").Append(Escaped(mods[i]))
+                            .Append("</String>\n");
+                    }
+                    out_.Append("        ");
+                }
+                out_.Append("</StringArray>\n");
                 out_.Append("    </Data>\n");
             }
 

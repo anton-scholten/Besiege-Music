@@ -53,7 +53,7 @@ namespace OrchestraMod
         private int iTune = -1, iDecay = -1, iDamp = -1, iSize = -1, iOpen = -1;
         private int iHard = -1, iMotor = -1, iSustain = -1, iRelease = -1;
         private int iVibrato = -1, iMute = -1, iPizz = -1, iBreath = -1;
-        private int iSlap = -1, iPluck = -1, iAttack = -1;
+        private int iSlap = -1, iPluck = -1, iAttack = -1, iTone = -1;
 
         /// <summary>
         /// The type actually handed to a voice: the XML entry with this block's
@@ -82,7 +82,7 @@ namespace OrchestraMod
         private AudioListener ear;
 
         private Voice[] modal;
-        private Voice[] drums;
+        private Voice[] fm;
         private SamplerVoice[] samplers;
         private float[] mix;
         private float[] extraValues;
@@ -105,6 +105,14 @@ namespace OrchestraMod
         /// <summary>Said once, so the log records which of the two cases this
         /// install turned out to be rather than leaving it to be guessed at.</summary>
         private static bool saidMaster;
+
+        /// <summary>Whether this block's source goes through Besiege's mixer, asked
+        /// once: -1 until it has been. It cannot change under a running block, and
+        /// asking is a call into Unity.</summary>
+        private int mixerRouted = -1;
+
+        private float masterAskAt;
+        private const float MasterAskEvery = 0.1f;
 
         // Audio thread only: the gains the last buffer ended on, so the next one
         // slides onto the new pair rather than stepping onto it.
@@ -277,6 +285,7 @@ namespace OrchestraMod
             iSlap = IndexOf("SlapKey");
             iPluck = IndexOf("PluckKey");
             iAttack = IndexOf("AttackKey");
+            iTone = IndexOf("ToneKey");
 
             LoadBanks();
             BuildVoices();
@@ -578,12 +587,12 @@ namespace OrchestraMod
         private void BuildVoices()
         {
             modal = new Voice[VoiceCount];
-            drums = new Voice[VoiceCount];
+            fm = new Voice[VoiceCount];
             samplers = new SamplerVoice[VoiceCount];
             for (int i = 0; i < VoiceCount; i++)
             {
                 modal[i] = new ModalVoice(sampleRate);
-                drums[i] = new DrumVoice(sampleRate);
+                fm[i] = new FmVoice(sampleRate);
                 samplers[i] = new SamplerVoice(sampleRate);
             }
             // Sized for the largest buffer Unity asks a filter for, so the audio
@@ -640,7 +649,7 @@ namespace OrchestraMod
             for (int i = 0; i < VoiceCount; i++)
             {
                 modal[i].Active = false;
-                drums[i].Active = false;
+                fm[i].Active = false;
                 samplers[i].Active = false;
             }
             PushSettings();
@@ -759,7 +768,25 @@ namespace OrchestraMod
         /// </summary>
         private float MasterVolume()
         {
-            if (source == null || source.outputAudioMixerGroup == null)
+            // Asked a few times a second, not once per block per frame. `Place` runs
+            // from SimulateUpdateAlways, so on a machine of eight hundred blocks
+            // every read here is eight hundred reads a frame -- and
+            // `outputAudioMixerGroup` is a call into Unity, which is the expensive
+            // kind. The routing cannot change under a running block and the slider
+            // is a person moving it, so a tenth of a second is as often as either
+            // is worth asking about.
+            if (Time.unscaledTime < masterAskAt)
+            {
+                return wantMaster;
+            }
+            masterAskAt = Time.unscaledTime + MasterAskEvery;
+
+            if (mixerRouted < 0)
+            {
+                mixerRouted = source != null && source.outputAudioMixerGroup != null
+                    ? 1 : 0;
+            }
+            if (mixerRouted == 0)
             {
                 // Straight to the listener, which applies its own volume. Nothing
                 // to do, and doing something would halve it twice over.
@@ -1210,9 +1237,9 @@ namespace OrchestraMod
 
         private Voice[] PoolFor(InstrumentType type)
         {
-            if (type.Engine == "drum")
+            if (type.Engine == "fm")
             {
-                return drums;
+                return fm;
             }
             if (type.Engine == "sampler")
             {
@@ -1275,7 +1302,10 @@ namespace OrchestraMod
             scratch.Brightness = type.Brightness;
             scratch.Inharmonicity = type.Inharmonicity;
             scratch.Noise = type.Noise;
-            scratch.PitchDrop = type.PitchDrop;
+            scratch.Ratio = type.Ratio;
+            scratch.Index = type.Index;
+            scratch.Feedback = type.Feedback;
+            scratch.Level = type.Level;
             scratch.Attack = type.Attack;
             scratch.Release = type.Release;
             scratch.Damped = type.Damped;
@@ -1287,16 +1317,7 @@ namespace OrchestraMod
             scratch.Comb = 0f;
             scratch.Struck = false;
 
-            if (type.Engine == "drum")
-            {
-                scratch.Decay = Extra(iDecay, type.Decay);
-                // Damping shortens the ring and mutes the skin together, the way a
-                // hand on a head does.
-                float damp = Extra(iDamp, 0f);
-                scratch.Decay *= 1f - damp * 0.8f;
-                scratch.Noise = type.Noise * (1f - damp * 0.5f);
-            }
-            else if (type.Engine == "modal")
+            if (type.Engine == "modal")
             {
                 float size = Extra(iSize, 0.5f);
                 // A bigger plate rings longer and lower, and its modes crowd together.
@@ -1316,11 +1337,63 @@ namespace OrchestraMod
                 }
                 scratch.Tremolo = Extra(iMotor, 0f);
             }
+            else if (type.Engine == "fm")
+            {
+                // TONE is the modulation index, which on an FM operator is the
+                // whole timbre: at nothing it is a sine, and past the middle it
+                // buzzes. Half way is what the type asks for.
+                float tone = Extra(iTone, 0.5f);
+                scratch.Index = type.Index * (tone * 2f);
+                scratch.Attack = Extra(iAttack, type.Attack);
+                scratch.Release = Extra(iRelease, type.Release);
+            }
             else if (type.Engine == "sampler")
             {
                 scratch.Release = Extra(iRelease, type.Release);
                 scratch.Attack = Extra(iAttack, type.Attack);
                 scratch.Vibrato = Extra(iVibrato, 0f);
+
+                // The controls the struck blocks carry. They meant one thing to
+                // the synthesised engines those blocks used to run on and have to
+                // go on meaning it now that those blocks play recordings: a
+                // recording has no partials to lengthen, so what they reach here is
+                // the ring-out and the filter over it.
+                if (iDecay >= 0)
+                {
+                    scratch.Decay = Extra(iDecay, type.Decay);
+                }
+                if (iDamp >= 0)
+                {
+                    // A hand on the head: shorter, and duller with it.
+                    float damp = Extra(iDamp, 0f);
+                    scratch.Decay *= 1f - damp * 0.8f;
+                    scratch.Damping = damp * 0.7f;
+                }
+                if (iSize >= 0)
+                {
+                    // A bigger cymbal rings longer. It is also lower, which a
+                    // recording cannot be told to be without changing the note --
+                    // so this is the half of "size" that is honest.
+                    scratch.Decay *= 0.4f + Extra(iSize, 0.5f) * 1.6f;
+                }
+                if (iOpen >= 0 && Extra(iOpen, 1f) < 0.5f)
+                {
+                    // Closed: choked to a tick, which is the whole difference
+                    // between a hi-hat's two sounds.
+                    scratch.Decay *= 0.12f;
+                    scratch.Struck = true;
+                }
+                if (iHard >= 0)
+                {
+                    // The beater. The recording is of a medium one, so half way
+                    // leaves it as it was recorded, below that is a soft mallet and
+                    // above it a hard one. Both ends are the same filter: `Damping`
+                    // is signed for the sampler, a lowpass one way and a tilt the
+                    // other. Only the dull half existed at first, and the top of
+                    // the slider did nothing at all.
+                    scratch.Damping += (0.5f - Extra(iHard, 0.5f)) * 1.2f;
+                }
+                scratch.Tremolo = Extra(iMotor, 0f);
 
                 if (iSustain >= 0 && Extra(iSustain, 0f) > 0.5f)
                 {
@@ -1377,7 +1450,7 @@ namespace OrchestraMod
             for (int i = 0; i < VoiceCount; i++)
             {
                 if (modal[i].Active && modal[i].Held) { modal[i].Release(); }
-                if (drums[i].Active && drums[i].Held) { drums[i].Release(); }
+                if (fm[i].Active && fm[i].Held) { fm[i].Release(); }
                 if (samplers[i].Active && samplers[i].Held) { samplers[i].Release(); }
             }
         }

@@ -58,12 +58,6 @@ namespace OrchestraMod
         private int division;
         private readonly List<List<Event>> tracks = new List<List<Event>>();
 
-        /// <summary>How many tracks the file turned out to have.</summary>
-        public int TrackCount
-        {
-            get { return tracks.Count; }
-        }
-
         /// <summary>
         /// Reads a file. Throws with a sentence worth showing the player: this is
         /// reached from a text box, so "not a MIDI file" is the common case rather

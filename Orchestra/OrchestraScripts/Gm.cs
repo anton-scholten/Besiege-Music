@@ -14,11 +14,12 @@ namespace OrchestraMod
     /// rather than by program change, and <see cref="Song"/> has always mapped its
     /// note *numbers* onto the Drums and Cymbals blocks.)
     ///
-    /// **Every entry is a real answer, and some are approximations.** Nine blocks
-    /// against 128 instruments means the organs, the synth leads and the pads have
-    /// no home of their own; they go to the nearest thing that sustains or cuts the
-    /// same way, and the comments say which of those are guesses. A part on the
-    /// wrong end of a family is better than a part on a piano.
+    /// **Every entry is a real answer, and some are approximations.** Eleven blocks
+    /// against 128 instruments, and what is left over is mostly the sound effects:
+    /// the leads and pads have blocks of their own now, where they used to go to an
+    /// overdriven guitar because that is what cut through. The comments say which
+    /// entries are guesses. A part on the wrong end of a family is better than a
+    /// part on a piano.
     /// </summary>
     public static class Gm
     {
@@ -33,8 +34,8 @@ namespace OrchestraMod
             "Piano:Upright piano",      // Bright Acoustic -- the brighter of ours
             "Piano:Grand piano",        // Electric Grand
             "Piano:Honky-tonk",         // Honky-tonk
-            "Piano:Electric piano",     // Electric Piano 1 (Rhodes)
-            "Piano:Electric piano",     // Electric Piano 2
+            "Piano:Electric piano",     // Electric Piano 1 (Rhodes), a real Rhodes
+            "FM Synth:Electric piano",     // Electric Piano 2, which is the FM one
             "Piano:Honky-tonk",         // Harpsichord -- plucked and bright; a guess
             "Piano:Electric piano",     // Clavi
 
@@ -46,16 +47,16 @@ namespace OrchestraMod
             "Mallets:Marimba",          // Marimba
             "Mallets:Xylophone",        // Xylophone
             "Mallets:Tubular bells",    // Tubular Bells
-            "Mallets:Marimba",          // Dulcimer
+            "Plucked:Harp",             // Dulcimer -- struck strings, but strings
 
-            // 16-23, organs. Nothing here is an organ; what an organ shares with
-            // this mod is that it holds a note without decaying, which is the
-            // string ensemble. The reeds go to a reed.
-            "Strings:Ensemble",         // Drawbar Organ
-            "Strings:Ensemble",         // Percussive Organ
-            "Strings:Ensemble",         // Rock Organ
-            "Strings:Ensemble",         // Church Organ
-            "Strings:Ensemble",         // Reed Organ
+            // 16-23, organs. The Woodwind block has one -- a flue pipe is a
+            // whistle, and the sample is written rather than cut. The reeds and
+            // the free reeds go to a reed.
+            "Woodwind:Organ",           // Drawbar Organ
+            "Woodwind:Organ",           // Percussive Organ
+            "Woodwind:Organ",           // Rock Organ
+            "Woodwind:Organ",           // Church Organ
+            "Woodwind:Organ",           // Reed Organ
             "Woodwind:Clarinet",        // Accordion
             "Woodwind:Clarinet",        // Harmonica
             "Woodwind:Clarinet",        // Tango Accordion
@@ -86,8 +87,8 @@ namespace OrchestraMod
             "Strings:Cello",            // Cello
             "Strings:Double bass",      // Contrabass
             "Strings:Ensemble",         // Tremolo Strings
-            "Strings:Violin",           // Pizzicato -- plucked, and no plucked string here
-            "Guitar:Nylon",             // Orchestral Harp -- plucked and soft
+            "Plucked:Pizzicato",        // Pizzicato
+            "Plucked:Harp",             // Orchestral Harp
             "Drums:Tom",                // Timpani
 
             // 48-55, ensembles and voices
@@ -95,9 +96,9 @@ namespace OrchestraMod
             "Strings:Ensemble",         // String Ensemble 2
             "Strings:Ensemble",         // Synth Strings 1
             "Strings:Ensemble",         // Synth Strings 2
-            "Strings:Ensemble",         // Choir Aahs
-            "Strings:Ensemble",         // Voice Oohs
-            "Strings:Ensemble",         // Synth Voice
+            "Strings:Choir",            // Choir Aahs
+            "Strings:Choir",            // Voice Oohs
+            "Strings:Choir",            // Synth Voice
             "Brass:Section",            // Orchestra Hit
 
             // 56-63, brass
@@ -130,33 +131,46 @@ namespace OrchestraMod
             "Woodwind:Flute",           // Whistle
             "Woodwind:Flute",           // Ocarina
 
-            // 80-87, synth leads. No synth block: a lead is the part that cuts
-            // through, and the overdriven guitar is what cuts through here. The
-            // Braids Synth mod is where these really belong.
-            "Guitar:Overdriven",        // Square Lead
-            "Guitar:Overdriven",        // Saw Lead
+            // 80-87, synth leads. These have a block of their own now: two-operator
+            // FM, which is what most of these presets were on the machines they
+            // came from. They went to an overdriven guitar before, because a lead
+            // is the part that cuts through and that is what cut through here.
+            "FM Synth:Square lead",        // Square Lead
+            "FM Synth:Lead",               // Saw Lead
             "Woodwind:Flute",           // Calliope -- a pipe, whatever the bank says
             "Woodwind:Flute",           // Chiff
-            "Guitar:Overdriven",        // Charang
-            "Strings:Ensemble",         // Voice Lead
-            "Guitar:Overdriven",        // Fifths
-            "Bass:Synth",               // Bass + Lead
+            "FM Synth:Lead",               // Charang
+            "FM Synth:Choir pad",          // Voice Lead
+            "FM Synth:Lead",               // Fifths
+            "FM Synth:Bass",               // Bass + Lead
 
-            // 88-95, synth pads: sustained washes, so the ensemble
-            "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-            "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-            "Strings:Ensemble", "Strings:Ensemble",
+            // 88-95, synth pads: sustained washes, and the one General MIDI itself
+            // calls a choir keeps its voices.
+            "FM Synth:Pad",                // New Age
+            "FM Synth:Pad",                // Warm
+            "FM Synth:Pad",                // Polysynth
+            "FM Synth:Choir pad",          // Choir
+            "FM Synth:Pad",                // Bowed
+            "FM Synth:Bell",               // Metallic -- the one pad that is a bell
+            "FM Synth:Choir pad",          // Halo
+            "FM Synth:Pad",                // Sweep
 
-            // 96-103, synth effects: the same, and just as approximate
-            "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-            "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-            "Strings:Ensemble", "Strings:Ensemble",
+            // 96-103, synth effects. Nothing is really these, but a bell and a pad
+            // between them cover the ones a score uses as music.
+            "FM Synth:Bell",               // Rain
+            "FM Synth:Pad",                // Soundtrack
+            "FM Synth:Bell",               // Crystal
+            "FM Synth:Pad",                // Atmosphere
+            "FM Synth:Bell",               // Brightness
+            "FM Synth:Pad",                // Goblins
+            "FM Synth:Pad",                // Echoes
+            "FM Synth:Pad",                // Sci-fi
 
             // 104-111, ethnic
-            "Guitar:Steel",             // Sitar
-            "Guitar:Steel",             // Banjo
-            "Guitar:Nylon",             // Shamisen
-            "Guitar:Nylon",             // Koto
+            "Plucked:Sitar",            // Sitar
+            "Plucked:Banjo",            // Banjo
+            "Plucked:Koto",             // Shamisen
+            "Plucked:Koto",             // Koto
             "Mallets:Marimba",          // Kalimba
             "Woodwind:Oboe",            // Bagpipe
             "Strings:Violin",           // Fiddle
@@ -165,7 +179,7 @@ namespace OrchestraMod
             // 112-119, percussive
             "Mallets:Glockenspiel",     // Tinkle Bell
             "Mallets:Marimba",          // Agogo
-            "Mallets:Marimba",          // Steel Drums
+            "Mallets:Steel drum",       // Steel Drums
             "Drums:Rim",                // Woodblock
             "Drums:Kick",               // Taiko
             "Drums:Tom",                // Melodic Tom

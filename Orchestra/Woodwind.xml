@@ -14,11 +14,15 @@
 	<Modules>
 		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Woodwind">
 			<Types>
-			<Type name="Flute"    engine="sampler" samples="wind_flute_61 wind_flute_70 wind_flute_82" loops="12004-20422 12718-20536 14760-22336" damped="true" holds="true" attack="0.05" release="0.2" />
-			<Type name="Clarinet" engine="sampler" samples="wind_clarinet_53 wind_clarinet_64 wind_clarinet_76" loops="3337-5593 3337-5520 3336-5534" damped="true" holds="true" attack="0.04" release="0.2" />
-			<Type name="Oboe"     engine="sampler" samples="wind_oboe_61 wind_oboe_70 wind_oboe_81" loops="22139-27004 14521-19121 19301-23560" damped="true" holds="true" attack="0.04" release="0.2" />
-			<Type name="Bassoon"  engine="sampler" samples="wind_bassoon_36 wind_bassoon_48 wind_bassoon_58" loops="3634-3969 4474-4644 4034-4129" damped="true" holds="true" attack="0.05" release="0.25" />
-			<Type name="Sax"      engine="sampler" samples="wind_sax_53 wind_sax_62 wind_sax_72" loops="10731-10857 7278-15597 6320-6445" damped="true" holds="true" attack="0.04" release="0.25" />
+			<Type name="Flute"    engine="sampler" samples="wind_flute_61 wind_flute_74 wind_flute_84" loops="14542-20096 22401-27648 11264-16256" damped="true" holds="true" attack="0.05" release="0.2" />
+			<Type name="Clarinet" engine="sampler" samples="wind_clarinet_52 wind_clarinet_61 wind_clarinet_74" loops="13027-13561 7035-7193 2933-3119" damped="true" holds="true" attack="0.04" release="0.2" />
+			<Type name="Oboe"     engine="sampler" samples="wind_oboe_63 wind_oboe_70 wind_oboe_82" loops="14681-19200 14853-19200 9872-14464" damped="true" holds="true" attack="0.04" release="0.2" />
+			<Type name="Bassoon"  engine="sampler" samples="wind_bassoon_35 wind_bassoon_46 wind_bassoon_58" loops="23746-29755 23346-28970 17764-23658" damped="true" holds="true" attack="0.05" release="0.25" />
+			<Type name="Sax"      engine="sampler" samples="wind_sax_50 wind_sax_60 wind_sax_72" loops="10228-15565 19914-24941 9085-13568" damped="true" holds="true" attack="0.04" release="0.25" />
+			<!-- A flue pipe is a whistle, so an organ belongs with the pipes.
+			     These were drawbar sines written by a tool once, an organ being a
+			     sum of sines; a church organ recording is a church organ. -->
+			<Type name="Organ"     engine="sampler" samples="wind_organ_36 wind_organ_60 wind_organ_84" loops="24522-61248 45472-90380 13633-54976" damped="true" holds="true" attack="0.02" release="0.12" />
 			</Types>
 			<Extras>
 			<Extra kind="slider" key="BreathKey" name="Breath" min="0" max="1" default="0.2" />

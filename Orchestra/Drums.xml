@@ -14,11 +14,17 @@
 	<Modules>
 		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Drums">
 			<Types>
-			<Type name="Kick"  engine="drum" decay="0.45" noise="0.18" pitchDrop="26" />
-			<Type name="Snare" engine="drum" decay="0.30" noise="0.80" pitchDrop="6" />
-			<Type name="Tom"   engine="drum" decay="0.60" noise="0.30" pitchDrop="10" />
-			<Type name="Rim"   engine="drum" decay="0.12" noise="0.65" pitchDrop="3" />
-			<Type name="Clap"  engine="drum" decay="0.22" noise="0.95" pitchDrop="0" />
+			<!-- The kit, cut from General MIDI's own percussion bank rather than
+			     synthesised. Each is one recording: a drum has no range to cover,
+			     and what the block's NOTE does to it is tune it, which is what a
+			     drummer does to a kit. Published at note 60, where the slider
+			     starts, so a block placed by hand plays it as recorded.
+			     No loops — a one-shot rings out on its own tail. -->
+			<Type name="Kick"  engine="sampler" samples="drum_kick_60"  decay="0.45" />
+			<Type name="Snare" engine="sampler" samples="drum_snare_60" decay="0.40" />
+			<Type name="Tom"   engine="sampler" samples="drum_tom_60"   decay="0.60" />
+			<Type name="Rim"   engine="sampler" samples="drum_rim_60"   decay="0.20" />
+			<Type name="Clap"  engine="sampler" samples="drum_clap_60"  decay="0.30" />
 			</Types>
 			<Extras>
 			<Extra kind="slider" key="TuneKey" name="Tune" min="-12" max="12" default="0" />

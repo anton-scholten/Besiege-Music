@@ -14,6 +14,11 @@ namespace OrchestraMod
         {
             CustomModules.AddBlockModule<OrchestraModule, InstrumentBehaviour>("OrchestraMod", false);
             CustomModules.AddBlockModule<LoaderModule, LoaderBehaviour>("LoaderMod", false);
+            // The Braids block, which used to be a mod of its own and is now one of
+            // these. Its sources are under OrchestraScripts/Braids, unchanged apart
+            // from this line -- what was its own `Mod.OnLoad` is these two.
+            CustomModules.AddBlockModule<BraidsSynth.SynthModule,
+                                         BraidsSynth.BraidsBehaviour>("BraidsSynth", false);
 
             // One panel for every block, on its own object so it outlives the
             // scene changes a block does not. It watches the mapper and shows
@@ -38,6 +43,14 @@ namespace OrchestraMod
             GameObject loader = new GameObject("OrchestraLoaderPanel");
             Object.DontDestroyOnLoad(loader);
             loader.AddComponent<LoaderPanel>();
+
+            // And the Braids block's own panel, which is a third window again: the
+            // model chooser, its scope, and the sliders that go with them. It
+            // outlives scene loads for the same reason the others do -- the
+            // mapper's callbacks are static delegates.
+            GameObject braids = new GameObject("BraidsPanelHost");
+            Object.DontDestroyOnLoad(braids);
+            braids.AddComponent<BraidsSynth.BraidsPanel>();
         }
     }
 }

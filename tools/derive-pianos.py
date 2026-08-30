@@ -37,6 +37,7 @@ same format: mono Ogg Vorbis at 22050 Hz, `-q:a 2`.
 """
 
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -71,11 +72,44 @@ HONKY_FADE = 0.55   # the layer starts fading at this fraction of the loop start
 UPRIGHT_HZ = 1800.0
 UPRIGHT_POLES = 2
 
-# The three recordings everything here is made from, and where each one's sustain
-# loop begins -- the `loops` attribute of the Grand piano type in Piano.xml, which
-# the build's XML check holds all three piano types to.
-GRAND = [("piano_grand_38", 33983), ("piano_grand_60", 21957),
-         ("piano_grand_86", 12297)]
+GENERATED = os.path.join(HERE, os.pardir, "docs", "generated-samples.md")
+
+
+def grand():
+    """The three grand recordings, and where each one's sustain loop begins.
+
+    Read out of what `extract-samples.py` last wrote rather than hard-coded: the
+    root key a font gives a piano zone is the font's business, and it changed
+    under this tool once already when the source font did. The loop start is only
+    needed to know where the honky-tonk's second layer has to be gone by.
+    """
+    line = ""
+    for row in open(GENERATED):
+        if row.startswith("piano_grand"):
+            line = row
+            break
+    if not line:
+        raise SystemExit("no piano_grand line in docs/generated-samples.md -- run "
+                         "tools/extract-samples.py first")
+    names = re.search(r'samples="([^"]*)"', line).group(1).split()
+    loops = re.search(r'loops="([^"]*)"', line).group(1).split()
+    out = []
+    for name, loop in zip(names, loops):
+        out.append((name, int(loop.split("-")[0])))
+    return out
+
+
+# What the extractor cut for the two derived types, which this replaces. A font
+# gives presets 0, 1 and 3 the same recordings, so those cuts are the grand under
+# another name and at another root; the derived pair carries the grand's names, so
+# all three piano types share one set of loop points.
+def stale():
+    out = []
+    for row in open(GENERATED):
+        for stem in ("piano_upright", "piano_honky"):
+            if row.startswith(stem):
+                out += re.search(r'samples="([^"]*)"', row).group(1).split()
+    return out
 
 
 def read(name):
@@ -158,8 +192,9 @@ def demo(path):
     """Middle C on each of the four, one after another, to listen to."""
     gap = [0] * int(RATE * 0.25)
     together = []
-    for name in ("piano_grand_60", "piano_upright_60", "piano_honky_60",
-                 "piano_rhodes_55"):
+    note = [n for n, _ in grand()][1].rsplit("_", 1)[1]
+    for name in ("piano_grand_" + note, "piano_upright_" + note,
+                 "piano_honky_" + note, "piano_rhodes_60"):
         together += read(name) + gap
     write_demo(path, together)
 
@@ -180,8 +215,10 @@ def write_demo(path, frames):
 def check():
     """How alike the four pianos are now, as the audit that found this ran."""
     import itertools
-    names = ["piano_grand_60", "piano_upright_60", "piano_honky_60",
-             "piano_rhodes_55"]
+    middle = [n for n, _ in grand()][1]
+    note = middle.rsplit("_", 1)[1]
+    names = ["piano_grand_" + note, "piano_upright_" + note,
+             "piano_honky_" + note, "piano_rhodes_60"]
     loaded = dict((n, read(n)) for n in names)
     print("waveform correlation at middle C (1.000 = the same recording):")
     for a, b in itertools.combinations(names, 2):
@@ -208,8 +245,19 @@ def main():
         demo(args[args.index("--demo") + 1])
         return 0
 
+    # The extractor's own upright and honky cuts go: they are the grand's
+    # recordings under another root, and leaving them would ship a second copy of
+    # the same audio that nothing points at.
+    for name in stale():
+        if name.startswith("piano_grand"):
+            continue
+        path = os.path.join(SAMPLES, name + ".ogg")
+        if os.path.exists(path):
+            os.remove(path)
+            print("removed %s: the same recording as the grand" % name)
+
     was = {}
-    for source, loop_start in GRAND:
+    for source, loop_start in grand():
         frames = read(source)
         if loop_start >= len(frames):
             raise SystemExit("%s: loop starts at %d but the sample is %d long"

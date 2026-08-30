@@ -56,14 +56,31 @@ namespace OrchestraMod
     {
         private const int Partials = 24;
 
-        private readonly float[] phase = new float[Partials];
-        private readonly float[] step = new float[Partials];
+        // Each partial is a resonator rather than a call to Sin.
+        //
+        // `Mathf.Sin` once per partial per sample is twenty-four transcendentals a
+        // sample, and eight voices of that measured at 44% of a core for one
+        // block -- four blocks ringing at once was a core gone, which is what a
+        // machine full of mallets and cymbals sounds like when the frame rate
+        // drops. The coupled form ("magic circle") gives the same sine from two
+        // multiplies and two adds, and cannot drift out: the pair (x, y) walks
+        // round a circle, so its amplitude is bounded whatever the arithmetic
+        // does, where the y[n] = k*y[n-1] - y[n-2] recurrence slowly grows.
+        private readonly float[] sinPart = new float[Partials];
+        private readonly float[] cosPart = new float[Partials];
+        private readonly float[] turn = new float[Partials];
         private readonly float[] amp = new float[Partials];
         private readonly float[] damp = new float[Partials];
 
         private float noiseLevel;
         private float noiseDamp;
         private uint noiseState = 22222u;
+
+        /// <summary>How many partials are still worth adding up. They are damped
+        /// hardest at the top, so the bank shortens from there as a note dies --
+        /// and a marimba is silent above its eighth partial almost at once. Cheaper
+        /// than testing all twenty-four every sample and skipping the dead.</summary>
+        private int live;
 
         // Vibraphone motor: rotating discs over the resonators, which is an
         // amplitude wobble rather than any change of pitch.
@@ -88,11 +105,13 @@ namespace OrchestraMod
                 if (f > rate * 0.45f)
                 {
                     amp[i] = 0f;
-                    step[i] = 0f;
+                    turn[i] = 0f;
                     continue;
                 }
-                step[i] = 2f * Mathf.PI * f / rate;
-                phase[i] = 0f;
+                // 2 sin(w/2) is the step round the circle for a partial at f.
+                turn[i] = 2f * Mathf.Sin(Mathf.PI * f / rate);
+                sinPart[i] = 0f;
+                cosPart[i] = 1f;
 
                 // Higher partials start louder with brightness, and always die first.
                 float tilt = Mathf.Pow(i + 1f, -1.2f + bright);
@@ -101,6 +120,7 @@ namespace OrchestraMod
                 damp[i] = Mathf.Exp(-1f / (partialDecay * rate));
             }
 
+            live = Partials;
             noiseLevel = velocity * Mathf.Clamp01(type.Noise) * 0.5f;
             noiseDamp = Mathf.Exp(-1f / (Mathf.Max(0.01f, decay * 0.12f) * rate));
 
@@ -115,22 +135,29 @@ namespace OrchestraMod
 
         public override void Render(float[] buffer, int frames)
         {
+            // Once a buffer, not once a sample: the top of the bank is dead for
+            // good once it is quiet, so the inner loop gets shorter as the note
+            // dies rather than testing every partial forty-eight thousand times a
+            // second to skip it.
+            while (live > 0 && amp[live - 1] <= 0.000001f)
+            {
+                live--;
+            }
+
             float peak = 0f;
             for (int n = 0; n < frames; n++)
             {
                 float s = 0f;
-                for (int i = 0; i < Partials; i++)
+                for (int i = 0; i < live; i++)
                 {
                     if (amp[i] <= 0.000001f)
                     {
                         continue;
                     }
-                    phase[i] += step[i];
-                    if (phase[i] > 6.2831853f)
-                    {
-                        phase[i] -= 6.2831853f;
-                    }
-                    s += Mathf.Sin(phase[i]) * amp[i];
+                    // One step round the circle: x leads, y is the sine.
+                    cosPart[i] -= turn[i] * sinPart[i];
+                    sinPart[i] += turn[i] * cosPart[i];
+                    s += sinPart[i] * amp[i];
                     amp[i] *= damp[i];
                 }
 
@@ -164,94 +191,6 @@ namespace OrchestraMod
             }
 
             if (peak < 0.00002f)
-            {
-                Active = false;
-            }
-        }
-    }
-
-    /// <summary>
-    /// A drum: a pitched body that falls as it decays, plus a noise burst for the
-    /// skin and the stick. `pitchDrop` is what separates a kick, which sweeps a
-    /// long way down, from a tom, which barely moves.
-    /// </summary>
-    public class DrumVoice : Voice
-    {
-        private float phase;
-        private float freq;
-        private float freqEnd;
-        private float freqFall;
-        private float bodyAmp;
-        private float bodyDamp;
-        private float noiseAmp;
-        private float noiseDamp;
-
-        /// <summary>How much of the strike's noise is left, 1 down to 0. The skin's
-        /// hiss loses its top as it goes, the way a struck thing does.</summary>
-        private float noiseBright;
-        private float lp;
-        private uint noiseState = 987654321u;
-
-        public DrumVoice(int sampleRate) : base(sampleRate) { }
-
-        public override void Start(InstrumentType type, float note, float velocity, float[] extras)
-        {
-            float decay = Mathf.Max(0.02f, type.Decay);
-            freq = Hz(note + Mathf.Max(0f, type.PitchDrop));
-            freqEnd = Hz(note);
-            // Reaches the settled pitch in about a tenth of the decay.
-            freqFall = Mathf.Exp(-1f / (decay * 0.1f * rate));
-            phase = 0f;
-
-            float noise = Mathf.Clamp01(type.Noise);
-            bodyAmp = velocity * (1f - noise * 0.6f);
-            bodyDamp = Mathf.Exp(-1f / (decay * rate));
-            noiseAmp = velocity * noise;
-            // A third of the body's decay, and never more than a second and a half
-            // whatever the body is given: a drum head is not a cymbal, and a long
-            // decay should ring, not hiss. Without the cap, a two-second decay left
-            // most of a second of bright noise behind, and the new range would have
-            // made that seven.
-            noiseDamp = Mathf.Exp(-1f / (Mathf.Clamp(decay * 0.35f, 0.01f, 1.5f) * rate));
-            noiseBright = 1f;
-            lp = 0f;
-
-            Active = true;
-            Held = true;
-            Age = 0;
-        }
-
-        public override void Render(float[] buffer, int frames)
-        {
-            for (int n = 0; n < frames; n++)
-            {
-                freq = freqEnd + (freq - freqEnd) * freqFall;
-                phase += 2f * Mathf.PI * freq / rate;
-                if (phase > 6.2831853f)
-                {
-                    phase -= 6.2831853f;
-                }
-                float s = Mathf.Sin(phase) * bodyAmp;
-                bodyAmp *= bodyDamp;
-
-                noiseState ^= noiseState << 13;
-                noiseState ^= noiseState >> 17;
-                noiseState ^= noiseState << 5;
-                float white = ((int)(noiseState & 0xffff) - 32768) / 32768f;
-                // One pole of smoothing, closing as the noise dies: raw white is too
-                // fizzy for a skin even at the strike, and a hiss that keeps its top
-                // all the way down is the fizz that was left ringing under a long
-                // decay. High frequencies go first in anything struck, so the filter
-                // follows the noise down from open to nearly shut.
-                lp += (white - lp) * (0.06f + 0.39f * noiseBright);
-                s += lp * noiseAmp;
-                noiseAmp *= noiseDamp;
-                noiseBright *= noiseDamp;
-
-                buffer[n] += s;
-            }
-
-            if (bodyAmp < 0.00002f && noiseAmp < 0.00002f)
             {
                 Active = false;
             }
@@ -297,6 +236,14 @@ namespace OrchestraMod
         private float vibratoDepth;
         private float vibratoPhase;
         private float vibratoStep;
+
+        // A vibraphone's motor: rotating discs over the resonator tubes, which is
+        // an amplitude wobble and no change of pitch. The recording is of the motor
+        // switched off -- a font samples one note, not one note per speed -- so the
+        // block puts it back.
+        private float tremoloDepth;
+        private float tremoloPhase;
+        private float tremoloStep;
         private float damping;
         private float lowpass;
         private float edge;
@@ -371,7 +318,15 @@ namespace OrchestraMod
             // 4 to 7 Hz: slower reads as seasick, faster as a trill.
             vibratoStep = 2f * Mathf.PI * (4f + vibratoDepth * 3f) / rate;
 
-            damping = Mathf.Clamp01(type.Damping);
+            tremoloDepth = Mathf.Clamp01(type.Tremolo);
+            tremoloPhase = 0f;
+            // Roughly 1 to 10 Hz, as the modal engine's is: a real motor's range.
+            tremoloStep = 2f * Mathf.PI * (1f + tremoloDepth * 9f) / rate;
+
+            // Signed, not clamped to nothing: positive is a lowpass, negative the
+            // tilt the other way. See the HARDNESS control, whose top half is the
+            // second of those.
+            damping = Mathf.Clamp(type.Damping, -1f, 1f);
             lowpass = 0f;
             edge = Mathf.Clamp01(type.Edge);
             follow = 0f;
@@ -499,6 +454,16 @@ namespace OrchestraMod
                     lowpass += (s - lowpass) * cutoff;
                     s = lowpass;
                 }
+                else if (damping < -0.001f)
+                {
+                    // The other way: what is left after the same pole is the top of
+                    // the note, so adding it back tilts the recording brighter. A
+                    // harder beater cannot put partials into a recording that has
+                    // none, but it can lean on the ones it has, and that is what a
+                    // hard mallet against a soft one sounds like.
+                    lowpass += (s - lowpass) * 0.15f;
+                    s += (s - lowpass) * (-damping) * 2f;
+                }
 
                 if (edge > 0.001f)
                 {
@@ -563,6 +528,16 @@ namespace OrchestraMod
                     s -= delayed * combDepth * 0.6f;
                 }
 
+                if (tremoloDepth > 0.001f)
+                {
+                    tremoloPhase += tremoloStep;
+                    if (tremoloPhase > 6.2831853f)
+                    {
+                        tremoloPhase -= 6.2831853f;
+                    }
+                    s *= 1f - tremoloDepth * 0.5f * (1f - Mathf.Cos(tremoloPhase));
+                }
+
                 buffer[n] += s * level * velocity * ring;
 
                 if (vibratoDepth > 0.001f)
@@ -580,6 +555,177 @@ namespace OrchestraMod
                 {
                     position += increment;
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Two-operator FM: one sine bending the phase of another.
+    ///
+    /// The one classic synthesis method a recording cannot stand in for, because
+    /// what it does is move the timbre continuously while the note sounds. A
+    /// sampler can play a bell; it cannot play a bell whose strike fades into a
+    /// hum over two seconds unless somebody recorded exactly that bell.
+    ///
+    /// `ratio` is the modulator's frequency as a multiple of the carrier's, and it
+    /// is what the sound *is*: a whole number gives a harmonic tone (1 for a
+    /// hollow lead, 2 for a reedier one, 14 for the bright tine of an electric
+    /// piano), and a number that is not whole gives an inharmonic one -- 3.5 is the
+    /// bell everybody knows. `index` is how hard it bends, in radians, and where a
+    /// synthesiser earns its keep is that the index falls across the note: bright
+    /// at the strike and plain afterwards, which is one envelope doing what a whole
+    /// wavetable would otherwise have to.
+    ///
+    /// Sine comes from a table rather than `Mathf.Sin`. Phase modulation needs
+    /// sin(phase + bend), which the modal engine's trick cannot give -- that walks
+    /// a circle and never names a phase -- and a transcendental per operator per
+    /// sample is what made the modal engine cost 44% of a core. A 4096-entry table
+    /// with linear interpolation is inaudible against it and about twenty times
+    /// cheaper.
+    /// </summary>
+    public class FmVoice : Voice
+    {
+        private const int TableBits = 12;
+        private const int TableSize = 1 << TableBits;
+
+        /// <summary>One period of sine, shared by every voice in the game. Built
+        /// once, read-only afterwards, so the audio thread may have it.</summary>
+        private static readonly float[] Sine = BuildSine();
+
+        private static float[] BuildSine()
+        {
+            float[] table = new float[TableSize + 1];
+            for (int i = 0; i <= TableSize; i++)
+            {
+                table[i] = (float)Math.Sin(2.0 * Math.PI * i / TableSize);
+            }
+            return table;
+        }
+
+        // Phase as 32-bit fixed point: it wraps by itself, which is the whole
+        // reason for counting in integers here.
+        private uint carrierPhase;
+        private uint modulatorPhase;
+        private uint carrierStep;
+        private uint modulatorStep;
+
+        private float index;            // radians of bend, now
+        private float indexEnd;         // where it settles
+        private float indexFall;        // per sample, towards it
+
+        private float feedback;
+        private float lastModulator;
+
+        private float trim;             // the type's own level, so all seven match
+        private float amplitude;        // the note's own decay, for struck types
+        private float amplitudeFall;
+        private float envelope;         // the key's attack and release
+        private float attackPerSample;
+        private float releasePerSample;
+        private bool holds;
+        private bool releasing;
+        private float velocity;
+
+        public FmVoice(int sampleRate) : base(sampleRate) { }
+
+        private static float Look(uint phase, float bend)
+        {
+            // The bend is in radians; a whole turn is TableSize entries.
+            int at = (int)((phase >> (32 - TableBits))
+                           + (int)(bend * (TableSize / (2f * Mathf.PI))));
+            float f = table_frac(phase);
+            at &= TableSize - 1;
+            return Sine[at] + (Sine[at + 1] - Sine[at]) * f;
+        }
+
+        private static float table_frac(uint phase)
+        {
+            return (phase >> (32 - TableBits - 12) & 0xfff) / 4096f;
+        }
+
+        public override void Start(InstrumentType type, float note, float vel, float[] extras)
+        {
+            float f0 = Hz(note);
+            double turn = 4294967296.0 / rate;
+            carrierStep = (uint)(f0 * turn);
+            modulatorStep = (uint)(f0 * Mathf.Max(0.01f, type.Ratio) * turn);
+            carrierPhase = 0;
+            modulatorPhase = 0;
+            lastModulator = 0f;
+            feedback = Mathf.Clamp01(type.Feedback);
+
+            // Harder keys are brighter, which on an FM operator is more bend and
+            // not more level -- the one thing everybody knows about a DX7.
+            index = Mathf.Max(0f, type.Index) * (0.4f + 0.6f * vel);
+            // `brightness` is what is left of that when the note has settled.
+            indexEnd = index * Mathf.Clamp01(type.Brightness);
+            // Across a fifth of the decay, so the bright part is the attack.
+            float fallOver = Mathf.Max(0.02f, type.Decay * 0.2f);
+            indexFall = Mathf.Exp(-1f / (fallOver * rate));
+
+            trim = Mathf.Max(0f, type.Level);
+            holds = type.Holds;
+            amplitude = 1f;
+            amplitudeFall = holds ? 1f
+                : Mathf.Exp(-ToSilence / (Mathf.Max(0.05f, type.Decay) * rate));
+            envelope = 0f;
+            attackPerSample = 1f / Mathf.Max(1f, type.Attack * rate);
+            releasePerSample = 1f / Mathf.Max(1f, type.Release * rate);
+            releasing = false;
+            velocity = vel;
+            Active = true;
+            Held = true;
+            Age = 0;
+        }
+
+        /// <summary>ln(1000), as the sampler's: `decay` reads as seconds to
+        /// silence.</summary>
+        private const float ToSilence = 6.9077553f;
+
+        public override void Release()
+        {
+            Held = false;
+            releasing = true;
+        }
+
+        public override void Render(float[] buffer, int frames)
+        {
+            for (int n = 0; n < frames; n++)
+            {
+                // The modulator, with its own output fed back: a little of that is
+                // what takes a sine towards a saw, and too much is noise.
+                float self = lastModulator * feedback * 3f;
+                float m = Look(modulatorPhase, self);
+                lastModulator = m;
+                float s = Look(carrierPhase, m * index);
+
+                carrierPhase += carrierStep;
+                modulatorPhase += modulatorStep;
+
+                index = indexEnd + (index - indexEnd) * indexFall;
+                amplitude *= amplitudeFall;
+
+                if (releasing)
+                {
+                    envelope -= releasePerSample;
+                    if (envelope <= 0f)
+                    {
+                        Active = false;
+                        return;
+                    }
+                }
+                else if (envelope < 1f)
+                {
+                    envelope += attackPerSample;
+                    if (envelope > 1f) { envelope = 1f; }
+                }
+
+                buffer[n] += s * envelope * amplitude * velocity * trim * 0.35f;
+            }
+
+            if (amplitude < 0.00002f)
+            {
+                Active = false;
             }
         }
     }

@@ -73,10 +73,25 @@ DRUM_MAP = {
     51: ("Cymbals", "Ride"), 59: ("Cymbals", "Ride"),
 }
 
-# The note a drum block is asked for, per kit piece: these engines are pitched,
-# and a kick wants to be lower than a tom.
-DRUM_NOTE = {"Kick": 36, "Snare": 50, "Tom": 45,
-             "Hi-hat": 78, "Crash": 72, "Ride": 76}
+# The note a drum block is asked for, per kit piece. Sixty for all of them,
+# because a kit block plays a recording and sixty is the note it was published
+# at: the block plays it as recorded rather than transposed. These blocks were
+# synthesised once, and a synthesised kick wants to be lower than a synthesised
+# tom, which is where 36 and 78 came from; against a recording those are two
+# octaves down and an octave and a half up. Song.cs carries the same table.
+DRUM_NOTE = {"Kick": 60, "Snare": 60, "Tom": 60,
+             "Hi-hat": 60, "Crash": 60, "Ride": 60}
+
+# Where the toms sit around that, by their General MIDI note. A kit really is
+# tuned: General MIDI's six toms run low to high, they all come to one block
+# here, and this is what keeps them apart.
+TOM_ROOT = 45
+
+# General MIDI's open hi-hat, and the note the Cymbals block keeps that recording
+# at. The block carries both hats -- a closed one is not an open one with the ring
+# taken off -- and picks between them by note. Song.cs carries the same pair.
+OPEN_HAT_NOTE = 46
+OPEN_HAT = 72
 
 
 # General MIDI's 128 instruments, each pointed at the nearest block this mod
@@ -90,38 +105,88 @@ FROM_FILE = "As the file says"
 
 GM_INSTRUMENTS = [
     "Piano:Grand piano", "Piano:Upright piano", "Piano:Grand piano", "Piano:Honky-tonk",
-    "Piano:Electric piano", "Piano:Electric piano", "Piano:Honky-tonk", "Piano:Electric piano",
+    "Piano:Electric piano", "FM Synth:Electric piano", "Piano:Honky-tonk", "Piano:Electric piano",
     "Mallets:Glockenspiel", "Mallets:Glockenspiel", "Mallets:Glockenspiel", "Mallets:Vibraphone",
-    "Mallets:Marimba", "Mallets:Xylophone", "Mallets:Tubular bells", "Mallets:Marimba",
-    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-    "Strings:Ensemble", "Woodwind:Clarinet", "Woodwind:Clarinet", "Woodwind:Clarinet",
+    "Mallets:Marimba", "Mallets:Xylophone", "Mallets:Tubular bells", "Plucked:Harp",
+    "Woodwind:Organ", "Woodwind:Organ", "Woodwind:Organ", "Woodwind:Organ",
+    "Woodwind:Organ", "Woodwind:Clarinet", "Woodwind:Clarinet", "Woodwind:Clarinet",
     "Guitar:Nylon", "Guitar:Steel", "Guitar:Jazz", "Guitar:Clean",
     "Guitar:Clean", "Guitar:Overdriven", "Guitar:Overdriven", "Guitar:Clean",
     "Bass:Acoustic", "Bass:Fingered", "Bass:Picked", "Bass:Fretless",
     "Bass:Picked", "Bass:Picked", "Bass:Synth", "Bass:Synth",
     "Strings:Violin", "Strings:Viola", "Strings:Cello", "Strings:Double bass",
-    "Strings:Ensemble", "Strings:Violin", "Guitar:Nylon", "Drums:Tom",
+    "Strings:Ensemble", "Plucked:Pizzicato", "Plucked:Harp", "Drums:Tom",
     "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Brass:Section",
+    "Strings:Choir", "Strings:Choir", "Strings:Choir", "Brass:Section",
     "Brass:Trumpet", "Brass:Trombone", "Brass:Tuba", "Brass:Trumpet",
     "Brass:French horn", "Brass:Section", "Brass:Section", "Brass:Section",
     "Woodwind:Sax", "Woodwind:Sax", "Woodwind:Sax", "Woodwind:Sax",
     "Woodwind:Oboe", "Woodwind:Oboe", "Woodwind:Bassoon", "Woodwind:Clarinet",
     "Woodwind:Flute", "Woodwind:Flute", "Woodwind:Flute", "Woodwind:Flute",
     "Woodwind:Flute", "Woodwind:Flute", "Woodwind:Flute", "Woodwind:Flute",
-    "Guitar:Overdriven", "Guitar:Overdriven", "Woodwind:Flute", "Woodwind:Flute",
-    "Guitar:Overdriven", "Strings:Ensemble", "Guitar:Overdriven", "Bass:Synth",
-    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
-    "Guitar:Steel", "Guitar:Steel", "Guitar:Nylon", "Guitar:Nylon",
+    "FM Synth:Square lead", "FM Synth:Lead", "Woodwind:Flute", "Woodwind:Flute",
+    "FM Synth:Lead", "FM Synth:Choir pad", "FM Synth:Lead", "FM Synth:Bass",
+    "FM Synth:Pad", "FM Synth:Pad", "FM Synth:Pad", "FM Synth:Choir pad",
+    "FM Synth:Pad", "FM Synth:Bell", "FM Synth:Choir pad", "FM Synth:Pad",
+    "FM Synth:Bell", "FM Synth:Pad", "FM Synth:Bell", "FM Synth:Pad",
+    "FM Synth:Bell", "FM Synth:Pad", "FM Synth:Pad", "FM Synth:Pad",
+    "Plucked:Sitar", "Plucked:Banjo", "Plucked:Koto", "Plucked:Koto",
     "Mallets:Marimba", "Woodwind:Oboe", "Strings:Violin", "Woodwind:Oboe",
-    "Mallets:Glockenspiel", "Mallets:Marimba", "Mallets:Marimba", "Drums:Rim",
+    "Mallets:Glockenspiel", "Mallets:Marimba", "Mallets:Steel drum", "Drums:Rim",
     "Drums:Kick", "Drums:Tom", "Drums:Tom", "Cymbals:Crash",
     "Guitar:Clean", "Woodwind:Flute", "Cymbals:Crash", "Woodwind:Flute",
     "Mallets:Glockenspiel", "Drums:Tom", "Cymbals:Crash", "Drums:Kick",
 ]
+
+
+# The Braids block, for the synth parts no acoustic block has a home for. It was
+# a mod of its own -- Braids Synth -- and a score could only be written for it
+# where somebody had installed it; it is one of this mod's blocks now, so the ids
+# below are this mod's and there is nothing to ask about. --braids is on by
+# default and --no-braids writes those parts for the FM synth block instead.
+# The numbers are BraidsBehaviour's own mapper keys and MacroOscillator's models.
+BRAIDS_MOD = "aca735ea-a614-4aef-9676-67ec1edd5059"
+BRAIDS_LOCAL = 13
+BRAIDS_FAMILY = "Braids"
+BRAIDS_MODELS = [16, 18, 14, 9, 20]     # saw, square, swarm, triple saw, sine
+
+# How loud each of those five is, as the RMS of a second of it at middle C with
+# the volume full open, measured by rendering the Braids oscillator beside this
+# mod's own voices. This mod's blocks come to 0.04 through 0.29 in the same
+# measurement, the modal instruments around 0.2 -- so a synth block written at the
+# orchestra's volume plays three to four times as loud as the orchestra. Braids.cs
+# carries the same table; SongCheck holds the two together.
+BRAIDS_LOUDNESS = [0.574, 0.863, 0.162, 0.524, 0.704]
+BRAIDS_REFERENCE = 0.20
+
+
+def braids_trim(type_index):
+    """The factor a synth block's volume is written with, so it sits in the band.
+
+    Never above 1: the swarm is already quieter than the orchestra, and a block
+    cannot be turned up past its own slider.
+    """
+    return min(1.0, BRAIDS_REFERENCE / BRAIDS_LOUDNESS[type_index])
+
+
+def braids_type(program):
+    """Which of those five a General MIDI synth part wants."""
+    if program in (80, 87):
+        return 1
+    if program in (81, 84, 86):
+        return 0
+    if 88 <= program <= 95:
+        return 2
+    if 96 <= program <= 103:
+        return 3
+    if program in (82, 83, 85):
+        return 4
+    return 0
+
+
+def is_synth(program):
+    """The lead, pad and effect ranges: the parts with no acoustic home."""
+    return program is not None and 80 <= program <= 103
 
 
 def gm_instrument(program):
@@ -320,6 +385,12 @@ def catalogue():
         name = root.findtext("Name", "").strip()
         local = int(root.findtext("ID", "0").strip())
         types = [t.get("name") for t in root.iter("Type")]
+        if not types:
+            # A block of this mod's that declares no instruments: the loader, and
+            # the Braids block, whose models are its own module's business and are
+            # written through `braids_type` rather than looked up here. Neither is
+            # something `--instrument` can name.
+            continue
         # Which of them a block starts on. By name on the module element, not by
         # the order of the list: the type is saved as an *index*, so moving a
         # different one to the front would change what every machine already built
@@ -444,8 +515,10 @@ def build(notes, options, families):
     element(globals_, "Rotation", x=0, y=0, z=0, w=1)
 
     data = ET.SubElement(machine, "Data")
+    # Filled in below, once it is known whether any block here belongs to another
+    # mod: a machine holding one has to name that mod as well, or the game swaps
+    # those blocks for the fallback and says nothing.
     required = ET.SubElement(data, "StringArray", {"key": "requiredMods"})
-    required.text = "%s~L~%s~%s" % (mod_id, version, mod_name)
 
     blocks = ET.SubElement(machine, "Blocks")
     placed = [0]                        # a counter the closures can advance
@@ -470,25 +543,58 @@ def build(notes, options, families):
 
     for voice, index in sorted(voices.items(), key=lambda kv: kv[1]):
         family, type_index, pitch = voice
-        name, local, _, _ = families[family.lower()]
+        name = "%s%03d" % (named(options.prefix), index)
+        # One block, one note, one loudness: the score's velocities for this
+        # pitch are averaged, since a block cannot be struck harder. Velocity
+        # 0..127 onto a third of the way up and no further than full: a block set
+        # to the raw velocity of a quiet passage is a block nobody hears, and the
+        # dynamics that matter are between the parts, not within.
+        mean = sum(loudness[voice]) / float(len(loudness[voice]))
+        level = max(0.05, min(1.0, options.volume * (0.35 + 0.65 * mean / 127.0)))
+
+        if family == BRAIDS_FAMILY:
+            # Another mod's block, with its own mapper keys. Everything else about
+            # it -- where it sits, which variable it listens to, how loud it is --
+            # is the same decision as for one of ours.
+            data = place(1004 + BRAIDS_LOCAL, BRAIDS_MOD, BRAIDS_LOCAL)
+            variable_key(data, "bmt-Activate", name, "N")
+            # Braids clamps its note to 24..96, five octaves against the eleven a
+            # file can name, so anything outside is folded by octaves rather than
+            # clamped flat -- which would turn a bass line into a drone.
+            note = pitch
+            while note < 24:
+                note += 12
+            while note > 96:
+                note -= 12
+            value(data, "Integer", "bmt-ShapeKey", str(BRAIDS_MODELS[type_index]))
+            value(data, "Single", "bmt-PitchKey", str(note))
+            value(data, "Single", "bmt-TimbreKey", "0.5")
+            value(data, "Single", "bmt-ColorKey", "0.5")
+            # Trimmed to the orchestra: see braids_trim, and the measurement
+            # behind it.
+            value(data, "Single", "bmt-VolumeKey",
+                  "%.3f" % (level * braids_trim(type_index)))
+            value(data, "Single", "bmt-AttackKey",
+                  "0.25" if type_index >= 2 else "0.01")
+            value(data, "Single", "bmt-ReleaseKey",
+                  "0.6" if type_index >= 2 else "0.12")
+            value(data, "Single", "bmt-RangeKey", str(options.range))
+            continue
+
+        _, local, _, _ = families[family.lower()]
         # 1004 + localId is what this Besiege assigns Orchestra's blocks; the
         # loader recomputes it from modId and localId anyway.
         data = place(1004 + local, mod_id, local)
         # N is the block's own default key, kept so the registration loop runs.
-        variable_key(data, "bmt-Activate",
-                     "%s%03d" % (named(options.prefix), index), "N")
+        variable_key(data, "bmt-Activate", name, "N")
         value(data, "Integer", "bmt-TypeKey", str(type_index))
         value(data, "Single", "bmt-NoteKey", str(pitch))
-        # One block, one note, one loudness: the score's velocities for this
-        # pitch are averaged, since a block cannot be struck harder.
-        mean = sum(loudness[voice]) / float(len(loudness[voice]))
-        # Velocity 0..127 onto a third of the way up and no further than full:
-        # a block set to the raw velocity of a quiet passage is a block nobody
-        # hears, and the dynamics that matter are between the parts, not within.
-        level = options.volume * (0.35 + 0.65 * mean / 127.0)
-        value(data, "Single", "bmt-VolumeKey",
-              "%.3f" % max(0.05, min(1.0, level)))
+        value(data, "Single", "bmt-VolumeKey", "%.3f" % level)
         value(data, "Single", "bmt-RangeKey", str(options.range))
+
+    # One entry, written inline as the game does. The Braids block was another
+    # mod's once, and a machine holding it named two; it is one of this mod's now.
+    required.text = "%s~L~%s~%s" % (mod_id, version, mod_name)
 
     # One timer per note in the score.
     for start, length, pitch, velocity, channel, track, program in notes:
@@ -562,9 +668,16 @@ def assign(pitch, channel, track, families, options, program=None):
     if channel == 9 and not options.no_drums:
         family, piece = DRUM_MAP.get(pitch, ("Drums", "Snare"))
         name, _, types, fallback = families[family.lower()]
-        return (name, pick_type(types, piece, fallback), DRUM_NOTE[piece])
+        note = DRUM_NOTE[piece]
+        if piece == "Tom":
+            note += pitch - TOM_ROOT
+        elif pitch == OPEN_HAT_NOTE:
+            note = OPEN_HAT
+        return (name, pick_type(types, piece, fallback), note)
 
     wanted = options.tracks.get(track, options.instrument)
+    if wanted == FROM_FILE and getattr(options, "braids", False) and is_synth(program):
+        return (BRAIDS_FAMILY, braids_type(program), pitch + options.transpose)
     if wanted == FROM_FILE:
         # The note's own program change decides, which is how a score with a
         # violin part, a bass part and a sax part comes out as three blocks
@@ -750,6 +863,13 @@ def main():
                              "(default %s000, %s001, ...); worth changing when two "
                              "songs share a machine"
                              % (DEFAULT_PREFIX, DEFAULT_PREFIX))
+    parser.add_argument("--braids", action="store_true", default=True,
+                        help=argparse.SUPPRESS)
+    parser.add_argument("--no-braids", dest="braids", action="store_false",
+                        help="write the score's synth parts for the FM synth block "
+                             "rather than the Braids block. Braids is the fuller "
+                             "synthesiser and is what they go to by default; it was "
+                             "a separate mod once, and had to be asked for")
     parser.add_argument("--variable", metavar="NAME",
                         help="the variable every timer waits for, instead of the "
                              "keyboard -- what the loader block does when its own "

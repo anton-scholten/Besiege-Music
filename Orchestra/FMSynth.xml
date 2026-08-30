@@ -1,0 +1,117 @@
+<Block>
+	<Debug>false</Debug>
+	<ID>12</ID>
+	<Name>FM Synth</Name>
+	<Mass>0.5</Mass>
+	<SearchKeywords>
+		<Keyword>fm synth</Keyword>
+		<Keyword>synth</Keyword>
+		<Keyword>synthesiser</Keyword>
+		<Keyword>synthesizer</Keyword>
+		<Keyword>lead</Keyword>
+		<Keyword>pad</Keyword>
+		<Keyword>fm</Keyword>
+	</SearchKeywords>
+	<CanFlip>false</CanFlip>
+	<Fallback>Ballast</Fallback>
+
+	<Modules>
+		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="FM Synth" default="Lead">
+			<Types>
+			<!-- Two-operator FM, and the only block here that is not a recording.
+			     It is not trying to be an instrument that exists: a fifth of the
+			     notes in a modern score are General MIDI's synth leads and pads,
+			     and nothing acoustic stands in for those. What a recording cannot
+			     do is move while it sounds, and that is exactly what `index`
+			     falling from its start towards `brightness` of it does.
+
+			     `ratio` is the modulator over the carrier and is what the sound
+			     is: whole numbers are harmonic, anything else is a bell.
+			     `index` is how hard it bends the carrier, in radians.
+
+			     `level` is measured, not chosen: one second of middle C at full
+			     velocity, trimmed to the 0.20 rms the rest of the mod's blocks
+			     come to. Seven timbres of very different spectral density
+			     otherwise arrive at seven loudnesses — an operator pair at
+			     index 5 spreads its energy over a dozen partials where one at
+			     index 1 puts it all in the fundamental. -->
+			<Type name="Lead"            engine="fm" ratio="1.0" index="4.5" level="0.69" feedback="0.35" brightness="0.75" decay="8"  holds="true" attack="0.005" release="0.10" />
+			<Type name="Square lead"     engine="fm" ratio="2.0" index="3.0" level="1.01" feedback="0.10" brightness="0.80" decay="8"  holds="true" attack="0.005" release="0.10" />
+			<Type name="Pad"             engine="fm" ratio="1.0" index="2.2" level="1.59" feedback="0.20" brightness="0.55" decay="8"  holds="true" attack="0.35"  release="0.70" />
+			<Type name="Choir pad"       engine="fm" ratio="3.0" index="1.4" level="0.97" feedback="0.05" brightness="0.60" decay="8"  holds="true" attack="0.45"  release="0.90" />
+			<Type name="Bell"            engine="fm" ratio="3.5" index="5.0" level="1.45" feedback="0.00" brightness="0.15" decay="4.5" attack="0.002" release="0.30" />
+			<Type name="Electric piano"  engine="fm" ratio="14.0" index="3.5" level="2.04" feedback="0.00" brightness="0.08" decay="2.2" attack="0.002" release="0.25" />
+			<Type name="Bass"            engine="fm" ratio="1.0" index="2.6" level="2.48" feedback="0.30" brightness="0.25" decay="1.6" attack="0.002" release="0.15" />
+			</Types>
+			<Extras>
+			<!-- Tone is the modulation index, which on an FM operator is the whole
+			     timbre: at nothing a sine, past the middle a buzz. -->
+			<Extra kind="slider" key="ToneKey" name="Tone" min="0" max="1" default="0.5" />
+			<Extra kind="slider" key="AttackKey" name="Attack" min="0.001" max="2" dragMax="0.5" default="0.005" />
+			<Extra kind="slider" key="ReleaseKey" name="Release" min="0.01" max="4" dragMax="1" default="0.1" />
+			</Extras>
+		</OrchestraMod>
+	</Modules>
+
+	<Mesh name="FMSynth_mesh">
+		<Position x="0.0" y="0.0" z="0.5" />
+		<Rotation x="0.0" y="0.0" z="0.0" />
+		<Scale x="0.5" y="0.5" z="0.5" />
+	</Mesh>
+
+	<Texture name="FMSynth_texture" />
+
+	<Icon>
+		<Position x="0.0" y="0.0" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-36.1" y="166.3" z="-168.7" /> <!--how the toolbar sees it: looking down at the keyboard, as the xylophone is drawn-->
+		<Scale x="0.5" y="0.5" z="0.5" />
+	</Icon>
+
+	<FireInteraction burnDuration="5" igniteOnStart="false">
+		<SphereTrigger>
+		<Position x="0" y="0" z="0.3" />
+		<Radius>1</Radius>
+		</SphereTrigger>
+	</FireInteraction>
+
+	<Colliders>
+		<BoxCollider>
+			<Position x="0.0" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Scale x="0.8" y="0.8" z="0.8" />
+		</BoxCollider>
+	</Colliders>
+
+	<BasePoint hasAddingPoint="false">
+		<Stickiness enabled="true" radius="1" />
+		<Motion x="false" y="false" z="false" /> 
+	</BasePoint>
+	
+	<AddingPoints>
+		<AddingPoint> <!--Top-->
+			<Position x="0.0" y="0.0" z="1.0" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Back-->
+			<Position x="0.0" y="-0.5" z="0.5" />
+			<Rotation x="90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Front-->
+			<Position x="0.0" y="0.5" z="0.5" />
+			<Rotation x="-90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Left-->
+			<Position x="0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Right-->
+			<Position x="-0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="-90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+	</AddingPoints>
+</Block>

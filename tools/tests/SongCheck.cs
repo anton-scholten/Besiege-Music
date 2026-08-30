@@ -20,7 +20,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Xml;
 using OrchestraMod;
 
@@ -253,6 +255,69 @@ class SongCheck
            "Loader.xml says instrument=\"" + declared + "\", which is not a block "
            + "here nor \"" + Gm.FromFile + "\"");
 
+        // The Braids block, for the synth parts the acoustic blocks have no
+        // home for. Whether that mod is installed cannot be asked here -- there is
+        // no prefab table outside the game -- so what is checked is the writing:
+        // its own mapper keys, its own model numbers, and a note folded into the
+        // five octaves it accepts rather than clamped flat.
+        Is(Braids.Model(Braids.TypeFor(81)) == 16, "a saw lead is Braids' raw saw",
+           "a saw lead is model " + Braids.Model(Braids.TypeFor(81)));
+        Is(Braids.Model(Braids.TypeFor(80)) == 18, "a square lead is its raw square",
+           "a square lead is model " + Braids.Model(Braids.TypeFor(80)));
+        Is(Braids.Model(Braids.TypeFor(90)) == 14, "a pad is the saw swarm",
+           "a pad is model " + Braids.Model(Braids.TypeFor(90)));
+
+        XDataHolder synth = new XDataHolder();
+        Braids.Fill(synth, Braids.TypeFor(81), 108, "orch_000", 0.6f, 300f);
+        Is(synth.HasKey("bmt-ShapeKey") && synth.HasKey("bmt-PitchKey")
+           && synth.HasKey("bmt-ColorKey"),
+           "a synth block is written with Braids' own keys",
+           "a synth block is missing one of Braids' keys");
+        Is(!synth.HasKey("bmt-NoteKey"),
+           "and not with this mod's, which that block has never heard of",
+           "a synth block carries bmt-NoteKey");
+        float folded = synth.ReadFloat("bmt-PitchKey");
+        Is(folded >= 24f && folded <= 96f,
+           "a note outside Braids' five octaves is folded into them",
+           "note 108 was written as " + folded);
+        Is(Math.Abs((folded - 108f) % 12f) < 0.001f,
+           "and folded by whole octaves, so it is the same note",
+           "note 108 became " + folded + ", which is not an octave of it");
+
+        // And quieter than it was asked for. A raw saw at the orchestra's own
+        // volume is three to four times the orchestra, measured; the trim is what
+        // puts a synth part in the band rather than over it.
+        float loud = synth.ReadFloat("bmt-VolumeKey");
+        Is(loud < 0.6f && Math.Abs(loud - 0.6f * Braids.Trim(Braids.TypeFor(81))) < 0.0001f,
+           "a synth block is written trimmed to the orchestra",
+           "a synth block asked for at 0.6 was written at " + loud);
+        Is(Braids.Trim(2) == 1f,
+           "except the swarm, which is already quieter than the orchestra",
+           "the saw swarm is trimmed to " + Braids.Trim(2));
+
+        // The command-line tool carries the same table, and a machine written by
+        // one has to sound like a machine written by the other.
+        for (int t = 0; t < 5; t++)
+        {
+            float mine = Braids.Trim(t);
+            float theirs = PythonTrim(t);
+            Is(theirs < 0f || Math.Abs(mine - theirs) < 0.0005f,
+               "make-song.py trims the synth by the same amounts",
+               "make-song.py trims model " + t + " by " + theirs
+               + " where this trims it by " + mine);
+        }
+
+        // The Braids block was another mod's once, and a machine holding it named
+        // two mods. It is one of these blocks now, so one entry covers everything
+        // in the machine -- and an entry per mod would name a mod nobody has.
+        SongPlan needs = Song.Plan(new Midi(file).Notes(0f), options);
+        needs.NeedsBraids = true;
+        XmlDocument fifth = new XmlDocument();
+        fifth.LoadXml(Bsg.Write(needs, "Self test"));
+        XmlNodeList named2 = fifth.SelectNodes("//StringArray[@key='requiredMods']/String");
+        Is(named2.Count == 0, "a machine with synth blocks names this mod and no other",
+           named2.Count + " mod(s) named as an array");
+
         // And with a variable, which is what the loader block's own key comes to
         // when it is set to one: the timers listen to the name, and carry a keycode
         // they never answer to so that `Machine.InitSimBlock` registers them at all.
@@ -319,13 +384,16 @@ class SongCheck
         all.Add(Made("Bass", 3, 1007, new string[]
             { "Acoustic", "Fingered", "Picked", "Fretless", "Synth" }));
         all.Add(Made("Strings", 4, 1008, new string[]
-            { "Violin", "Viola", "Cello", "Double bass", "Ensemble" }));
+            { "Violin", "Viola", "Cello", "Double bass", "Ensemble", "Choir" }));
         all.Add(Made("Brass", 5, 1009, new string[]
             { "Trumpet", "Trombone", "French horn", "Tuba", "Section" }));
         all.Add(Made("Woodwind", 6, 1010, new string[]
-            { "Flute", "Clarinet", "Oboe", "Bassoon", "Sax" }));
+            { "Flute", "Clarinet", "Oboe", "Bassoon", "Sax", "Organ" }));
         all.Add(Made("Mallets", 7, 1011, new string[]
-            { "Glockenspiel", "Vibraphone", "Marimba", "Xylophone", "Tubular bells" }));
+            { "Glockenspiel", "Vibraphone", "Marimba", "Xylophone", "Tubular bells",
+              "Steel drum" }));
+        all.Add(Made("Plucked", 11, 1014, new string[]
+            { "Harp", "Koto", "Pizzicato", "Banjo", "Sitar" }));
 
         Family piano = Made("Piano", 1, 1005, new string[]
             { "Grand piano", "Upright piano", "Electric piano", "Honky-tonk" });
@@ -338,7 +406,41 @@ class SongCheck
             { "Kick", "Snare", "Tom", "Rim", "Clap" }));
         all.Add(Made("Cymbals", 9, 1013, new string[]
             { "Crash", "Ride", "Hi-hat", "Splash", "Gong" }));
+        all.Add(Made("FM Synth", 12, 1015, new string[]
+            { "Lead", "Square lead", "Pad", "Choir pad", "Bell",
+              "Electric piano", "Bass" }));
         return all;
+    }
+
+    /// <summary>
+    /// What `tools/make-song.py` trims one synth model by, read out of the Python
+    /// rather than copied, so the two converters cannot drift apart. Negative when
+    /// the tool is not beside this, which is not a failure -- the check runs
+    /// wherever the build does.
+    /// </summary>
+    static float PythonTrim(int type)
+    {
+        string path = "tools/make-song.py";
+        if (!File.Exists(path))
+        {
+            return -1f;
+        }
+        string source = File.ReadAllText(path);
+        Match table = Regex.Match(source, @"BRAIDS_LOUDNESS\s*=\s*\[([^\]]*)\]");
+        Match reference = Regex.Match(source, @"BRAIDS_REFERENCE\s*=\s*([0-9.]+)");
+        if (!table.Success || !reference.Success)
+        {
+            return -1f;
+        }
+        string[] parts = table.Groups[1].Value.Split(',');
+        if (type < 0 || type >= parts.Length)
+        {
+            return -1f;
+        }
+        float loudness = float.Parse(parts[type].Trim(), CultureInfo.InvariantCulture);
+        float middle = float.Parse(reference.Groups[1].Value, CultureInfo.InvariantCulture);
+        float trim = middle / loudness;
+        return trim > 1f ? 1f : trim;
     }
 
     /// <summary>One attribute of the module element in a block XML, read off the

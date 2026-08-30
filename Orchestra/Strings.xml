@@ -14,11 +14,15 @@
 	<Modules>
 		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Strings">
 			<Types>
-			<Type name="Violin"      engine="sampler" samples="strings_violin_56 strings_violin_66 strings_violin_77" loops="18615-29695 16462-28616 18575-30234" damped="true" holds="true" attack="0.06" release="0.3" />
-			<Type name="Viola"       engine="sampler" samples="strings_viola_49 strings_viola_60 strings_viola_72" loops="17635-21775 17698-21567 18741-22151" damped="true" holds="true" attack="0.06" release="0.3" />
+			<Type name="Violin"      engine="sampler" samples="strings_violin_56 strings_violin_65 strings_violin_80" loops="27987-32058 25385-29549 21641-25492" damped="true" holds="true" attack="0.06" release="0.3" />
+			<Type name="Viola"       engine="sampler" samples="strings_viola_49 strings_viola_61 strings_viola_73" loops="18421-22739 24574-29405 25831-30753" damped="true" holds="true" attack="0.06" release="0.3" />
 			<Type name="Cello"       engine="sampler" samples="strings_cello_37 strings_cello_47 strings_cello_59" loops="24938-29733 19852-24504 22779-26975" damped="true" holds="true" attack="0.07" release="0.35" />
-			<Type name="Double bass" engine="sampler" samples="strings_dbass_31 strings_dbass_39 strings_dbass_50" loops="5131-9408 8781-13359 8356-12819" damped="true" holds="true" attack="0.08" release="0.4" />
-			<Type name="Ensemble"    engine="sampler" samples="strings_ens_48 strings_ens_60 strings_ens_72" loops="12501-61643 13023-39042 11089-36245" damped="true" holds="true" attack="0.12" release="0.6" />
+			<Type name="Double bass" engine="sampler" samples="strings_dbass_29 strings_dbass_41 strings_dbass_52" loops="21274-26360 15684-21287 18835-23010" damped="true" holds="true" attack="0.08" release="0.4" />
+			<Type name="Ensemble"    engine="sampler" samples="strings_ens_49 strings_ens_61 strings_ens_73" loops="37629-69761 26280-47534 7300-28698" damped="true" holds="true" attack="0.12" release="0.6" />
+			<!-- Voices, which are strings in every way that matters here: bowed
+			     into life and held. These were detuned saws through three formant
+			     filters until a font was cut for them. -->
+			<Type name="Choir"       engine="sampler" samples="strings_choir_48 strings_choir_60 strings_choir_72" loops="31399-66481 28702-56398 12397-36607" damped="true" holds="true" attack="0.30" release="0.5" />
 			</Types>
 			<Extras>
 			<Extra kind="toggle" key="PizzKey" name="Pizzicato" default="0" />
