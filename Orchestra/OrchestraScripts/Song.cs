@@ -27,8 +27,9 @@ namespace OrchestraMod
         public float Gap = 0.06f;
 
         /// <summary>Most notes to place. A timer apiece, so this is most of the
-        /// block count.</summary>
-        public int Limit = 1200;
+        /// block count -- and with each part on its own instrument, a block per
+        /// instrument per pitch as well.</summary>
+        public int Limit = 700;
 
         /// <summary>Blocks per row; 0 for roughly square.</summary>
         public int Columns = 0;
@@ -473,7 +474,13 @@ namespace OrchestraMod
             }
             else
             {
-                Split(options.Instrument, out familyName, out typeName);
+                // "As the file says" means the note's own program change decides,
+                // which is how a score with a violin part, a bass part and a sax
+                // part comes out as three different blocks rather than three
+                // tracks of piano. Anything else names one block for everything.
+                string wanted = options.Instrument == Gm.FromFile
+                    ? Gm.Instrument(note.Program) : options.Instrument;
+                Split(wanted, out familyName, out typeName);
                 pitch = Mathf.Clamp(note.Pitch + options.Transpose, 0, 127);
             }
 

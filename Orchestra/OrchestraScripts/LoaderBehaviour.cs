@@ -148,6 +148,10 @@ namespace OrchestraMod
             {
                 families.Add("Piano");
             }
+            // Last, not first: the menu is saved as an index, so putting this at
+            // the top would make every loader block already in a machine play on
+            // whatever the file says instead of what it was set to.
+            families.Add(Gm.FromFile);
             InstrumentMenu = AddMenu("InstrumentKey", Wanted(), families, false);
             // The instruments within that block. Its list is swapped when the
             // block above changes -- `MMenu.Items` has a public setter -- so what
@@ -185,7 +189,7 @@ namespace OrchestraMod
             // count and most of what a long song costs to run. It does not follow
             // the file: the number that matters is how many blocks this machine
             // should have, not how many notes somebody wrote.
-            LimitSlider = AddSlider("Note limit", "LimitKey", 1200f, 50f, 10000f);
+            LimitSlider = AddSlider("Note limit", "LimitKey", 700f, 50f, 10000f);
 
             // The one control left in Besiege's own mapper: every timer this block
             // writes waits for this key, so binding it here binds the whole song.
@@ -213,6 +217,14 @@ namespace OrchestraMod
         private List<string> TypesOf(int family)
         {
             List<string> names = new List<string>();
+            if (family >= 0 && family < families.Count
+                && families[family] == Gm.FromFile)
+            {
+                // The last entry is not a block, so it has no instruments to
+                // choose between; the selector says so rather than going blank.
+                names.Add("(each part its own)");
+                return names;
+            }
             if (family >= 0 && family < Catalogue.Families.Count)
             {
                 names.AddRange(Catalogue.Families[family].Types);
@@ -335,6 +347,12 @@ namespace OrchestraMod
                 RetypeMenu();
                 int at = InstrumentMenu == null ? 0 : InstrumentMenu.Value;
                 string family = at >= 0 && at < families.Count ? families[at] : "Piano";
+                if (family == Gm.FromFile)
+                {
+                    // No type to add: which instrument each part gets is the file's
+                    // to say, one part at a time.
+                    return Gm.FromFile;
+                }
                 if (TypeMenu == null || TypeMenu.Items == null
                     || TypeMenu.Value < 0 || TypeMenu.Value >= TypeMenu.Items.Count)
                 {
@@ -361,7 +379,7 @@ namespace OrchestraMod
             options.Tempo = TempoFromFile || TempoSlider == null
                 ? 0f : TempoSlider.Value;
             options.Limit = LimitSlider == null
-                ? 1200 : Mathf.RoundToInt(LimitSlider.Value);
+                ? 700 : Mathf.RoundToInt(LimitSlider.Value);
             options.Prefix = Prefix;
             // Every timer waits its own time from that key, so one press -- by hand
             // or emulated by anything else on the machine -- starts the whole song.

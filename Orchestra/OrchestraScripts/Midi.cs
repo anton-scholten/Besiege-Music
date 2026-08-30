@@ -13,6 +13,11 @@ namespace OrchestraMod
         public int Channel;
         public int Track;
 
+        /// <summary>The General MIDI program in force on this note's channel when
+        /// it was struck, or -1 where the file never said. What
+        /// <see cref="Gm.Instrument"/> turns into a block.</summary>
+        public int Program = -1;
+
         public float End
         {
             get { return Start + Length; }
@@ -35,6 +40,9 @@ namespace OrchestraMod
         // Event kinds. Constants rather than an enum: Besiege's own C# compiler
         // segfaults on an enum declaration.
         private const int Tempo = 0;
+
+        /// <summary>A program change: `A` is the GM instrument number.</summary>
+        private const int Program = 4;
         private const int NoteOn = 1;
         private const int NoteOff = 2;
 
@@ -206,7 +214,20 @@ namespace OrchestraMod
                             out_.Add(e);
                         }
                     }
-                    else if (high == 0xC0 || high == 0xD0)
+                    else if (high == 0xC0)
+                    {
+                        // A program change: what this channel is from here on.
+                        // Kept, where it used to be stepped over -- it is the whole
+                        // of how a file says which part is which instrument.
+                        Event e = new Event();
+                        e.Tick = tick;
+                        e.Kind = Program;
+                        e.Channel = channel;
+                        e.A = data[at];
+                        out_.Add(e);
+                        at += 1;
+                    }
+                    else if (high == 0xD0)
                     {
                         at += 1;
                     }
@@ -360,10 +381,26 @@ namespace OrchestraMod
                 // releasing it and both notes are real.
                 Dictionary<int, List<int[]>> sounding = new Dictionary<int, List<int[]>>();
 
+                // What each channel is set to as this track is read. A note carries
+                // whatever its channel was on at the moment it was struck, so a
+                // track that changes instrument part way through is followed.
+                int[] program = new int[16];
+                for (int c = 0; c < 16; c++)
+                {
+                    program[c] = -1;
+                }
+
                 for (int i = 0; i < track.Count; i++)
                 {
                     Event e = track[i];
-                    if (e.Kind == NoteOn)
+                    if (e.Kind == Program)
+                    {
+                        if (e.Channel >= 0 && e.Channel < 16)
+                        {
+                            program[e.Channel] = e.A;
+                        }
+                    }
+                    else if (e.Kind == NoteOn)
                     {
                         int key = e.Channel * 128 + e.A;
                         List<int[]> held;
@@ -372,7 +409,8 @@ namespace OrchestraMod
                             held = new List<int[]>();
                             sounding[key] = held;
                         }
-                        held.Add(new int[] { e.Tick, e.B });
+                        held.Add(new int[] { e.Tick, e.B,
+                            e.Channel >= 0 && e.Channel < 16 ? program[e.Channel] : -1 });
                     }
                     else if (e.Kind == NoteOff)
                     {
@@ -382,8 +420,10 @@ namespace OrchestraMod
                         {
                             int[] began = held[0];
                             held.RemoveAt(0);
-                            out_.Add(Make(marks, began[0], e.Tick, e.A, began[1],
-                                          e.Channel, t));
+                            MidiNote made = Make(marks, began[0], e.Tick, e.A,
+                                                 began[1], e.Channel, t);
+                            made.Program = began[2];
+                            out_.Add(made);
                         }
                     }
                 }
@@ -397,11 +437,17 @@ namespace OrchestraMod
                         MidiNote note = Make(marks, left.Value[i][0], left.Value[i][0],
                                              left.Key % 128, left.Value[i][1],
                                              left.Key / 128, t);
+                        note.Program = left.Value[i][2];
                         note.Length = 0.5f;
                         out_.Add(note);
                     }
                 }
             }
+
+            // A track that plays on a channel it never set takes whatever the file
+            // said about that channel anywhere else -- some files put every program
+            // change in one track and the notes in others.
+            Fallback(out_);
 
             out_.Sort(ByStart);
             return out_;
@@ -437,6 +483,43 @@ namespace OrchestraMod
         /// that open, and left this converter disagreeing with the tool about which
         /// note was the 1200th.
         /// </summary>
+        /// <summary>
+        /// Fills in the program for notes whose own track never set one, from what
+        /// the file said about that channel elsewhere.
+        ///
+        /// Left at -1 when nothing anywhere named it, which
+        /// <see cref="Gm.Instrument"/> reads as the grand piano -- what General MIDI
+        /// says a channel starts on.
+        /// </summary>
+        private void Fallback(List<MidiNote> notes)
+        {
+            int[] said = new int[16];
+            for (int c = 0; c < 16; c++)
+            {
+                said[c] = -1;
+            }
+            for (int t = 0; t < tracks.Count; t++)
+            {
+                for (int i = 0; i < tracks[t].Count; i++)
+                {
+                    Event e = tracks[t][i];
+                    if (e.Kind == Program && e.Channel >= 0 && e.Channel < 16
+                        && said[e.Channel] < 0)
+                    {
+                        said[e.Channel] = e.A;
+                    }
+                }
+            }
+            for (int i = 0; i < notes.Count; i++)
+            {
+                if (notes[i].Program < 0 && notes[i].Channel >= 0
+                    && notes[i].Channel < 16)
+                {
+                    notes[i].Program = said[notes[i].Channel];
+                }
+            }
+        }
+
         private static int ByStart(MidiNote a, MidiNote b)
         {
             int order = a.Start.CompareTo(b.Start);

@@ -108,7 +108,12 @@ else is in the panel docked underneath:
 
 1. **INSTRUMENT** and **TYPE** are the block a score is written for and the
    instrument within it; changing the first refills the second. Percussion always
-   goes to Drums and Cymbals whatever these say.
+   goes to Drums and Cymbals whatever these say. A new block starts on the last
+   entry, **As the file says**, which gives each part the instrument the MIDI file
+   declares for it — a violin
+   part to Strings: Violin, a bass line to Bass — instead of one block for the
+   whole song. It costs blocks: a part per instrument is a block per instrument per
+   pitch, so the note limit covers less of the song.
 2. **VOLUME**, **RANGE**, **TRANSPOSE** and **DELAY** are what every block it
    writes is set to. Delay is the pause between the key and the first note, nought
    by default — turn it up for a machine that is still falling into the level when
@@ -118,7 +123,7 @@ else is in the panel docked underneath:
    number, and then that is what gets built. Left alone it keeps a score's own
    tempo changes; set by hand it plays the whole thing at one speed.
 4. **NOTE LIMIT** is how many notes it will place, and so most of how many blocks
-   the machine has — a timer apiece. 1200 by default, up to 10000 typed into the
+   the machine has — a timer apiece. 700 by default, up to 10000 typed into the
    box; the handle covers the first 5000. Let go of it and the summary says how
    many notes the new number leaves behind.
 5. **FOLDER** is where MIDI files go:
@@ -217,7 +222,7 @@ one track, where `--track` cannot separate them.
 | `--tempo BPM`, `--transpose N` | override the tempo; shift in semitones |
 | `--from S`, `--seconds S` | play part of the score |
 | `--offset S`, `--gap S` | quiet before the first note (default 0); silence between repeats |
-| `--limit N` | most notes to place (default 1200) |
+| `--limit N` | most notes to place (default 700) |
 | `--columns N`, `--spacing N`, `--height N` | the grid, and where it spawns |
 | `--volume N`, `--range N` | scales every block's volume; how far they carry |
 | `--no-drums` | treat channel 10 as pitched rather than as a kit |

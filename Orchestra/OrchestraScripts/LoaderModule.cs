@@ -24,8 +24,14 @@ namespace OrchestraMod
         [DefaultValue("")]
         public string Family = "";
 
-        /// <summary>The block a score's pitched parts go to, as the loader's own
-        /// menu is set when it is first placed.</summary>
+        /// <summary>
+        /// What the loader's own instrument menu is set to when a block is first
+        /// placed: a block name, or "As the file says" for the score's own
+        /// instruments, one part at a time.
+        ///
+        /// Only a *newly placed* block reads this. A menu is saved as an index, so
+        /// a block already sitting in a machine keeps whatever it was set to.
+        /// </summary>
         [XmlAttribute("instrument")]
         [DefaultValue("Piano")]
         public string Instrument = "Piano";

@@ -78,11 +78,80 @@ next one survivable -- and the summary line says which tempo the length above it
 was worked out at, so an absurd one shows up before a thousand blocks are placed
 for it.
 
+### Playing a score on the instruments it names
+
+A MIDI file says what each of its parts is -- a program change per channel,
+`Violin`, `Jazz Guitar`, `Tenor Sax`. Until `Gm` existed the converter threw all of
+that away and played every melodic part on whichever single block the panel was
+set to, so a file naming eight instruments came out as eight tracks of piano.
+(Percussion was never in that: channel 10 is a kit by convention rather than by
+program change, and its note *numbers* have always mapped onto Drums and Cymbals.)
+
+Set INSTRUMENT to **As the file says** — or `--instrument file` — and each part
+goes where it says. `Gm` is a 128-entry table from General MIDI's instruments to
+`Family:Type`, and `SongCheck` holds every one of its entries to a block and an
+instrument this mod actually has.
+
+Nine blocks against 128 instruments means some of it is approximation: the organs
+go to the string ensemble because that is what sustains, the synth leads to the
+overdriven guitar because that is what cuts, the pads and effects to the ensemble
+as well. Every entry in `Gm.cs` carries the reasoning, and the guesses say they are
+guesses. The families that map exactly — guitars, basses, solo strings, brass,
+reeds, pipes, tuned percussion — are most of what a real score uses.
+
+**It costs blocks.** A part per instrument is a block per instrument *per pitch*,
+so the same note limit covers less music:
+
+| song | one instrument | as the file says |
+| --- | --- | --- |
+| Sax | 21 blocks, 59 s | 43 blocks, 44 s |
+| Outer Wilds - Travelers | 24 blocks, 42 s | 42 blocks, 42 s |
+| Never Gonna Give You Up | 37 blocks, 88 s | 82 blocks, 75 s |
+| Shelter | 35 blocks, 171 s | 134 blocks, 39 s |
+
+Shelter is the warning: ten declared parts, and asking for all of them turns a
+machine that played most of the song into one that plays the first forty seconds.
+The note limit is the lever, and one instrument for everything is still there for
+when a song is worth more than its orchestration.
+
+### Percussion is expensive
+
+A timer per note, and a drum track is the densest thing in a pop arrangement --
+hi-hats on every eighth for four minutes. `Rick Astley - Never Gonna Give You Up`
+arrived with 3097 notes on channel 10 against 4246 for the whole of the rest of the
+song: the kit alone was more than twice the note limit, so the machine was mostly
+hi-hat and stopped 49 seconds in.
+
+`tools/strip-drums.py` removes everything on channel 10 -- where General MIDI puts
+the kit -- and leaves every other channel exactly as it was. That file now reaches
+88 seconds on the same note budget.
+
+```sh
+./tools/strip-drums.py "Orchestra/Songs/Some Song.mid" --check   # say what is there
+./tools/strip-drums.py "Orchestra/Songs/Some Song.mid"           # take it out
+```
+
+It is not `make-song.py --no-drums`, which keeps those notes and plays them
+*pitched* -- a kit banged out on a piano.
+
+Two details it has to get right, and does:
+
+* **Deltas are recomputed, not patched.** A MIDI event's time is relative to the
+  one before it, so deleting an event moves everything after it earlier unless the
+  gap is carried. Tracks are read to absolute ticks, filtered, and re-emitted with
+  fresh deltas — verified by comparing every surviving note's `(tick, channel,
+  pitch, velocity, track)` before and after, which must be identical.
+* **Emptied tracks stay.** `make-song.py --track N=Piano` addresses tracks by
+  number, so dropping one would silently repoint every mapping past it.
+
 ### The note limit
 
-A timer per note, so the note limit is most of the block count: 1200 notes is a
-machine of about 1260 blocks. It is the panel's NOTE LIMIT slider, 1200 by default
+A timer per note, so the note limit is most of the block count: 700 notes is a
+machine of about 760 blocks. It is the panel's NOTE LIMIT slider, 700 by default
 and 10000 at the most, and `--limit` in `tools/make-song.py` with the same default.
+The default came down from 1200 when each part started getting its own instrument:
+the same score now wants a block per instrument *per pitch*, and 700 is a machine
+that still builds and runs in a level.
 
 Unlike TEMPO it does not follow the file. What the number is for is how large a
 machine you are willing to run, which has nothing to do with how many notes the
@@ -254,7 +323,7 @@ read from the block XMLs, so it is never out of date.
 | `--key KEYCODE` | the key every timer waits for (default `M`) |
 | `--from S`, `--seconds S` | play part of the score |
 | `--gap S` | silence between two notes on one block (default 0.06 s) |
-| `--limit N` | most notes to place (default 1200) |
+| `--limit N` | most notes to place (default 700) |
 | `--columns N`, `--spacing N` | the grid |
 | `--height N` | where the machine spawns |
 | `--volume N`, `--range N` | scales every block's volume; how far they carry |
@@ -286,7 +355,7 @@ not to the keyboard, so which keycode it is does not matter; the block's own is
 used when it has one, and `C` when it does not.
 
 The tool's defaults are the loader block's: instrument Piano, volume 1, range 120,
-transpose 0, offset 0, note limit 1200, and `M` as the key. `--key none` is how you
+transpose 0, offset 0, note limit 700, and `M` as the key. `--key none` is how you
 ask for a song that starts with the simulation, which is what the block says by
 having nothing bound to its mapper.
 

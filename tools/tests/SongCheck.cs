@@ -208,6 +208,51 @@ class SongCheck
            ours + " variable names written");
         options.Prefix = SongOptions.DefaultPrefix;
 
+        // Every General MIDI instrument points at a block this mod has, and the
+        // ones a score actually uses point at the obvious one.
+        Is(Gm.Count == 128, "128 General MIDI instruments",
+           Gm.Count + " instruments in the table");
+        Is(Gm.Instrument(40) == "Strings:Violin", "GM 40 is a violin",
+           "GM 40 is " + Gm.Instrument(40));
+        Is(Gm.Instrument(66) == "Woodwind:Sax", "GM 66 is a tenor sax",
+           "GM 66 is " + Gm.Instrument(66));
+        Is(Gm.Instrument(26) == "Guitar:Jazz", "GM 26 is a jazz guitar",
+           "GM 26 is " + Gm.Instrument(26));
+        Is(Gm.Instrument(-1) == Gm.Instrument(0),
+           "a channel nobody set is the grand piano, as GM says",
+           "an unset channel is " + Gm.Instrument(-1));
+        // And every one of them names a block and an instrument this mod has.
+        for (int program = 0; program < Gm.Count; program++)
+        {
+            string points = Gm.Instrument(program);
+            int colon = points.IndexOf(':');
+            Family family = colon < 0 ? null : Catalogue.Find(points.Substring(0, colon));
+            Is(family != null, "GM " + program + " names a block this mod has",
+               "GM " + program + " wants " + points + ", which is not a block here");
+            if (family != null)
+            {
+                string type = points.Substring(colon + 1);
+                Is(family.Types.Contains(type),
+                   "GM " + program + " names an instrument that block has",
+                   "GM " + program + " wants " + points + ", and " + family.Name
+                   + " has no " + type);
+            }
+        }
+
+        // What a newly placed loader block starts on, from Loader.xml. A name the
+        // menu does not hold falls back to the *first* family -- which is Bass,
+        // alphabetically -- so a typo here would be a silent change of instrument
+        // rather than an error.
+        string declared = Declared("Orchestra/Loader.xml", "instrument");
+        bool known = declared == Gm.FromFile;
+        for (int i = 0; i < Catalogue.Families.Count && !known; i++)
+        {
+            known = string.Compare(Catalogue.Families[i].Name, declared, true) == 0;
+        }
+        Is(known, "the loader's default instrument is one the menu holds",
+           "Loader.xml says instrument=\"" + declared + "\", which is not a block "
+           + "here nor \"" + Gm.FromFile + "\"");
+
         // And with a variable, which is what the loader block's own key comes to
         // when it is set to one: the timers listen to the name, and carry a keycode
         // they never answer to so that `Machine.InitSimBlock` registers them at all.
@@ -264,6 +309,24 @@ class SongCheck
     static List<Family> Blocks()
     {
         List<Family> all = new List<Family>();
+        // All nine, as the block XMLs declare them -- not just the three this
+        // test's own score touches. `Assign` falls back to the first family for a
+        // block it cannot find, so a half-seeded catalogue quietly turns every
+        // instrument into that one, and a check of "as the file says" against it
+        // would have passed while proving nothing.
+        all.Add(Made("Guitar", 2, 1006, new string[]
+            { "Nylon", "Steel", "Jazz", "Clean", "Overdriven" }));
+        all.Add(Made("Bass", 3, 1007, new string[]
+            { "Acoustic", "Fingered", "Picked", "Fretless", "Synth" }));
+        all.Add(Made("Strings", 4, 1008, new string[]
+            { "Violin", "Viola", "Cello", "Double bass", "Ensemble" }));
+        all.Add(Made("Brass", 5, 1009, new string[]
+            { "Trumpet", "Trombone", "French horn", "Tuba", "Section" }));
+        all.Add(Made("Woodwind", 6, 1010, new string[]
+            { "Flute", "Clarinet", "Oboe", "Bassoon", "Sax" }));
+        all.Add(Made("Mallets", 7, 1011, new string[]
+            { "Glockenspiel", "Vibraphone", "Marimba", "Xylophone", "Tubular bells" }));
+
         Family piano = Made("Piano", 1, 1005, new string[]
             { "Grand piano", "Upright piano", "Electric piano", "Honky-tonk" });
         // As Piano.xml says: `default="Upright piano"`, which is the second of
@@ -272,10 +335,36 @@ class SongCheck
         piano.DefaultType = 1;
         all.Add(piano);
         all.Add(Made("Drums", 8, 1012, new string[]
-            { "Kick", "Snare", "Tom" }));
+            { "Kick", "Snare", "Tom", "Rim", "Clap" }));
         all.Add(Made("Cymbals", 9, 1013, new string[]
-            { "Hi-hat", "Crash", "Ride" }));
+            { "Crash", "Ride", "Hi-hat", "Splash", "Gong" }));
         return all;
+    }
+
+    /// <summary>One attribute of the module element in a block XML, read off the
+    /// file rather than through ModIO -- which says nothing outside the game.</summary>
+    static string Declared(string path, string attribute)
+    {
+        if (!File.Exists(path))
+        {
+            return "";
+        }
+        XmlDocument doc = new XmlDocument();
+        doc.Load(path);
+        XmlNode modules = doc.SelectSingleNode("/Block/Modules");
+        if (modules == null)
+        {
+            return "";
+        }
+        foreach (XmlNode module in modules.ChildNodes)
+        {
+            XmlElement one = module as XmlElement;
+            if (one != null && one.HasAttribute(attribute))
+            {
+                return one.GetAttribute(attribute);
+            }
+        }
+        return "";
     }
 
     static Family Made(string name, int local, int type, string[] types)

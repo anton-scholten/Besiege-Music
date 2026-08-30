@@ -14,10 +14,12 @@
 
 	<Modules>
 		<!-- The block itself does nothing in a simulation: it is a tool, and its
-		     whole purpose is the panel its mapper opens. `instrument` is what the
-		     parts of a score that are not percussion are given. -->
+		     whole purpose is the panel its mapper opens. `instrument` is what a
+		     newly placed block starts on; "As the file says" gives each part of a
+		     score the instrument the file declares for it, which is what most
+		     scores want. Any block name works here instead. -->
 		<LoaderMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Loader"
-		           instrument="Piano" />
+		           instrument="As the file says" />
 	</Modules>
 
 	<Mesh name="Loader_mesh">

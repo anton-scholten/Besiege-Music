@@ -125,8 +125,8 @@
   fetching a file from it: all seven return a `.mid` with no account and no
   payment. What to look at before converting one is there too, the tempo and the
   note count being the two that decide whether a file is worth a thousand blocks.
-- A **NOTE LIMIT slider**, which was a hardcoded 1200 in `SongOptions`. Still
-  1200 by default -- it does not follow the file, the number that matters being how
+- A **NOTE LIMIT slider**, which was a hardcoded 1200 in `SongOptions`. **700**
+  by default -- it does not follow the file, the number that matters being how
   many blocks the machine should have rather than how many notes somebody wrote --
   with the handle over the first 5000 and up to 10000 typed into the box. The
   summary redraws when the drag settles, so what a number costs in dropped notes is
@@ -144,6 +144,36 @@
 
 **Fixed**
 
+- A newly placed loader block starts on **As the file says**, so a song plays on
+  its own instruments unless you ask for one block for all of it. Declared in
+  `Loader.xml` rather than in code, and only a *newly placed* block reads it -- a
+  menu is saved as an index, so a loader already in a machine keeps what it was set
+  to. The build now checks that name against the menu the block actually builds: a
+  name it does not hold falls back to the first family, which is Bass
+  alphabetically, so a typo would have been a silent change of instrument rather
+  than an error.
+- **Songs can play on the instruments they name.** A MIDI file declares what each
+  part is with a program change, and the converter threw all of it away: every
+  melodic part went to whichever single block was chosen, so a file naming eight
+  instruments came out as eight tracks of piano. (Percussion was never in that --
+  channel 10 is a kit by convention, and its note numbers have always mapped onto
+  Drums and Cymbals, which is why a song with drums and piano did get both.) `Gm`
+  is a 128-entry table from General MIDI to `Family:Type`; INSTRUMENT gains an **As
+  the file says** entry, `--instrument file` on the command line. Sax.mid goes from
+  18 pianos to violins, a sax, a jazz guitar and a bass. The entry is appended to
+  the instrument list rather than put first, because the menu is saved as an index
+  and every loader block already in a machine would otherwise change what it plays.
+  `SongCheck` holds all 128 entries to a block and an instrument this mod has,
+  which caught one that named a drum piece the block does not have.
+- `tools/strip-drums.py`, which takes everything on channel 10 out of a MIDI file
+  and leaves every other channel alone. A timer per note makes percussion the most
+  expensive thing in a pop arrangement: the bundled Rick Astley had 3097 notes of
+  kit against 4246 for the whole of the rest of the song, so the machine was mostly
+  hi-hat and ran out of blocks 49 seconds in. Stripped, the same 1200 notes reach
+  88 seconds and no Drums or Cymbals blocks are placed at all. Deltas are
+  recomputed rather than patched -- a MIDI time is relative to the event before it,
+  so deleting one moves everything after it earlier -- and emptied tracks are kept,
+  because `--track N=Piano` addresses them by number.
 - A **VARIABLE** box on the loader block, between the summary and the two buttons:
   what the song's variables are named after, `orch_` by default. The blocks listen
   by name, so two songs on one machine need two names or the second song's timers

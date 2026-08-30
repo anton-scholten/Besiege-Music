@@ -79,6 +79,58 @@ DRUM_NOTE = {"Kick": 36, "Snare": 50, "Tom": 45,
              "Hi-hat": 78, "Crash": 72, "Ride": 76}
 
 
+# General MIDI's 128 instruments, each pointed at the nearest block this mod
+# has. The same table as `Gm.cs` in the mod, and checked against it by
+# `--self-test` -- a file naming eight instruments used to come out as eight
+# tracks of piano, and this is what stops that. Nine blocks against 128
+# instruments means the organs, the leads and the pads have no home of their
+# own and go to the nearest thing that sustains or cuts the same way; Gm.cs
+# carries the reasoning per entry.
+FROM_FILE = "As the file says"
+
+GM_INSTRUMENTS = [
+    "Piano:Grand piano", "Piano:Upright piano", "Piano:Grand piano", "Piano:Honky-tonk",
+    "Piano:Electric piano", "Piano:Electric piano", "Piano:Honky-tonk", "Piano:Electric piano",
+    "Mallets:Glockenspiel", "Mallets:Glockenspiel", "Mallets:Glockenspiel", "Mallets:Vibraphone",
+    "Mallets:Marimba", "Mallets:Xylophone", "Mallets:Tubular bells", "Mallets:Marimba",
+    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
+    "Strings:Ensemble", "Woodwind:Clarinet", "Woodwind:Clarinet", "Woodwind:Clarinet",
+    "Guitar:Nylon", "Guitar:Steel", "Guitar:Jazz", "Guitar:Clean",
+    "Guitar:Clean", "Guitar:Overdriven", "Guitar:Overdriven", "Guitar:Clean",
+    "Bass:Acoustic", "Bass:Fingered", "Bass:Picked", "Bass:Fretless",
+    "Bass:Picked", "Bass:Picked", "Bass:Synth", "Bass:Synth",
+    "Strings:Violin", "Strings:Viola", "Strings:Cello", "Strings:Double bass",
+    "Strings:Ensemble", "Strings:Violin", "Guitar:Nylon", "Drums:Tom",
+    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
+    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Brass:Section",
+    "Brass:Trumpet", "Brass:Trombone", "Brass:Tuba", "Brass:Trumpet",
+    "Brass:French horn", "Brass:Section", "Brass:Section", "Brass:Section",
+    "Woodwind:Sax", "Woodwind:Sax", "Woodwind:Sax", "Woodwind:Sax",
+    "Woodwind:Oboe", "Woodwind:Oboe", "Woodwind:Bassoon", "Woodwind:Clarinet",
+    "Woodwind:Flute", "Woodwind:Flute", "Woodwind:Flute", "Woodwind:Flute",
+    "Woodwind:Flute", "Woodwind:Flute", "Woodwind:Flute", "Woodwind:Flute",
+    "Guitar:Overdriven", "Guitar:Overdriven", "Woodwind:Flute", "Woodwind:Flute",
+    "Guitar:Overdriven", "Strings:Ensemble", "Guitar:Overdriven", "Bass:Synth",
+    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
+    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
+    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
+    "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble", "Strings:Ensemble",
+    "Guitar:Steel", "Guitar:Steel", "Guitar:Nylon", "Guitar:Nylon",
+    "Mallets:Marimba", "Woodwind:Oboe", "Strings:Violin", "Woodwind:Oboe",
+    "Mallets:Glockenspiel", "Mallets:Marimba", "Mallets:Marimba", "Drums:Rim",
+    "Drums:Kick", "Drums:Tom", "Drums:Tom", "Cymbals:Crash",
+    "Guitar:Clean", "Woodwind:Flute", "Cymbals:Crash", "Woodwind:Flute",
+    "Mallets:Glockenspiel", "Drums:Tom", "Cymbals:Crash", "Drums:Kick",
+]
+
+
+def gm_instrument(program):
+    """The block and instrument for one GM program, as "Family:Type"."""
+    if program is None or program < 0 or program >= len(GM_INSTRUMENTS):
+        return GM_INSTRUMENTS[0]        # what GM says a channel starts on
+    return GM_INSTRUMENTS[program]
+
+
 # ---- MIDI ------------------------------------------------------------------
 
 class Midi(object):
@@ -213,27 +265,45 @@ class Midi(object):
         return at
 
     def notes(self, override_bpm=None):
-        """Every note as (start, duration, pitch, velocity, channel, track)."""
+        """Every note as (start, duration, pitch, velocity, channel, track, program).
+
+        The program is the General MIDI instrument its channel was set to when the
+        note was struck, or None where the file never said -- which is how a part
+        knows it is a violin rather than whatever the panel is pointed at.
+        """
         when = self.seconds(override_bpm)
         out = []
         for index, track in enumerate(self.tracks):
             sounding = {}
+            program = {}
             for tick, kind, channel, payload in track:
-                if kind == "on":
+                if kind == "program":
+                    program[channel] = payload[0]
+                elif kind == "on":
                     sounding.setdefault((channel, payload[0]), []).append(
-                        (tick, payload[1]))
+                        (tick, payload[1], program.get(channel)))
                 elif kind == "off":
                     held = sounding.get((channel, payload[0]))
                     if held:
-                        start, velocity = held.pop(0)
+                        start, velocity, was = held.pop(0)
                         out.append((when(start), when(tick) - when(start),
-                                    payload[0], velocity, channel, index))
+                                    payload[0], velocity, channel, index, was))
             # A note left on at the end of the track still gets to sound.
             for (channel, pitch), held in sounding.items():
-                for start, velocity in held:
-                    out.append((when(start), 0.5, pitch, velocity, channel, index))
-        out.sort()
-        return out
+                for start, velocity, was in held:
+                    out.append((when(start), 0.5, pitch, velocity, channel, index,
+                                was))
+        # On the first six fields alone: those are what the in-game converter
+        # compares (Midi.ByStart), and a None program will not order against an int.
+        out.sort(key=lambda n: n[:6])
+
+        # A track playing on a channel it never set takes what the file said about
+        # that channel elsewhere -- some files put every program change in one track.
+        said = {}
+        for note in out:
+            if note[6] is not None and note[4] not in said:
+                said[note[4]] = note[6]
+        return [n[:6] + (n[6] if n[6] is not None else said.get(n[4]),) for n in out]
 
 
 # ---- the blocks this mod ships ---------------------------------------------
@@ -393,8 +463,8 @@ def build(notes, options, families):
     # One instrument block per distinct voice, named so the timers can find it.
     voices = {}
     loudness = {}
-    for start, length, pitch, velocity, channel, track in notes:
-        voice = assign(pitch, channel, track, families, options)
+    for start, length, pitch, velocity, channel, track, program in notes:
+        voice = assign(pitch, channel, track, families, options, program)
         voices.setdefault(voice, len(voices))
         loudness.setdefault(voice, []).append(velocity)
 
@@ -421,8 +491,8 @@ def build(notes, options, families):
         value(data, "Single", "bmt-RangeKey", str(options.range))
 
     # One timer per note in the score.
-    for start, length, pitch, velocity, channel, track in notes:
-        voice = assign(pitch, channel, track, families, options)
+    for start, length, pitch, velocity, channel, track, program in notes:
+        voice = assign(pitch, channel, track, families, options, program)
         data = place(TIMER)
         if getattr(options, "variable", None):
             # A variable instead of the keyboard, which is what the loader block
@@ -464,8 +534,13 @@ def separate(notes, options, families):
     """
     voices = {}
     for index, note in enumerate(notes):
-        voices.setdefault(assign(note[2], note[4], note[5], families, options),
-                          []).append(index)
+        # The program matters here as much as in build(): without it every melodic
+        # note is grouped as though it were the same instrument, so a violin note
+        # and a piano note on the same pitch look like one block being struck twice
+        # and the second is dropped as crowded. That is a note lost, not a note
+        # moved, and it is silent.
+        voices.setdefault(assign(note[2], note[4], note[5], families, options,
+                                 note[6]), []).append(index)
 
     out = list(notes)
     drop = set()
@@ -482,7 +557,7 @@ def separate(notes, options, families):
     return [n for i, n in enumerate(out) if i not in drop], len(drop)
 
 
-def assign(pitch, channel, track, families, options):
+def assign(pitch, channel, track, families, options, program=None):
     """Which block plays a note: (family, type index, pitch)."""
     if channel == 9 and not options.no_drums:
         family, piece = DRUM_MAP.get(pitch, ("Drums", "Snare"))
@@ -490,6 +565,11 @@ def assign(pitch, channel, track, families, options):
         return (name, pick_type(types, piece, fallback), DRUM_NOTE[piece])
 
     wanted = options.tracks.get(track, options.instrument)
+    if wanted == FROM_FILE:
+        # The note's own program change decides, which is how a score with a
+        # violin part, a bass part and a sax part comes out as three blocks
+        # rather than three tracks of piano.
+        wanted = gm_instrument(program)
     family, _, wanted_type = wanted.partition(":")
     if family.lower() not in families:
         raise SystemExit("no block called '%s'; there are: %s"
@@ -629,7 +709,9 @@ def main():
                         help="the block every note goes to unless a --track says "
                              "otherwise (default: Piano). FAMILY is one of the nine "
                              "blocks and TYPE is one of that block's instruments, "
-                             "as in --instrument \"Strings:Cello\"")
+                             "as in --instrument \"Strings:Cello\". "
+                             "--instrument file plays each part on what the file "
+                             "itself says it is")
     parser.add_argument("--track", action="append", default=[],
                         metavar="N=FAMILY[:TYPE]",
                         help="the block for one track of the score, repeatable: "
@@ -647,7 +729,7 @@ def main():
                         help="drop everything before this many seconds")
     parser.add_argument("--seconds", type=float,
                         help="stop after this many seconds of the score")
-    parser.add_argument("--limit", type=int, default=1200,
+    parser.add_argument("--limit", type=int, default=700,
                         help="most notes to place (default 1200)")
     parser.add_argument("--columns", type=int, default=0,
                         help="blocks per row (default: roughly square)")
@@ -686,6 +768,10 @@ def main():
     if not options.midi:
         parser.error("a MIDI file is needed (or --self-test)")
 
+    # `--instrument file` is the spelling anybody would try; the panel calls the
+    # same thing "As the file says", and the machine is identical either way.
+    if options.instrument.strip().lower() in ("file", "as-written", "from-file"):
+        options.instrument = FROM_FILE
     options.tracks = {}
     for pair in options.track:
         number, _, family = pair.partition("=")
@@ -848,6 +934,13 @@ def self_test(options):
     assert not [t for t in varied.iter("Boolean") if t.get("key") == TIMER_AUTO], \
         "a timer on a variable is still automatic"
     options.variable = None
+
+    assert len(GM_INSTRUMENTS) == 128, "the GM table is %d long" % len(GM_INSTRUMENTS)
+    assert gm_instrument(40) == "Strings:Violin", "GM 40 is a violin"
+    assert gm_instrument(66) == "Woodwind:Sax", "GM 66 is a tenor sax"
+    assert gm_instrument(26) == "Guitar:Jazz", "GM 26 is a jazz guitar"
+    assert gm_instrument(None) == GM_INSTRUMENTS[0], "no program means the piano"
+    assert gm_instrument(999) == GM_INSTRUMENTS[0], "an impossible program too"
 
     assert named("") == DEFAULT_PREFIX, "an empty prefix falls back"
     assert named("a;b") == DEFAULT_PREFIX, "a prefix with a semicolon falls back"
