@@ -250,7 +250,18 @@ def catalogue():
         name = root.findtext("Name", "").strip()
         local = int(root.findtext("ID", "0").strip())
         types = [t.get("name") for t in root.iter("Type")]
-        found[name.lower()] = (name, local, types)
+        # Which of them a block starts on. By name on the module element, not by
+        # the order of the list: the type is saved as an *index*, so moving a
+        # different one to the front would change what every machine already built
+        # plays. `iter("Extra")` carries a `default` of its own, which is why this
+        # reads the module element rather than any attribute called default.
+        chosen = 0
+        for module in root.iter("OrchestraMod"):
+            wanted = (module.get("default") or "").strip()
+            for index, one in enumerate(types):
+                if one and one.lower() == wanted.lower():
+                    chosen = index
+        found[name.lower()] = (name, local, types, chosen)
     if not found:
         raise SystemExit("no block XMLs found in %s" % BLOCKS)
     return found
@@ -267,10 +278,10 @@ def mod_details():
         (root.findtext("Name") or "Orchestra").strip()
 
 
-def pick_type(types, wanted):
-    """The index of a named type, matched loosely, or 0."""
+def pick_type(types, wanted, fallback=0):
+    """The index of a named type, matched loosely, or the block's own default."""
     if not wanted:
-        return 0
+        return fallback
     for index, name in enumerate(types):
         if name and name.lower() == wanted.lower():
             return index
@@ -389,12 +400,13 @@ def build(notes, options, families):
 
     for voice, index in sorted(voices.items(), key=lambda kv: kv[1]):
         family, type_index, pitch = voice
-        name, local, _ = families[family.lower()]
+        name, local, _, _ = families[family.lower()]
         # 1004 + localId is what this Besiege assigns Orchestra's blocks; the
         # loader recomputes it from modId and localId anyway.
         data = place(1004 + local, mod_id, local)
         # N is the block's own default key, kept so the registration loop runs.
-        variable_key(data, "bmt-Activate", "orch_%03d" % index, "N")
+        variable_key(data, "bmt-Activate",
+                     "%s%03d" % (named(options.prefix), index), "N")
         value(data, "Integer", "bmt-TypeKey", str(type_index))
         value(data, "Single", "bmt-NoteKey", str(pitch))
         # One block, one note, one loudness: the score's velocities for this
@@ -430,7 +442,8 @@ def build(notes, options, families):
         value(data, "Single", TIMER_WAIT, "%.4f" % (start + options.offset))
         value(data, "Single", TIMER_HOLD, "%.4f" % max(0.05, length))
         # C is the timer's own default for this key, kept for the same reason.
-        variable_key(data, TIMER_EMULATE, "orch_%03d" % voices[voice], "C")
+        variable_key(data, TIMER_EMULATE,
+                     "%s%03d" % (named(options.prefix), voices[voice]), "C")
 
     return machine, len(voices), placed[0]
 
@@ -473,16 +486,16 @@ def assign(pitch, channel, track, families, options):
     """Which block plays a note: (family, type index, pitch)."""
     if channel == 9 and not options.no_drums:
         family, piece = DRUM_MAP.get(pitch, ("Drums", "Snare"))
-        name, _, types = families[family.lower()]
-        return (name, pick_type(types, piece), DRUM_NOTE[piece])
+        name, _, types, fallback = families[family.lower()]
+        return (name, pick_type(types, piece, fallback), DRUM_NOTE[piece])
 
     wanted = options.tracks.get(track, options.instrument)
     family, _, wanted_type = wanted.partition(":")
     if family.lower() not in families:
         raise SystemExit("no block called '%s'; there are: %s"
                          % (family, ", ".join(sorted(n for n, _, _ in families.values()))))
-    name, _, types = families[family.lower()]
-    return (name, pick_type(types, wanted_type), pitch + options.transpose)
+    name, _, types, fallback = families[family.lower()]
+    return (name, pick_type(types, wanted_type, fallback), pitch + options.transpose)
 
 
 def indent(node, depth=0):
@@ -510,6 +523,26 @@ KEY_ALIASES = {
     "alt": "LeftAlt", "tab": "Tab", "esc": "Escape", "escape": "Escape",
     "up": "UpArrow", "down": "DownArrow", "left": "LeftArrow", "right": "RightArrow",
 }
+
+
+DEFAULT_PREFIX = "orch_"
+
+
+def named(prefix):
+    """A prefix that can safely be a variable name, or the default.
+
+    `MKey` joins several names with `;` and spells the whole thing
+    `Message=a;b`, so a name carrying either character would be read back as two
+    names or as none. Letters, digits, `_` and `-` are the whole of it. Kept in
+    step with `Song.Named` in the mod, which does the same check for the block.
+    """
+    wanted = (prefix or "").strip()
+    if not wanted or len(wanted) > 24:
+        return DEFAULT_PREFIX
+    for c in wanted:
+        if not (c.isalnum() and c.isascii()) and c not in "_-":
+            return DEFAULT_PREFIX
+    return wanted
 
 
 def keycode(name):
@@ -543,7 +576,7 @@ def instruments():
         return ""                       # run from outside the repo: no list to give
 
     lines = ["blocks, and the instruments each one holds:"]
-    for name, _, types in sorted(found.values()):
+    for name, _, types, _ in sorted(found.values()):
         listed = ", ".join(t for t in types if t)
         lines.append(textwrap.fill(listed, width=74,
                                    initial_indent="  %-9s " % name,
@@ -630,6 +663,11 @@ def main():
                         help="the key every timer waits for (default M, as the "
                              "loader block's own key mapper). --key none starts "
                              "the song with the simulation instead")
+    parser.add_argument("--prefix", default=DEFAULT_PREFIX, metavar="NAME",
+                        help="what the song's variables are named after "
+                             "(default %s000, %s001, ...); worth changing when two "
+                             "songs share a machine"
+                             % (DEFAULT_PREFIX, DEFAULT_PREFIX))
     parser.add_argument("--variable", metavar="NAME",
                         help="the variable every timer waits for, instead of the "
                              "keyboard -- what the loader block does when its own "
@@ -810,6 +848,10 @@ def self_test(options):
     assert not [t for t in varied.iter("Boolean") if t.get("key") == TIMER_AUTO], \
         "a timer on a variable is still automatic"
     options.variable = None
+
+    assert named("") == DEFAULT_PREFIX, "an empty prefix falls back"
+    assert named("a;b") == DEFAULT_PREFIX, "a prefix with a semicolon falls back"
+    assert named("song2_") == "song2_", "a plain prefix is kept"
 
     assert keycode("none") is None, "--key none should mean no key at all"
     assert keycode("M") == "M", "a plain letter should stay itself"

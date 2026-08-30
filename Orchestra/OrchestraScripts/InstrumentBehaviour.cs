@@ -209,7 +209,7 @@ namespace OrchestraMod
             {
                 names.Add("None");
             }
-            TypeMenu = AddMenu("TypeKey", 0, names, false);
+            TypeMenu = AddMenu("TypeKey", DefaultType(names), names, false);
 
             // Note and Range are declared wider than they are dragged through: a
             // machine may want to be heard across a whole level, and a note may be
@@ -303,6 +303,33 @@ namespace OrchestraMod
         // ---- what the panel needs -------------------------------------------
         //
         // The panel builds itself from these rather than from a list of its own, so
+        /// <summary>
+        /// Which instrument a newly placed block starts on: the one the block's
+        /// `default` attribute names, or the first.
+        ///
+        /// By name, because the menu is saved as an index -- reordering the list to
+        /// change the default would change what every machine already built plays,
+        /// silently, and a saved grand would come back an upright.
+        /// </summary>
+        private int DefaultType(List<string> names)
+        {
+            string wanted = Module.DefaultType == null ? "" : Module.DefaultType.Trim();
+            if (wanted.Length == 0)
+            {
+                return 0;
+            }
+            for (int i = 0; i < names.Count; i++)
+            {
+                if (string.Compare(names[i], wanted, true) == 0)
+                {
+                    return i;
+                }
+            }
+            Log.Warn("Orchestra: " + Module.Family + " has no instrument called "
+                     + wanted + ", so it starts on " + (names.Count > 0 ? names[0] : "nothing"));
+            return 0;
+        }
+
         /// <summary>
         /// Takes the skin picker out of Besiege's mapper for these blocks. A skin
         /// repaints a block's mesh, and these wear an instrument: a piano in a

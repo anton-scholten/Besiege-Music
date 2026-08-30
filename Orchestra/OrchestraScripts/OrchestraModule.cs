@@ -46,6 +46,20 @@ namespace OrchestraMod
         public string Family = "";
 
         /// <summary>The entries in the block's Type menu, in order.</summary>
+        /// <summary>
+        /// Which of the Types below a newly placed block is set to, by name.
+        ///
+        /// A name rather than a number, and an attribute rather than the order of
+        /// the list: the menu is saved as an *index*, so putting a different type
+        /// first would quietly change what every machine already built plays. This
+        /// moves the default without moving the list.
+        ///
+        /// Empty means the first one, which is what every block but the piano says.
+        /// </summary>
+        [XmlAttribute("default")]
+        [DefaultValue("")]
+        public string DefaultType = "";
+
         [XmlArray("Types")]
         [XmlArrayItem("Type")]
         [RequireToValidate]

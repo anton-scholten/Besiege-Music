@@ -221,7 +221,7 @@ block is declared in the block XML, exactly as Sound Blocks declares its clip
 list:
 
 ```xml
-<OrchestraMod>
+<OrchestraMod default="Upright piano">
   <Types>
     <Type name="Grand piano" samples="piano_grand" lowNote="21" highNote="108" />
     <Type name="Electric piano" samples="piano_rhodes" ... />
@@ -235,6 +235,13 @@ list:
 
 Adding an instrument is then XML plus samples, with no new code — the same
 property that lets people add their own sounds to Sound Blocks today.
+
+`default` names which of them a newly placed block starts on, and which a song
+gets when it asks for the block without naming an instrument. **By name, and not
+by putting it first in the list**: the type is saved as an *index*, so reordering
+`<Types>` would change what every machine already built plays — a saved grand
+would come back an upright. Omitted, it is the first one, which is what every
+block but the piano says.
 
 **Shared pieces already written**, to be lifted rather than rewritten:
 

@@ -131,10 +131,14 @@ else is in the panel docked underneath:
    with the mod are listed after your own with **(built-in)** in front of them, so
    a bundled `waltz.mid` and one of yours by the same name are both there and
    neither hides the other.
-7. The summary says how long the song is, how many notes survived, and what it
+7. **VARIABLE** is what the song's variables are named after — `orch_000`,
+   `orch_001` and so on. The blocks listen by name, so two songs sharing a machine
+   need two names, or the second song's timers press the first song's blocks. A
+   name that could not be one (a semicolon, a space) goes back to `orch_`.
+8. The summary says how long the song is, how many notes survived, and what it
    will cost in blocks — an instrument block per distinct voice, a timer per note
    — before you commit to any of it.
-8. **ADD TO MACHINE** drops those blocks into the machine you are building,
+9. **ADD TO MACHINE** drops those blocks into the machine you are building,
    already selected, so you can drag them where you want them. **SAVE AS MACHINE**
    does the same and then opens Besiege's own save screen over it, where
    **SELECTION ONLY** saves just those blocks — the game names the file, asks
@@ -209,6 +213,7 @@ one track, where `--track` cannot separate them.
 | `--track N=FAMILY[:TYPE]` | the block for one track, repeatable |
 | `--key KEYCODE` | the key every timer waits for (default `M`; `--key none` starts with the simulation) |
 | `--variable NAME` | wait for a variable instead of the keyboard, as the block does when its key is set to one |
+| `--prefix NAME` | what the song's variables are named after (default `orch_`) |
 | `--tempo BPM`, `--transpose N` | override the tempo; shift in semitones |
 | `--from S`, `--seconds S` | play part of the score |
 | `--offset S`, `--gap S` | quiet before the first note (default 0); silence between repeats |

@@ -11,7 +11,7 @@
 	<Fallback>Ballast</Fallback>
 
 	<Modules>
-		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Piano">
+		<OrchestraMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Piano" default="Upright piano">
 			<Types>
 			<Type name="Grand piano"    engine="sampler" samples="piano_grand_38 piano_grand_60 piano_grand_86" loops="33983-55757 21957-44474 12297-22425" decay="3.5" damped="true" release="0.5" />
 			<Type name="Upright piano"  engine="sampler" samples="piano_upright_38 piano_upright_60 piano_upright_86" loops="33983-55757 21957-44474 12297-22425" decay="2.4" damped="true" release="0.4" />

@@ -79,6 +79,36 @@ namespace OrchestraMod
         /// is chosen.</summary>
         private MText FileText;
 
+        /// <summary>What the song's variables are named after. A control, like the
+        /// file, so it belongs to the block and is saved with the machine: two
+        /// loader blocks on one machine writing two songs need two names, or the
+        /// second song's timers press the first song's blocks.</summary>
+        private MText PrefixText;
+
+        /// <summary>
+        /// What this song's variables are named after, as the panel shows it.
+        ///
+        /// Read back through `Song.Named`, so what the block reports is what the
+        /// machine will actually hold: a box with a semicolon in it cannot be a
+        /// variable name -- `MKey` joins names with one -- and comes back as the
+        /// default rather than as a song that writes itself out of tune with its
+        /// own timers.
+        /// </summary>
+        public string Prefix
+        {
+            get
+            {
+                return Song.Named(PrefixText == null ? null : PrefixText.Value);
+            }
+            set
+            {
+                if (PrefixText != null)
+                {
+                    PrefixText.Value = Song.Named(value);
+                }
+            }
+        }
+
         /// <summary>The file the panel is showing, as picked.</summary>
         public string Path
         {
@@ -123,7 +153,8 @@ namespace OrchestraMod
             // block above changes -- `MMenu.Items` has a public setter -- so what
             // is saved is an index into whichever list is current, exactly as an
             // instrument block's own type menu is.
-            TypeMenu = AddMenu("TypeKey", 0, TypesOf(Wanted()), false);
+            TypeMenu = AddMenu("TypeKey", DefaultTypeOf(Wanted()),
+                               TypesOf(Wanted()), false);
 
             VolumeSlider = AddSlider("Volume", "VolumeKey", 0.7f, 0f, 1f);
             // Wider than an instrument block's own default. A song is a field of
@@ -164,8 +195,18 @@ namespace OrchestraMod
             // something written over one being loaded: a machine coming back out of
             // a save brings its own, and DeSerialize puts it here after this runs.
             FileText = AddText("File", "FileKey", Files.Remembered());
+            PrefixText = AddText("Variable prefix", "PrefixKey",
+                                 SongOptions.DefaultPrefix);
 
             RetypeMenu();
+        }
+
+        /// <summary>Which instrument that block starts on -- the same one a block
+        /// of it placed by hand starts on, rather than always the first.</summary>
+        private int DefaultTypeOf(int family)
+        {
+            return family >= 0 && family < Catalogue.Families.Count
+                ? Catalogue.Families[family].DefaultType : 0;
         }
 
         /// <summary>The instruments in one block, for the type menu.</summary>
@@ -241,6 +282,7 @@ namespace OrchestraMod
             TransposeSlider.DisplayInMapper = show;
             DelaySlider.DisplayInMapper = show;
             FileText.DisplayInMapper = show;
+            PrefixText.DisplayInMapper = show;
             TempoSlider.DisplayInMapper = show;
             TempoSetToggle.DisplayInMapper = show;
             LimitSlider.DisplayInMapper = show;
@@ -320,6 +362,7 @@ namespace OrchestraMod
                 ? 0f : TempoSlider.Value;
             options.Limit = LimitSlider == null
                 ? 1200 : Mathf.RoundToInt(LimitSlider.Value);
+            options.Prefix = Prefix;
             // Every timer waits its own time from that key, so one press -- by hand
             // or emulated by anything else on the machine -- starts the whole song.
             // With no key bound there is nothing to wait for, and the timers start

@@ -53,6 +53,15 @@ namespace OrchestraMod
 
         /// <summary>Beats per minute to play at, or 0 to follow the file.</summary>
         public float Tempo = 0f;
+
+        /// <summary>What every variable this song uses is named after: the blocks
+        /// listen to `&lt;prefix&gt;000`, `&lt;prefix&gt;001` and so on. Worth
+        /// changing when two songs share a machine, since two songs on one set of
+        /// names is one song playing both parts.</summary>
+        public string Prefix = DefaultPrefix;
+
+        /// <summary>The name a song uses unless it is told another.</summary>
+        public const string DefaultPrefix = "orch_";
     }
 
     /// <summary>One block of the machine being written, before it is either
@@ -294,7 +303,8 @@ namespace OrchestraMod
                 SongBlock block = Place(plan, voice.Block.BlockType, voice.Block.LocalId,
                                         placed++, columns, spacing,
                                         playing.Count + kept.Count);
-                VariableKey(block.Data, "bmt-Activate", Variable(voice.Index), "N");
+                VariableKey(block.Data, "bmt-Activate",
+                            Variable(options.Prefix, voice.Index), "N");
                 block.Data.Write(new XInteger("bmt-TypeKey", voice.TypeIndex));
                 block.Data.Write(new XSingle("bmt-NoteKey", voice.Pitch));
                 // One block, one note, one loudness: a block cannot be struck
@@ -348,7 +358,8 @@ namespace OrchestraMod
                 }
                 block.Data.Write(new XSingle(TimerWait, note.Start + options.Offset));
                 block.Data.Write(new XSingle(TimerHold, Mathf.Max(0.05f, note.Length)));
-                VariableKey(block.Data, TimerEmulate, Variable(keptOn[i].Index), "C");
+                VariableKey(block.Data, TimerEmulate,
+                            Variable(options.Prefix, keptOn[i].Index), "C");
                 last = Mathf.Max(last, note.End);
             }
 
@@ -389,9 +400,38 @@ namespace OrchestraMod
         }
 
         /// <summary>The variable one instrument block listens to.</summary>
-        private static string Variable(int index)
+        private static string Variable(string prefix, int index)
         {
-            return "orch_" + index.ToString("000");
+            return Named(prefix) + index.ToString("000");
+        }
+
+        /// <summary>
+        /// A prefix that can safely be a variable name, or the default.
+        ///
+        /// `MKey` joins several names with `;` and spells the whole thing
+        /// `Message=a;b`, so a name carrying either character would be read back as
+        /// two names or as none. Letters, digits, `_` and `-` are the whole of what
+        /// is allowed through; anything else means the box was mistyped, and a song
+        /// that plays is better than a song that does not.
+        /// </summary>
+        public static string Named(string prefix)
+        {
+            string wanted = prefix == null ? "" : prefix.Trim();
+            if (wanted.Length == 0 || wanted.Length > 24)
+            {
+                return SongOptions.DefaultPrefix;
+            }
+            for (int i = 0; i < wanted.Length; i++)
+            {
+                char c = wanted[i];
+                bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                       || (c >= '0' && c <= '9') || c == '_' || c == '-';
+                if (!ok)
+                {
+                    return SongOptions.DefaultPrefix;
+                }
+            }
+            return wanted;
         }
 
         /// <summary>

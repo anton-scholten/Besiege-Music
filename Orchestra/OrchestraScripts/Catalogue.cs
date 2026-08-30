@@ -17,6 +17,11 @@ namespace OrchestraMod
         /// <summary>The entries in its Type menu, in order.</summary>
         public readonly List<string> Types = new List<string>();
 
+        /// <summary>Which of them a newly placed block starts on, and which a song
+        /// gets when it asks for the block without naming an instrument. From the
+        /// module's `default` attribute; 0 when it names none.</summary>
+        public int DefaultType;
+
         /// <summary>The id this Besiege gave the block, which is what a
         /// `BlockInfo` and a save's `id` attribute hold. Nought until
         /// <see cref="Catalogue.Resolve"/> has been able to work it out.</summary>
@@ -105,9 +110,15 @@ namespace OrchestraMod
         /// </summary>
         public static int TypeIndex(Family family, string wanted)
         {
-            if (family == null || string.IsNullOrEmpty(wanted))
+            if (family == null)
             {
                 return 0;
+            }
+            if (string.IsNullOrEmpty(wanted))
+            {
+                // Nobody named one, so the block's own default answers -- the same
+                // instrument a block placed by hand starts on.
+                return family.DefaultType;
             }
             string want = wanted.Trim().ToLower();
             for (int i = 0; i < family.Types.Count; i++)
@@ -481,6 +492,7 @@ namespace OrchestraMod
                 {
                     family.Types.Add(type.Groups[1].Value);
                 }
+                family.DefaultType = Default(xml, family.Types);
                 // A block with no instruments in it is not one a song can go to --
                 // which is how the loader block itself is kept out of the list.
                 if (family.Types.Count > 0)
@@ -504,6 +516,32 @@ namespace OrchestraMod
                 Log.Warn("no instrument blocks could be read out of the mod folder; "
                          + "the MIDI loader has nothing to write a song for.");
             }
+        }
+
+        /// <summary>
+        /// Which instrument a block starts on, from the `default` attribute on its
+        /// module element.
+        ///
+        /// Anchored on `&lt;OrchestraMod` rather than looking for any `default=`:
+        /// an Extra carries one of its own, and matching that would set the block to
+        /// whatever a slider happened to start at.
+        /// </summary>
+        private static int Default(string xml, List<string> types)
+        {
+            Match m = Regex.Match(xml, "<OrchestraMod[^>]*\\sdefault=\"([^\"]*)\"");
+            if (!m.Success)
+            {
+                return 0;
+            }
+            string wanted = m.Groups[1].Value.Trim();
+            for (int i = 0; i < types.Count; i++)
+            {
+                if (string.Compare(types[i], wanted, true) == 0)
+                {
+                    return i;
+                }
+            }
+            return 0;
         }
 
         /// <summary>The blocks and how many instruments each holds, for the log.</summary>

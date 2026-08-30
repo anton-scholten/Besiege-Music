@@ -160,6 +160,54 @@ class SongCheck
            "no timer starts itself as well",
            "a keyed timer is automatic too");
 
+        // A song that names a block but not an instrument gets that block's own
+        // default, which is the instrument one placed by hand starts on -- not
+        // whichever happens to be first in the list.
+        Is(Catalogue.TypeIndex(Catalogue.Find("Piano"), "") == 1,
+           "a song with no instrument named takes the block's default",
+           "it took " + Catalogue.TypeIndex(Catalogue.Find("Piano"), ""));
+        Is(Catalogue.TypeIndex(Catalogue.Find("Piano"), "Grand piano") == 0,
+           "and naming one still picks that one",
+           "naming Grand piano did not pick it");
+        XmlNodeList typed = second.SelectNodes("//Integer[@key='bmt-TypeKey']");
+        bool allDefault = typed.Count > 0;
+        for (int i = 0; i < typed.Count; i++)
+        {
+            if (typed[i].InnerText.Trim() != "1") { allDefault = false; }
+        }
+        Is(allDefault, "every instrument block is written on that default",
+           "the machine holds a type other than the default");
+
+        // The variables are named after whatever the block's prefix says, and a
+        // prefix that could not be a variable name falls back rather than writing a
+        // machine whose timers and blocks disagree about what they are called.
+        Is(Song.Named("") == SongOptions.DefaultPrefix,
+           "an empty prefix falls back", "an empty prefix was kept");
+        Is(Song.Named("a;b") == SongOptions.DefaultPrefix,
+           "a prefix with a semicolon falls back -- MKey joins names with one",
+           "a semicolon got through");
+        Is(Song.Named("song2_") == "song2_", "a plain prefix is kept",
+           "a plain prefix was refused");
+
+        options.Prefix = "song2_";
+        SongPlan renamed = Song.Plan(new Midi(file).Notes(0f), options);
+        XmlDocument fourth = new XmlDocument();
+        fourth.LoadXml(Bsg.Write(renamed, "Self test"));
+        int ours = 0;
+        foreach (XmlElement entry in fourth.SelectNodes("//StringArray/String"))
+        {
+            if (entry.InnerText.StartsWith("Message="))
+            {
+                ours++;
+                Is(entry.InnerText.StartsWith("Message=song2_"),
+                   "every variable is named after the prefix",
+                   "a variable is called " + entry.InnerText);
+            }
+        }
+        Is(ours == 18, "18 variable names written, one per block and per timer",
+           ours + " variable names written");
+        options.Prefix = SongOptions.DefaultPrefix;
+
         // And with a variable, which is what the loader block's own key comes to
         // when it is set to one: the timers listen to the name, and carry a keycode
         // they never answer to so that `Machine.InitSimBlock` registers them at all.
@@ -216,8 +264,13 @@ class SongCheck
     static List<Family> Blocks()
     {
         List<Family> all = new List<Family>();
-        all.Add(Made("Piano", 1, 1005, new string[]
-            { "Grand piano", "Upright piano", "Electric piano", "Honky-tonk" }));
+        Family piano = Made("Piano", 1, 1005, new string[]
+            { "Grand piano", "Upright piano", "Electric piano", "Honky-tonk" });
+        // As Piano.xml says: `default="Upright piano"`, which is the second of
+        // them. The type is saved as an index, so the list stays in the order every
+        // machine already built was written against.
+        piano.DefaultType = 1;
+        all.Add(piano);
         all.Add(Made("Drums", 8, 1012, new string[]
             { "Kick", "Snare", "Tom" }));
         all.Add(Made("Cymbals", 9, 1013, new string[]

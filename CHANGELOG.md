@@ -144,6 +144,22 @@
 
 **Fixed**
 
+- A **VARIABLE** box on the loader block, between the summary and the two buttons:
+  what the song's variables are named after, `orch_` by default. The blocks listen
+  by name, so two songs on one machine need two names or the second song's timers
+  press the first song's blocks. It is an `MText`, so it belongs to the block and
+  is saved with the machine; a name that could not be a variable name -- `MKey`
+  joins names with `;`, so one of those would be read back as two names -- is
+  corrected in the box as it is typed rather than quietly ignored when the machine
+  is written. `tools/make-song.py --prefix` does the same, with the same check.
+- The piano starts on the **upright** rather than the grand -- a hand-placed
+  block, the loader's TYPE selector, and a song that asks for "Piano" without
+  naming an instrument. Done with a `default` attribute on the module element
+  rather than by moving the upright to the front of `<Types>`: the type is saved
+  as an index, so reordering the list would have changed what every machine
+  already built plays, turning a saved grand into an upright without touching it.
+  Any block can name its default; the other eight name none and start on their
+  first, as before. `tools/make-song.py` reads the same attribute.
 - **Besiege's master volume slider did not reach the instrument blocks.** The
   per-category sliders do -- BLOCKS and SFX are exposed parameters on an
   `AudioMixer` and a block's `AudioSource` is routed through a mixer group -- but

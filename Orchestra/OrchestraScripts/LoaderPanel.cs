@@ -78,6 +78,9 @@ namespace OrchestraMod
         private InputField folderBox;
         private Text folderPath;
 
+        /// <summary>What the song's variables are named after.</summary>
+        private InputField prefixBox;
+
         /// <summary>What is in the Songs folder, by name, as of the last look.</summary>
         private readonly List<string> files = new List<string>();
 
@@ -253,6 +256,7 @@ namespace OrchestraMod
                 y = BuildFolder(y);
                 y = BuildList(y);
                 y = BuildSummary(y);
+                y = BuildPrefix(y);
                 y = BuildButtons(y);
                 CloseWindow(y);
                 built = true;
@@ -278,6 +282,7 @@ namespace OrchestraMod
             shownType = -1;
             folderBox = null;
             folderPath = null;
+            prefixBox = null;
             status = null;
             DestroyWindow();
             built = false;
@@ -505,6 +510,51 @@ namespace OrchestraMod
 
         /// <summary>The two things that can be done with a converted song, side by
         /// side: into the machine being built, or out to a machine of its own.</summary>
+        /// <summary>
+        /// What the song's variables are named after.
+        ///
+        /// Below the summary and above the buttons, laid out from the y the summary
+        /// hands on rather than at a measured place, so it cannot land on top of the
+        /// readout however long that runs -- the summary's last line wraps to three,
+        /// and the status line under it can be a whole path.
+        ///
+        /// Worth changing when two songs share a machine: the blocks listen by name,
+        /// so a second song on the same names is one song playing both parts.
+        /// </summary>
+        private float BuildPrefix(float y)
+        {
+            Label("VARIABLE", Margin, y, LabelWidth, RowHeight, 13,
+                  TextAnchor.MiddleLeft, UIF.QuietInk);
+            prefixBox = Typing.On(Box(Margin + LabelWidth, y,
+                                      width - Margin * 2f - LabelWidth,
+                                      TextAnchor.MiddleLeft, 24,
+                                      SongOptions.DefaultPrefix));
+            if (prefixBox != null)
+            {
+                prefixBox.onEndEdit.AddListener(
+                    new UnityEngine.Events.UnityAction<string>(Rename));
+            }
+            return y + RowHeight + RowGap * 2f;
+        }
+
+        /// <summary>The prefix was typed into. Whatever it says, the block reports
+        /// back what a variable may actually be called, and the box is set to that
+        /// -- so a name that cannot be used is corrected where it was typed rather
+        /// than quietly ignored when the machine is written.</summary>
+        private void Rename(string typed)
+        {
+            if (block == null || filling)
+            {
+                return;
+            }
+            block.Prefix = typed;
+            if (prefixBox != null)
+            {
+                prefixBox.text = block.Prefix;
+            }
+            Reread();
+        }
+
         private float BuildButtons(float y)
         {
             float cell = (width - Margin * 2f - RowGap) / 2f;
@@ -604,6 +654,10 @@ namespace OrchestraMod
                 string folder = Files.SongsPath();
                 folderPath.text = folder.Length == 0
                     ? "(inside the mod's data folder)" : folder;
+            }
+            if (prefixBox != null && !prefixBox.isFocused)
+            {
+                prefixBox.text = block.Prefix;
             }
             ShowFiles();
             ShowChoices();
@@ -1103,6 +1157,7 @@ namespace OrchestraMod
                  + block.Tempo.Value.ToString("0.###") + "|"
                  + (block.TempoFromFile ? "file" : "set") + "|"
                  + block.Limit.Value.ToString("0") + "|"
+                 + block.Prefix + "|"
                  + (block.KeyName() == null ? "-" : block.KeyName()) + "|"
                  + (block.KeyVariable() == null ? "-" : block.KeyVariable());
         }
