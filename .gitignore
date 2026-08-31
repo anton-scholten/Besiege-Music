@@ -18,3 +18,9 @@ __pycache__/
 # .bsg is a few hundred kilobytes of generated XML and the MIDI it came from is
 # not ours to keep.
 *.bsg
+
+# Recordings of the tunes, dropped in the root to hear what a score is meant to
+# sound like before it is played on blocks. Megabytes each, not ours to keep, and
+# no part of what ships -- the mod carries the MIDI, in Music/Songs/. Anchored at
+# the root so audio that is genuinely the mod's is not caught by this.
+/*.mp3
