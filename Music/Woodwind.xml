@@ -1,0 +1,95 @@
+<Block>
+	<Debug>false</Debug>
+	<ID>6</ID>
+	<Name>Woodwind</Name>
+	<Mass>0.5</Mass>
+	<SearchKeywords>
+		<Keyword>woodwind</Keyword>
+		<Keyword>flute</Keyword>
+		<Keyword>clarinet</Keyword>
+	</SearchKeywords>
+	<CanFlip>false</CanFlip>
+	<Fallback>Ballast</Fallback>
+
+	<Modules>
+		<MusicMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Woodwind">
+			<Types>
+			<Type name="Flute"    engine="sampler" samples="wind_flute_61 wind_flute_74 wind_flute_84" loops="14542-20096 22401-27648 11264-16256" damped="true" holds="true" attack="0.05" release="0.2" />
+			<Type name="Clarinet" engine="sampler" samples="wind_clarinet_52 wind_clarinet_61 wind_clarinet_74" loops="13027-13561 7035-7193 2933-3119" damped="true" holds="true" attack="0.04" release="0.2" />
+			<Type name="Oboe"     engine="sampler" samples="wind_oboe_63 wind_oboe_70 wind_oboe_82" loops="14681-19200 14853-19200 9872-14464" damped="true" holds="true" attack="0.04" release="0.2" />
+			<Type name="Bassoon"  engine="sampler" samples="wind_bassoon_35 wind_bassoon_46 wind_bassoon_58" loops="23746-29755 23346-28970 17764-23658" damped="true" holds="true" attack="0.05" release="0.25" />
+			<Type name="Sax"      engine="sampler" samples="wind_sax_50 wind_sax_60 wind_sax_72" loops="10228-15565 19914-24941 9085-13568" damped="true" holds="true" attack="0.04" release="0.25" />
+			<!-- A flue pipe is a whistle, so an organ belongs with the pipes.
+			     These were drawbar sines written by a tool once, an organ being a
+			     sum of sines; a church organ recording is a church organ. -->
+			<Type name="Organ"     engine="sampler" samples="wind_organ_36 wind_organ_60 wind_organ_84" loops="24522-61248 45472-90380 13633-54976" damped="true" holds="true" attack="0.02" release="0.12" />
+			</Types>
+			<Extras>
+			<Extra kind="slider" key="BreathKey" name="Breath" min="0" max="1" default="0.2" />
+			<Extra kind="slider" key="VibratoKey" name="Vibrato" min="0" max="1" default="0.25" />
+			</Extras>
+		</MusicMod>
+	</Modules>
+
+	<Mesh name="Woodwind_mesh">
+		<Position x="0.0" y="0.0" z="0.5" />
+		<Rotation x="0.0" y="0.0" z="0.0" />
+		<Scale x="0.5" y="0.5" z="0.5" />
+	</Mesh>
+
+	<Texture name="Woodwind_texture" />
+
+	<Icon>
+		<Position x="0.0" y="0.0" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-65.0" y="210.0" z="180.0" /> <!--how the toolbar sees it: in profile, bell to the right, where the light is-->
+		<Scale x="0.5" y="0.5" z="0.5" />
+	</Icon>
+	
+	<FireInteraction burnDuration="5" igniteOnStart="false">
+		<SphereTrigger>
+		<Position x="0" y="0" z="0.3" />
+		<Radius>1</Radius>
+		</SphereTrigger>
+	</FireInteraction>
+
+	<Colliders>
+		<BoxCollider>
+			<Position x="0.0" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Scale x="0.8" y="0.8" z="0.8" />
+		</BoxCollider>
+	</Colliders>
+
+	<BasePoint hasAddingPoint="false">
+		<Stickiness enabled="true" radius="1" />
+		<Motion x="false" y="false" z="false" /> 
+	</BasePoint>
+	
+	<AddingPoints>
+		<AddingPoint> <!--Top-->
+			<Position x="0.0" y="0.0" z="1.0" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Back-->
+			<Position x="0.0" y="-0.5" z="0.5" />
+			<Rotation x="90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Front-->
+			<Position x="0.0" y="0.5" z="0.5" />
+			<Rotation x="-90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Left-->
+			<Position x="0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Right-->
+			<Position x="-0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="-90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+	</AddingPoints>
+</Block>

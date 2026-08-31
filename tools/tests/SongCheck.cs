@@ -24,7 +24,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Xml;
-using OrchestraMod;
+using MusicMod;
 
 class SongCheck
 {
@@ -33,7 +33,7 @@ class SongCheck
     public static int Main(string[] args)
     {
         Catalogue.Seed(Blocks(), "aca735ea-a614-4aef-9676-67ec1edd5059", "0.1.0",
-                       "Orchestra");
+                       "Music");
 
         if (args.Length > 0)
         {
@@ -245,7 +245,7 @@ class SongCheck
         // menu does not hold falls back to the *first* family -- which is Bass,
         // alphabetically -- so a typo here would be a silent change of instrument
         // rather than an error.
-        string declared = Declared("Orchestra/Loader.xml", "instrument");
+        string declared = Declared("Music/Loader.xml", "instrument");
         bool known = declared == Gm.FromFile;
         for (int i = 0; i < Catalogue.Families.Count && !known; i++)
         {

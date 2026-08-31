@@ -32,7 +32,7 @@ import io, json, math, os, struct, subprocess, sys, zlib
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 CACHE = os.path.join(HERE, "models")
-OUT = os.path.join(REPO, "Orchestra", "Resources", "Instruments")
+OUT = os.path.join(REPO, "Music", "Resources", "Instruments")
 
 # block -> (poly.pizza id, asset uuid, title, author, licence)
 SOURCES = {

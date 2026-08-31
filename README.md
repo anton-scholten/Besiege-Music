@@ -1,4 +1,4 @@
-# Besiege Orchestra
+# Besiege Music
 
 Twelve instrument blocks, and a thirteenth that turns a MIDI file into a machine that
 plays them, in [Besiege](https://store.steampowered.com/app/346010/Besiege/).
@@ -30,7 +30,7 @@ Either subscribe to the mod on Steam, or if you don't use Steam you can clone th
 ```
 
 Set `BESIEGE_DIR` if your install isn't found automatically. Start Besiege, enable
-**Orchestra** in the mods menu, and the twelve blocks appear in the toolbar. No C#
+**Music** in the mods menu, and the twelve blocks appear in the toolbar. No C#
 toolchain is needed; the build uses Besiege's own compiler.
 
 ## Options
@@ -128,7 +128,7 @@ else is in the panel docked underneath:
    box; the handle covers the first 5000. Let go of it and the summary says how
    many notes the new number leaves behind.
 5. **FOLDER** is where MIDI files go:
-   `Besiege_Data/Mods/Data/Orchestra_<id>/Songs`. It can be typed into, to point
+   `Besiege_Data/Mods/Data/Music_<id>/Songs`. It can be typed into, to point
    at another folder *inside the mod's data directory* — Besiege lets a mod read
    nowhere else, which is also why there is no "browse" dialog. The two buttons
    open it in your file manager and list it again, for a file dropped in while the
@@ -277,7 +277,7 @@ each trimmed by measurement to the same loudness as the recorded blocks.
 Instruments' macro-oscillator, ported, with twenty-three models and a panel of its
 own. It was [a separate mod](https://github.com/anton-scholten/Besiege-Braids-Synth)
 and is now one of these, block, panel and DSP unchanged; its sources live under
-`Orchestra/OrchestraScripts/Braids/` and carry their own licence. A converted score
+`Music/MusicScripts/Braids/` and carry their own licence. A converted score
 sends General MIDI's synth leads and pads here, and to the FM block only if this
 one is somehow not registered.
 
@@ -353,4 +353,4 @@ Sampled instruments are cut from an open SoundFont — see
 The Braids block's oscillator and its lookup tables are derived from **Braids by
 Mutable Instruments**, copyright 2012 Emilie Gillet, MIT — the licence travels
 with the source, in
-[Orchestra/OrchestraScripts/Braids/BRAIDS-LICENSE.txt](Orchestra/OrchestraScripts/Braids/BRAIDS-LICENSE.txt).
+[Music/MusicScripts/Braids/BRAIDS-LICENSE.txt](Music/MusicScripts/Braids/BRAIDS-LICENSE.txt).

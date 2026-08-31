@@ -1,4 +1,4 @@
-# Orchestra — design draft
+# Music — design draft
 
 A set of instrument blocks for Besiege: piano, guitar, bass, strings, brass,
 woodwind, tuned percussion, drums, cymbals. Each block plays one instrument, on a
@@ -261,7 +261,7 @@ far the sound carries.
 
 ## Architecture
 
-One mod, `Besiege-Orchestra`, laid out like the siblings: `Orchestra/` as the
+One mod, `Besiege-Music`, laid out like the siblings: `Music/` as the
 folder Besiege loads, `tools/` outside it.
 
 **One behaviour, many blocks.** `InstrumentBehaviour` is shared; what differs per
@@ -269,7 +269,7 @@ block is declared in the block XML, exactly as Sound Blocks declares its clip
 list:
 
 ```xml
-<OrchestraMod default="Upright piano">
+<MusicMod default="Upright piano">
   <Types>
     <Type name="Grand piano" samples="piano_grand" lowNote="21" highNote="108" />
     <Type name="Electric piano" samples="piano_rhodes" ... />
@@ -278,7 +278,7 @@ list:
     <Toggle key="SustainKey" name="Sustain" />
     <Slider key="ReleaseKey" name="Release" min="0" max="4" default="0.4" />
   </Extras>
-</OrchestraMod>
+</MusicMod>
 ```
 
 Adding an instrument is then XML plus samples, with no new code — the same

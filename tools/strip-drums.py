@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Takes the percussion out of a MIDI file.
 
-    ./tools/strip-drums.py "Orchestra/Songs/Some Song.mid"
+    ./tools/strip-drums.py "Music/Songs/Some Song.mid"
     ./tools/strip-drums.py song.mid --check        # say what is there, change nothing
     ./tools/strip-drums.py song.mid -o out.mid     # write elsewhere
 

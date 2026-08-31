@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Turns a MIDI file into a Besiege machine that plays it on Orchestra blocks.
+"""Turns a MIDI file into a Besiege machine that plays it on Music blocks.
 
     ./tools/make-song.py song.mid --instrument Piano --install
 
 The machine is a flat grid of blocks, all at one height. Two kinds:
 
   * an **instrument block** per distinct pitch, holding that note and nothing
-    else -- an Orchestra block plays one note, so a tune is a row of blocks;
+    else -- a Music block plays one note, so a tune is a row of blocks;
   * a **timer block** per note in the score, set to fire at that note's moment
     and to hold the key for as long as the note lasts. They start with the
     simulation, or on a keypress with `--key`.
@@ -39,13 +39,13 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-BLOCKS = os.path.join(REPO, "Orchestra")
+BLOCKS = os.path.join(REPO, "Music")
 
 # Besiege's own block ids, from the game's BlockType enum.
 STARTING_BLOCK = 0
 TIMER = 66
 
-# What a missing Orchestra shows instead, as the game itself writes: a ballast.
+# What a missing Music block shows instead, as the game itself writes: a ballast.
 FALLBACK = 35
 
 # A quarter turn about X, which is what a block placed on a flat surface carries
@@ -374,7 +374,7 @@ class Midi(object):
 # ---- the blocks this mod ships ---------------------------------------------
 
 def catalogue():
-    """Each Orchestra block, read from its own XML: id, name, and its types."""
+    """Each Music block, read from its own XML: id, name, and its types."""
     found = {}
     for path in sorted(glob.glob(os.path.join(BLOCKS, "*.xml"))):
         if os.path.basename(path) == "Mod.xml":
@@ -397,7 +397,7 @@ def catalogue():
         # plays. `iter("Extra")` carries a `default` of its own, which is why this
         # reads the module element rather than any attribute called default.
         chosen = 0
-        for module in root.iter("OrchestraMod"):
+        for module in root.iter("MusicMod"):
             wanted = (module.get("default") or "").strip()
             for index, one in enumerate(types):
                 if one and one.lower() == wanted.lower():
@@ -413,10 +413,10 @@ def mod_details():
     root = ET.parse(os.path.join(BLOCKS, "Mod.xml")).getroot()
     mod_id = (root.findtext("ID") or "").strip()
     if not mod_id:
-        raise SystemExit("Orchestra/Mod.xml has no <ID> yet -- run the game once "
+        raise SystemExit("Music/Mod.xml has no <ID> yet -- run the game once "
                          "with the mod installed so it writes one")
     return mod_id, (root.findtext("Version") or "0.1.0").strip(), \
-        (root.findtext("Name") or "Orchestra").strip()
+        (root.findtext("Name") or "Music").strip()
 
 
 def pick_type(types, wanted, fallback=0):
@@ -582,7 +582,7 @@ def build(notes, options, families):
             continue
 
         _, local, _, _ = families[family.lower()]
-        # 1004 + localId is what this Besiege assigns Orchestra's blocks; the
+        # 1004 + localId is what this Besiege assigns Music's blocks; the
         # loader recomputes it from modId and localId anyway.
         data = place(1004 + local, mod_id, local)
         # N is the block's own default key, kept so the registration loop runs.
@@ -811,7 +811,7 @@ def saved_machines():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Build a Besiege machine that plays a MIDI file on Orchestra "
+        description="Build a Besiege machine that plays a MIDI file on Music "
                     "blocks: an instrument block per pitch, a timer block per note.",
         epilog=instruments(),
         formatter_class=argparse.RawDescriptionHelpFormatter)

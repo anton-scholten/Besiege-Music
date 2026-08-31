@@ -22,7 +22,7 @@ a `RectTransform` into the mapper and have it render, sort or lay out. So a pane
 that wants to look like part of the mapper has to be a separate window *positioned
 against it*, every frame, in screen space.
 
-**The recipe**, as used by `OrchestraPanel`:
+**The recipe**, as used by `MusicPanel`:
 
 ```csharp
 // 1. The mapper's window is a renderer named "Background".

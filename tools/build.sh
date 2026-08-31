@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# Compiles the mod into Orchestra.dll, using Besiege's OWN C# compiler rather
+# Compiles the mod into Music.dll, using Besiege's OWN C# compiler rather
 # than an installed toolchain.
 #
 #   ./tools/build.sh            build the mod's assembly
 #   ./tools/build.sh --check    compile to a temp file only (see verify-build.sh)
 #
-# Mod.xml loads Orchestra.dll directly, so the mod ships as a prebuilt
+# Mod.xml loads Music.dll directly, so the mod ships as a prebuilt
 # assembly rather than a <ScriptAssembly> the game compiles at load time. That
 # is also what makes an offline build worth having: a compile error in a
 # ScriptAssembly is only discovered by launching Besiege.
@@ -20,9 +20,9 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC_DIR="$REPO_DIR/Orchestra/OrchestraScripts"
-BUILD_DIR="${TMPDIR:-/tmp}/besiege-orchestra-build"
-OUT="$REPO_DIR/Orchestra/Orchestra.dll"
+SRC_DIR="$REPO_DIR/Music/MusicScripts"
+BUILD_DIR="${TMPDIR:-/tmp}/besiege-music-build"
+OUT="$REPO_DIR/Music/Music.dll"
 
 CHECK_ONLY=0
 if [[ "${1:-}" == "--check" ]]; then
@@ -37,10 +37,10 @@ fi
 #
 # The scratch *directory* includes the pid so two concurrent builds cannot
 # collide -- the file inside it keeps the assembly's own name, which is what an
-# assembly is identified by once it is loaded. Building to Orchestra.<pid>.dll
+# assembly is identified by once it is loaded. Building to Music.<pid>.dll
 # instead named the assembly after the process, so nothing could reference it.
 mkdir -p "$BUILD_DIR/tmp.$$"
-TMP_OUT="$BUILD_DIR/tmp.$$/Orchestra.dll"
+TMP_OUT="$BUILD_DIR/tmp.$$/Music.dll"
 trap 'rm -rf "$BUILD_DIR/tmp.$$"' EXIT
 
 find_besiege() {
@@ -76,7 +76,7 @@ export MONOETC="$DATA/Mono/etc"
 # UI Factory is needed to *build*, but not to run: the panel is a soft dependency
 # and the block falls back to Besiege's own mapper when UI Factory is absent. The
 # compiler still has to resolve the types, so its assemblies go on the reference
-# path -- see Orchestra/OrchestraScripts/UIF.cs for how the fallback is arranged.
+# path -- see Music/MusicScripts/UIF.cs for how the fallback is arranged.
 find_uifactory() {
     if [[ -n "${UIFACTORY_DIR:-}" ]]; then echo "$UIFACTORY_DIR"; return; fi
     local roots=("$BESIEGE/../../workshop/content/346010/2913469777"
@@ -133,8 +133,8 @@ if [[ ! -f "$XMLCHECK" || "$REPO_DIR/tools/tests/XmlCheck.cs" -nt "$XMLCHECK" ]]
 fi
 if [[ -f "$XMLCHECK" ]]; then
     set +e
-    TARGET_ASM="$XMLCHECK" "$BUILD_DIR/monohost" "$REPO_DIR/Orchestra"/*.xml \
-        "$SRC_DIR/OrchestraModule.cs" "$SRC_DIR/LoaderModule.cs" \
+    TARGET_ASM="$XMLCHECK" "$BUILD_DIR/monohost" "$REPO_DIR/Music"/*.xml \
+        "$SRC_DIR/MusicModule.cs" "$SRC_DIR/LoaderModule.cs" \
         "$SRC_DIR/Braids/SynthModule.cs" \
         "$REPO_DIR/tools/make-block-meshes.py" "$REPO_DIR/tools/make-arrow-mesh.py"
     xml_rc=$?
@@ -224,7 +224,7 @@ SONGCHECK="$BUILD_DIR/tmp.$$/songcheck.exe"
 set +e
 "$HOST" -target:exe -out:"$SONGCHECK" -lib:"$MANAGED" -lib:"$BUILD_DIR/tmp.$$" \
     -r:System.dll -r:System.Xml.dll -r:UnityEngine.dll -r:Assembly-CSharp.dll \
-    -r:Orchestra.dll "$REPO_DIR/tools/tests/SongCheck.cs" >/dev/null
+    -r:Music.dll "$REPO_DIR/tools/tests/SongCheck.cs" >/dev/null
 song_rc=$?
 set -e
 if [[ $song_rc -eq 0 ]]; then

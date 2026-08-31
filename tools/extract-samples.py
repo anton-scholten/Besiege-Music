@@ -22,7 +22,7 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "..", "Orchestra", "Resources", "Samples")
+OUT = os.path.join(HERE, "..", "Music", "Resources", "Samples")
 
 # stem -> (GM preset number, [notes to cover])
 # Three notes per instrument keeps pitch-shifting inside about +/-3 semitones,

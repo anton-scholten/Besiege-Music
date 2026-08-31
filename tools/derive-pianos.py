@@ -43,7 +43,7 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SAMPLES = os.path.join(HERE, os.pardir, "Orchestra", "Resources", "Samples")
+SAMPLES = os.path.join(HERE, os.pardir, "Music", "Resources", "Samples")
 
 RATE = 22050        # as extract-samples.py cuts them
 QUALITY = "2"       # ffmpeg libvorbis -q, the same

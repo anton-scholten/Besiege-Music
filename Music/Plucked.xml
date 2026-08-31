@@ -1,0 +1,104 @@
+<Block>
+	<Debug>false</Debug>
+	<ID>11</ID>
+	<Name>Plucked</Name>
+	<Mass>0.5</Mass>
+	<SearchKeywords>
+		<Keyword>harp</Keyword>
+		<Keyword>koto</Keyword>
+		<Keyword>pizzicato</Keyword>
+		<Keyword>plucked</Keyword>
+		<Keyword>banjo</Keyword>
+		<Keyword>sitar</Keyword>
+	</SearchKeywords>
+	<CanFlip>false</CanFlip>
+	<Fallback>Ballast</Fallback>
+
+	<Modules>
+		<MusicMod modid="aca735ea-a614-4aef-9676-67ec1edd5059" block="Plucked" default="Harp">
+			<Types>
+			<!-- Recordings. These were a Karplus-Strong delay line before, which is
+			     a real string and has no body: a harp's soundboard, a banjo's head
+			     and a sitar's sympathetic strings are most of what those
+			     instruments are. `decay` is the ring-out past the recording. -->
+			<Type name="Harp"       engine="sampler" samples="pluck_harp_34 pluck_harp_54 pluck_harp_73" loops="26188-26944 25664-26139 11424-11623" decay="3.4" />
+			<Type name="Koto"       engine="sampler" samples="pluck_koto_60 pluck_koto_78" loops="7909-8078 3804-3923" decay="1.8" />
+			<Type name="Pizzicato"  engine="sampler" samples="pluck_pizz_39 pluck_pizz_52 pluck_pizz_66" loops="5-41095 5-38537 5-30291" decay="0.6" />
+			<Type name="Banjo"      engine="sampler" samples="pluck_banjo_50 pluck_banjo_59 pluck_banjo_62" loops="35971-37012 39436-40148 35933-36527" decay="1.0" />
+			<Type name="Sitar"      engine="sampler" samples="pluck_sitar_52 pluck_sitar_60 pluck_sitar_72" loops="14499-15837 11657-14775 6693-8336" decay="2.4" />
+			</Types>
+			<Extras>
+			<!-- Hardness is the plectrum against the fingertip. Pluck is where
+			     along the string it was plucked, which is a notch in the spectrum
+			     and the one thing a single recording cannot already be: the same
+			     control the Guitar block carries. A Motor slider stood here while
+			     this block was on the mallets' engine, and a vibraphone's motor
+			     means nothing on a harp. -->
+			<Extra kind="slider" key="HardKey" name="Hardness" min="0" max="1" default="0.5" />
+			<Extra kind="slider" key="PluckKey" name="Pluck" min="0" max="1" default="0" />
+			</Extras>
+		</MusicMod>
+	</Modules>
+
+	<Mesh name="Plucked_mesh">
+		<Position x="0.0" y="0.0" z="0.5" />
+		<Rotation x="0.0" y="0.0" z="0.0" />
+		<Scale x="0.5" y="0.5" z="0.5" />
+	</Mesh>
+
+	<Texture name="Plucked_texture" />
+
+	<Icon>
+		<Position x="0.0" y="0.0" z="-1.5" /> <!--right, up, front-->
+		<Rotation x="-65.0" y="210.0" z="115.0" /> <!--how the toolbar sees it: the front, from above, turned right into the light-->
+		<Scale x="0.5" y="0.5" z="0.5" />
+	</Icon>
+	
+	<FireInteraction burnDuration="5" igniteOnStart="false">
+		<SphereTrigger>
+		<Position x="0" y="0" z="0.3" />
+		<Radius>1</Radius>
+		</SphereTrigger>
+	</FireInteraction>
+
+	<Colliders>
+		<BoxCollider>
+			<Position x="0.0" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Scale x="0.8" y="0.8" z="0.8" />
+		</BoxCollider>
+	</Colliders>
+
+	<BasePoint hasAddingPoint="false">
+		<Stickiness enabled="true" radius="1" />
+		<Motion x="false" y="false" z="false" /> 
+	</BasePoint>
+	
+	<AddingPoints>
+		<AddingPoint> <!--Top-->
+			<Position x="0.0" y="0.0" z="1.0" />
+			<Rotation x="0.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Back-->
+			<Position x="0.0" y="-0.5" z="0.5" />
+			<Rotation x="90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Front-->
+			<Position x="0.0" y="0.5" z="0.5" />
+			<Rotation x="-90.0" y="0.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Left-->
+			<Position x="0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+		<AddingPoint> <!--Right-->
+			<Position x="-0.5" y="0.0" z="0.5" />
+			<Rotation x="0.0" y="-90.0" z="0.0" />
+			<Stickiness enabled="false" radius="0"/>
+		</AddingPoint>
+	</AddingPoints>
+</Block>

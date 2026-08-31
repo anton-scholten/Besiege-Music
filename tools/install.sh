@@ -13,14 +13,14 @@
 # Besiege reads mods once at startup, so restart the game afterwards.
 # Set BESIEGE_DIR if the install is not auto-detected.
 #
-# The folder Besiege loads is Orchestra/, not the repository root: that
+# The folder Besiege loads is Music/, not the repository root: that
 # subfolder is the whole of what gets uploaded to the Workshop, and everything
 # beside it -- sources, tools, docs, working files -- is not part of the mod.
 
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MOD_NAME="Orchestra"
+MOD_NAME="Music"
 SRC="$REPO_DIR/$MOD_NAME"
 
 MODE="link"
@@ -62,7 +62,23 @@ fi
 MODS="$BESIEGE/Besiege_Data/Mods"
 DEST="$MODS/$MOD_NAME"
 
+# The mod was called Orchestra until this version, so an older install sits in a
+# folder of that name -- carrying the same <ID> this one does. Left there,
+# Besiege loads the same mod twice. A symlink at that path is this script's own
+# and goes; a real folder is someone's copy, so it is named rather than deleted.
+OLD_DEST="$MODS/Orchestra"
+clear_old_name() {
+    if [[ -L "$OLD_DEST" ]]; then
+        rm "$OLD_DEST"
+        echo "Removed the old Orchestra symlink $OLD_DEST"
+    elif [[ -d "$OLD_DEST" ]]; then
+        echo "Note: $OLD_DEST is the same mod under its old name. Delete it, or"
+        echo "      Besiege will load this mod twice."
+    fi
+}
+
 if [[ "$MODE" == "uninstall" ]]; then
+    clear_old_name
     if [[ -L "$DEST" ]]; then
         rm "$DEST"
         echo "Removed symlink $DEST"
@@ -79,19 +95,20 @@ if [[ $BUILD -eq 1 ]]; then
     "$REPO_DIR/tools/build.sh"
 fi
 
-if [[ ! -f "$SRC/Orchestra.dll" ]]; then
-    echo "Orchestra/Orchestra.dll is missing; run ./tools/build.sh first." >&2
+if [[ ! -f "$SRC/Music.dll" ]]; then
+    echo "Music/Music.dll is missing; run ./tools/build.sh first." >&2
     exit 1
 fi
 
 mkdir -p "$MODS"
+clear_old_name
 # Replace whatever is there, whichever kind it is, then install.
 [[ -L "$DEST" ]] && rm "$DEST"
 [[ -d "$DEST" ]] && rm -rf "$DEST"
 
 if [[ "$MODE" == "copy" ]]; then
     cp -r "$SRC" "$DEST"
-    rm -rf "$DEST/OrchestraScripts"
+    rm -rf "$DEST/MusicScripts"
     echo "Copied mod to $DEST"
 else
     ln -s "$SRC" "$DEST"

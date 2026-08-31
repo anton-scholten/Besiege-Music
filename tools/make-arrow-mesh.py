@@ -24,7 +24,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-OUT = os.path.join(REPO, "Orchestra", "Resources", "Instruments")
+OUT = os.path.join(REPO, "Music", "Resources", "Instruments")
 
 BLOCK = "Loader"
 

@@ -1,7 +1,7 @@
 # Machines that play a song
 
 There are two ways to turn a MIDI file into a Besiege machine that plays it on
-Orchestra blocks, and they write the same machine.
+Music blocks, and they write the same machine.
 
 **In the game**, the **Loader** block — the download arrow — reads a file, says
 what it comes to, and either adds those blocks to the machine you are building or
@@ -36,7 +36,7 @@ The panel leads with the folder to put files in, because that is the first thing
 anybody needs:
 
 ```
-Besiege_Data/Mods/Data/Orchestra_<mod id>/Songs
+Besiege_Data/Mods/Data/Music_<mod id>/Songs
 ```
 
 The path is a button — click it and the folder opens in your file manager. The
@@ -131,8 +131,8 @@ the kit -- and leaves every other channel exactly as it was. That file now reach
 88 seconds on the same note budget.
 
 ```sh
-./tools/strip-drums.py "Orchestra/Songs/Some Song.mid" --check   # say what is there
-./tools/strip-drums.py "Orchestra/Songs/Some Song.mid"           # take it out
+./tools/strip-drums.py "Music/Songs/Some Song.mid" --check   # say what is there
+./tools/strip-drums.py "Music/Songs/Some Song.mid"           # take it out
 ```
 
 It is not `make-song.py --no-drums`, which keeps those notes and plays them
@@ -172,7 +172,7 @@ version of the whole of it.
 `ModIO` has two roots, chosen by the `data` flag every one of its methods takes:
 the mod's **data** folder above, which the player can write to, and the mod's
 **own** folder, which is the directory a Workshop subscription downloads into.
-Anything in `Orchestra/Songs/` is read from the second and listed with
+Anything in `Music/Songs/` is read from the second and listed with
 `(built-in) ` in front of its name.
 
 Nothing has to be declared for it. A MIDI file is read as bytes rather than loaded
@@ -213,7 +213,7 @@ the mod loader forbids by name and every caller of it is private, and `ModIO` --
 the only file API a mod has -- refuses any path outside the mod's own folders. The
 game naming the file is no loss: it also asks before overwriting and renders the
 thumbnail. Where that screen cannot be found, the `.bsg` is written into
-`Mods/Data/Orchestra_<id>/Machines/` instead and the panel says so.
+`Mods/Data/Music_<id>/Machines/` instead and the panel says so.
 
 What the loader cannot do that the tool can: several instruments at once (it puts
 every pitched part on one block family), a slice of a score, or a tempo of its own.
@@ -253,7 +253,7 @@ block placed on a flat surface, so the instruments face the sky rather than lyin
 on their sides:
 
 - an **instrument block** per distinct pitch, set to that note and nothing else —
-  an Orchestra block plays one note, so a tune is a row of blocks;
+  a Music block plays one note, so a tune is a row of blocks;
 - a **timer block** per note in the score, `wait` set to the note's moment and
   `emulation-time` to its length. Each timer waits its own time from the key --
   `M` unless `--key` says otherwise -- so one press starts the band. With

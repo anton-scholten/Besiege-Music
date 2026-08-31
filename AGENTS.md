@@ -8,11 +8,11 @@ disk and writes the machine that plays it.
 ## Layout
 
 ```
-Orchestra/            the folder Besiege loads, and what goes to the Workshop
+Music/                the folder Besiege loads, and what goes to the Workshop
   Mod.xml             manifest; <ID> is written by the game on first load, keep it
   Piano.xml ...       one per block, each declaring its own types and controls
   Loader.xml          the MIDI loader block: a tool, not an instrument
-  OrchestraScripts/   sources; the built Orchestra.dll sits beside them
+  MusicScripts/       sources; the built Music.dll sits beside them
   Resources/          mesh, texture, icon, and Samples/ once cut
 tools/                build, install, the sample extractor, the song makers
 docs/                 sample cutting, design notes, and modding notes
@@ -22,9 +22,9 @@ The sources fall into three groups:
 
 | Files | What they are |
 | --- | --- |
-| `InstrumentBehaviour`, `Voices`, `SampleBank`, `OrchestraModule` | the eleven instruments and their sound |
+| `InstrumentBehaviour`, `Voices`, `SampleBank`, `MusicModule` | the eleven instruments and their sound |
 | `Midi`, `Song`, `Bsg`, `Drop`, `Catalogue`, `Files` | the converter: a score in, blocks out |
-| `DockedPanel`, `OrchestraPanel`, `LoaderPanel`, `UIF`, `IconArt`, `ClickShield` | the two panels, and the UI Factory they need |
+| `DockedPanel`, `MusicPanel`, `LoaderPanel`, `UIF`, `IconArt`, `ClickShield` | the two panels, and the UI Factory they need |
 
 **The converter touches no Unity object**, which is why it can be -- and is --
 checked at build time by `tools/tests/SongCheck.cs`, running on Besiege's own Mono
@@ -44,13 +44,13 @@ blacklist (`BlacklistCheck`), and the MIDI converter against a made-up score
 
 The assembly is built into a scratch *directory* rather than under a scratch
 *name*: an assembly is identified by its name once loaded, so building to
-`Orchestra.<pid>.dll` made it impossible for the song check to reference.
+`Music.<pid>.dll` made it impossible for the song check to reference.
 
 **That compiler is C# 4 and old.** No interpolated strings, no `?.`, no
 `nameof`. **Any `enum` declaration segfaults it** — engine names are strings and
 constants are `const int`.
 
-`Modding.Serialization` may be imported in `OrchestraModule.cs` because that file
+`Modding.Serialization` may be imported in `MusicModule.cs` because that file
 has no `UnityEngine.Vector3` to clash with the one that namespace declares. Do
 not import it anywhere that does.
 
@@ -213,7 +213,7 @@ initialiser is what the value *becomes*, `[DefaultValue]` is what makes the
 attribute *optional*, and you need both. Besiege's own modules do exactly this;
 `Modding.Modules.Official.ShootingModule` marks eight.
 
-So the rule in `OrchestraModule.cs` is: **a field that declares a default in C#
+So the rule in `MusicModule.cs` is: **a field that declares a default in C#
 carries the matching `[DefaultValue]`; a field without one is required.** Three
 are required today — `Type name`, `Extra key`, `Extra name`. `XmlCheck` reads
 those markers out of the module source and checks every block XML against them.
@@ -224,7 +224,7 @@ even when several are wrong. Do not fix them one launch at a time.
 ### Reading the log is the first move, not the last
 
 The nine blocks were "not customizable" for one launch longer than they needed
-to be because `Player.log` was searched for `Orchestra` — which never appears —
+to be because `Player.log` was searched for `Music` — which never appears —
 instead of `[Mods]`, where all nine errors were sitting. Mods are logged under
 that tag and under nothing else.
 
@@ -295,7 +295,7 @@ frame rate, or miss it entirely at a low one.
 
 ## The panel
 
-`OrchestraPanel` is one MonoBehaviour on a `DontDestroyOnLoad` object, made in
+`MusicPanel` is one MonoBehaviour on a `DontDestroyOnLoad` object, made in
 `Mod.OnLoad`, watching `BlockMapper.onMapperOpen`/`onMapperClose`. It builds from
 the block's own registered controls — `ExtraSliders`, `ExtraToggles`, the type
 menu — so an instrument declared in XML gets its rows without code.
@@ -362,7 +362,7 @@ mod.
 **The mapper is a fallback, not a second panel.** Every mapper control except the
 key sets `DisplayInMapper = false` once `UIF.Available` says yes, so with UI
 Factory installed Besiege's own menu holds the key alone and the panel draws the
-rest; without it, or if the panel throws while building (`OrchestraPanel.Failed`),
+rest; without it, or if the panel throws while building (`MusicPanel.Failed`),
 everything comes back. Besiege reads that flag as it builds its rows, so a change
 lands on the next open rather than while the mapper is up. The question is put on
 a half-second timer rather than every frame: UI Factory loads its bundle after the

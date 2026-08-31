@@ -6,7 +6,7 @@
 
 - **The Braids Synth mod is now a block in this one.** Mutable Instruments'
   macro-oscillator, twenty-three models and its own panel, moved in whole: the
-  sources sit under `Orchestra/OrchestraScripts/Braids/` unchanged from the mod
+  sources sit under `Music/MusicScripts/Braids/` unchanged from the mod
   they came from, licence file included, and the only edit is that what was their
   `Mod.OnLoad` is two lines of this mod's. Its block XML is the same file with a
   new local id and this mod's guid on the module element.
@@ -161,7 +161,7 @@
   summary redraws when the drag settles, so what a number costs in dropped notes is
   visible before anything is placed. Slider rows can now be whole numbers: a count
   snaps and is shown without decimals, where before only note rows snapped.
-- **Songs can ship with the mod.** Anything in `Orchestra/Songs/` is listed in the
+- **Songs can ship with the mod.** Anything in `Music/Songs/` is listed in the
   loader's file selector after the player's own, with `(built-in)` in front of it,
   and read out of the mod's own folder rather than its data one -- `ModIO`'s other
   root, and the directory a Workshop subscription downloads into. Nothing needs
@@ -191,6 +191,14 @@
   the mod it arrived from too.
 **Changed**
 
+- **The mod is called Music, not Orchestra.** It grew past the name: an FM synth
+  and Braids' macro-oscillator are not orchestral instruments, and the loader
+  block is not an instrument at all. The mod folder is `Music/`, its sources
+  `Music/MusicScripts/`, the assembly `Music.dll`, the namespace `MusicMod`, and
+  the block module element in every block XML is `<MusicMod>`. The mod's guid is
+  unchanged, so machines built with it still load; its data folder moves with the
+  name, from `Mods/Data/Orchestra_<guid>/` to `Mods/Data/Music_<guid>/`, so
+  **songs and machines kept in the old folder have to be moved across by hand**.
 - The two synth blocks are called **FM Synth** and **Braids** now, rather than
   "Synth" and "Synth Block", which named neither of them and read as a pair of
   the same thing in the toolbar. The FM block's family in a score is `FM Synth`,
@@ -332,7 +340,7 @@
   machine then names both mods in `requiredMods`, or the game would swap those
   blocks for a ballast without saying so. Nothing is referenced at compile time and
   nothing breaks when the mod is absent: the synth parts go to the nearest
-  Orchestra block, as before. `tools/make-song.py --braids` does the same, and asks
+  Music block, as before. `tools/make-song.py --braids` does the same, and asks
   rather than detects, a command-line tool having no way to see what is installed.
   On Shelter, with Braids: 70 synth blocks where there were none, and the guitar
   drops from 50 blocks to 22.
@@ -584,7 +592,7 @@
   which control each row stands for.
 - `tools/build.sh` builds into a scratch *directory* rather than under a scratch
   *name*. An assembly is identified by its name once loaded, and building to
-  `Orchestra.<pid>.dll` named the assembly after the process, so nothing could
+  `Music.<pid>.dll` named the assembly after the process, so nothing could
   reference it.
 - `docs/MODDING-NOTES.md`: what this mod had to work out about Besiege's modding
   API, written for whoever needs the same thing next -- how to dock a UI Factory
