@@ -23,6 +23,7 @@ namespace MusicMod
         private MSlider RangeSlider;
         private MSlider TransposeSlider;
         private MSlider DelaySlider;
+        private MSlider StartSlider;
         private MSlider TempoSlider;
         private MSlider LimitSlider;
         private MKey StartKeyBinding;
@@ -176,6 +177,15 @@ namespace MusicMod
             // ask for rather than a thing to be given.
             DelaySlider = AddSlider("Delay", "LeadKey", 0f, 0f, 10f);
 
+            // Where in the score to begin, in seconds from its first note. Notes
+            // before it are not placed, and what is left moves back so the key
+            // still plays the first block written -- which is what makes this
+            // worth having: the note limit takes a long song from the front, and
+            // this is how the rest of it is reached. Declared wide enough for any
+            // score; the panel holds the handle to the length of the one chosen,
+            // which is the only part of the range that means anything.
+            StartSlider = AddSlider("Start at", "StartAtKey", 0f, 0f, 3600f);
+
             // Beats per minute. Set to whatever the file says as soon as one is
             // read, and left alone after that until another file is picked -- so
             // it is a readout most of the time and a setting when it is wanted.
@@ -293,6 +303,7 @@ namespace MusicMod
             RangeSlider.DisplayInMapper = show;
             TransposeSlider.DisplayInMapper = show;
             DelaySlider.DisplayInMapper = show;
+            StartSlider.DisplayInMapper = show;
             FileText.DisplayInMapper = show;
             PrefixText.DisplayInMapper = show;
             TempoSlider.DisplayInMapper = show;
@@ -334,6 +345,9 @@ namespace MusicMod
         public MSlider Tempo { get { return TempoSlider; } }
         public MSlider Limit { get { return LimitSlider; } }
 
+        /// <summary>Seconds into the score the machine starts from.</summary>
+        public MSlider Start { get { return StartSlider; } }
+
         /// <summary>The instrument every pitched part goes to, as the converter
         /// wants it: the block, and the instrument within it after a colon.</summary>
         public string Instrument
@@ -372,6 +386,7 @@ namespace MusicMod
             options.Transpose = TransposeSlider == null
                 ? 0 : Mathf.RoundToInt(TransposeSlider.Value);
             options.Offset = DelaySlider == null ? 0f : DelaySlider.Value;
+            options.Start = StartSlider == null ? 0f : StartSlider.Value;
             // Nought means "follow the file", which is not the same as asking for
             // the tempo the file starts at: a score that changes tempo part way
             // through keeps every one of its changes, where a number here flattens

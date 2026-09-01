@@ -23,8 +23,9 @@ Place it, click it, and Besiege's own menu keeps **the key and nothing else** --
 every timer the block writes waits for that key, so binding it there binds the
 whole song, and rebinding is the mapper's own business. Everything else is in the
 panel docked underneath: the folder, the file, the two selectors (which block, and
-which instrument within it), volume, range, transpose and delay, the summary, and
-the two buttons. With no key bound the timers start with the simulation instead.
+which instrument within it), volume, range, transpose and delay, the summary,
+START AT, and the two buttons. With no key bound the timers start with the
+simulation instead.
 
 The file list is a dropdown rather than the game's `< choice >` stepper -- a
 folder of thirty files is thirty presses of an arrow. Its open list is shortened
@@ -166,6 +167,28 @@ score is not something to do sixty times a second.
 Notes past the limit are dropped from the end, after everything else has been
 worked out, so a truncated song is the beginning of the piece rather than a thinned
 version of the whole of it.
+
+### Starting somewhere else in the score
+
+Which is what **START AT** is for. The limit takes a long song from the front, so
+without it the second half of a piece is unreachable: set START AT to a minute in
+and the machine is built from there instead. Everything before it is left out, and
+the clock is zeroed on the first note that survived -- so the key still plays a
+note rather than waiting out however far the handle landed from one.
+
+It is `tools/make-song.py --from`, and the two do the same thing. The slider is
+declared to take an hour, which no handle could usefully cover; the panel holds it
+to the length of whichever song is loaded, and to five minutes while none is. Its
+box takes anything the handle will not reach, as every other row's does.
+
+The row is always there, like every other row in this panel. A position set for
+one song is worth keeping when the next is chosen -- comparing the same passage
+across two arrangements is most of what it is for -- and a row that came and went
+with the file would take the setting off the screen at exactly that moment.
+
+A note already sounding at that moment goes with the ones before it: what would
+otherwise be placed is a block struck where the note was cut, which is not the
+note anybody wrote.
 
 ### Songs that ship with the mod
 

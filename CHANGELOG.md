@@ -232,6 +232,35 @@
   it live meant a slider that answered a drag by moving while the two lines above
   it said nothing was listening. The value is kept -- it is the block's own
   setting -- and comes back the moment a model that reads it is chosen.
+- **The loader block has a START AT slider**, under the summary. The note limit
+  takes a long song from the front, which left the second half of a piece
+  unreachable; this begins the machine wherever it is set instead, dropping what
+  came before and zeroing the clock on the first note that survived, so the key
+  still plays a note. It is `tools/make-song.py --from`, which the tool has had
+  all along and the block had not, and the two now do the same thing. The setting
+  takes an hour, which no handle could cover: the panel holds it to the length of
+  whichever song is loaded, and to five minutes while none is, with the box
+  reaching the rest as on every other row.
+- **Every slider on the loader names its unit** -- `VOLUME (0-1)`, `RANGE (m)`,
+  `TRANSPOSE (semitones)`, `DELAY (s)`, `TEMPO (bpm)`, `NOTE LIMIT (notes)`,
+  `START AT (s)`. Not one of them was a number you could tell the unit of by
+  looking at it: 300 is metres or it is nothing, and 700 is notes and not seconds
+  of them. The caption column is 150 wide here rather than the instrument panel's
+  96 to hold them, and the sliders lose the difference from their left end -- the
+  boxes at their right end do not move, so the numbers stay in one column down
+  the whole panel.
+- **VARIABLE is VARIABLE PREFIX**, which is what it always set: the box holds
+  what every variable the song writes is named *after*, and the shorter caption
+  read as the name of the thing in the box.
+- **FILE gets its caption column back.** Four letters were being given the same
+  96 as VARIABLE PREFIX in front of the one control in the panel whose contents
+  run long; the list is 54 units wider now, which is that much more of a file
+  name before it is cut.
+- **The loader says what its folder holds under the folder's path**, rather than
+  at the foot of the window among the results of pressing things. "23 files in
+  that folder." is the answer to a question about the folder, and it was being
+  read three inches away from it -- and only after the reload arrow was pressed,
+  where it is now simply always true.
 - **The loader's summary is a column of measurements and a list, not four
   crammed lines.** The first two lines are counts on one pattern --
   `Length 2:43   Notes 512   Tempo 120 bpm (the file's)` over

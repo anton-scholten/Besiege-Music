@@ -74,7 +74,10 @@ namespace MusicMod
         /// search is not repeated every frame.</summary>
         private Camera mapperEye;
 
-        /// <summary>The column the captions are written in.</summary>
+        /// <summary>The column the captions are written in. A panel's own, and set
+        /// before it builds: the loader names a unit on every slider and wants a
+        /// wider column than the instrument panel, whose captions are a block's own
+        /// one-word names.</summary>
         protected float LabelWidth = 96f;
 
         /// <summary>The number at the end of a slider row.</summary>
@@ -158,13 +161,18 @@ namespace MusicMod
                   TextAnchor.MiddleLeft, UIF.Ink);
             // Centred on the slider column and the number beside it together,
             // rather than started where the sliders start: it is the odd row out.
+            //
+            // Narrowed to what is there where that is less than it wants: the width
+            // is the mapper's, which is a different number on a different screen,
+            // and a caption column wide enough to name a unit leaves less of it
+            // than this control was authored at.
             float span = width - Margin * 2f - LabelWidth;
+            float wide = Mathf.Min(SelectorWidth, span);
             // Lettered at the size of the boxes and the toggles rather than the
             // size of the captions: this is a name to be read, not a column head.
             return Chooser.Make(host, transform,
-                                Margin + LabelWidth + (span - SelectorWidth) / 2f, y,
-                                SelectorWidth, RowHeight, choices, picked, true,
-                                FieldFont);
+                                Margin + LabelWidth + Mathf.Max(0f, (span - wide) / 2f),
+                                y, wide, RowHeight, choices, picked, true, FieldFont);
         }
 
         /// <summary>
