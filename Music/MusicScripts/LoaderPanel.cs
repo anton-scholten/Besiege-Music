@@ -42,18 +42,20 @@ namespace MusicMod
         /// reads as one block of text rather than three lines.</summary>
         private const float PathLines = 1.2f;
 
-        /// <summary>How many lines the summary is given. Fixed, so the window is
-        /// the same height whatever it has to say and does not jump about as a
-        /// file is chosen.</summary>
-        private const int SummaryLines = 4;
+        /// <summary>
+        /// How many lines the summary is given. Fixed, so the window is the same
+        /// height whatever it has to say and does not jump about as a file is
+        /// chosen.
+        ///
+        /// One thing per line: what the song is, what it costs, what it is played
+        /// on, and a line each for the two ways notes are lost -- which are
+        /// separate lines because they are separate problems with separate
+        /// answers, and are coloured apart from the rest.
+        /// </summary>
+        private const int SummaryLines = 5;
 
-        /// <summary>Room for three wrapped lines on the last of them, which carries
-        /// both note counts, a sentence for each, and the tempo. Three rather than
-        /// the two a mapper-width window needs: the rows are laid out to the
-        /// mapper, which is narrower on a smaller screen, and the overflow is
-        /// truncated rather than spilled. Fixed, like the rest of this window: the
-        /// same height whether anything was lost or not.</summary>
-        private const float LastLineHeight = 56f;
+        /// <summary>How tall one of them is.</summary>
+        private const float SummaryLineHeight = 18f;
 
 
         /// <summary>
@@ -70,7 +72,7 @@ namespace MusicMod
 
         private readonly List<Text> summary = new List<Text>();
         private Text status;
-        private Color statusInk = UIF.QuietInk;
+        private Color statusInk = UIF.Ink;
 
         /// <summary>The folder the files are listed from -- its name, which is the
         /// part worth typing -- and the whole path underneath, which is the part
@@ -307,7 +309,7 @@ namespace MusicMod
         private float BuildFolder(float y)
         {
             Label("FOLDER", Margin, y, LabelWidth, RowHeight, 13,
-                  TextAnchor.MiddleLeft, UIF.QuietInk);
+                  TextAnchor.MiddleLeft, UIF.Ink);
 
             float side = RowHeight;
             float x = Margin + LabelWidth;
@@ -337,7 +339,7 @@ namespace MusicMod
             // says which install it is.
             y += RowHeight + 2f;
             folderPath = Label("", Margin, y, width - Margin * 2f, PathHeight, 13,
-                               TextAnchor.UpperLeft, UIF.QuietInk);
+                               TextAnchor.UpperLeft, UIF.Ink);
             if (folderPath != null)
             {
                 folderPath.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -359,10 +361,10 @@ namespace MusicMod
         private float BuildList(float y)
         {
             Label("FILE", Margin, y, LabelWidth, RowHeight, 13,
-                  TextAnchor.MiddleLeft, UIF.QuietInk);
+                  TextAnchor.MiddleLeft, UIF.Ink);
             fileList = Chooser.Make(host, transform, Margin + LabelWidth, y,
                                     width - Margin * 2f - LabelWidth, RowHeight,
-                                    Listed(), Chosen(), false);
+                                    Listed(), Chosen(), false, FieldFont);
             return y + RowHeight + RowGap * 2f;
         }
 
@@ -469,7 +471,7 @@ namespace MusicMod
             if (face != null)
             {
                 face.sprite = glyph;
-                face.color = UIF.QuietInk;
+                face.color = UIF.Ink;
                 // The drawing is inset within its own square, so the picture is the
                 // right size while the whole button stays the thing that is clicked.
                 face.preserveAspect = false;
@@ -485,26 +487,17 @@ namespace MusicMod
         {
             for (int i = 0; i < SummaryLines; i++)
             {
-                // The last line is the one that runs long -- two counts and a
-                // sentence about each -- so it is given the room to wrap and told
-                // to. The three above it are one measurement apiece and fit.
-                bool last = i == SummaryLines - 1;
-                float high = last ? LastLineHeight : 18f;
-                Text line = Label("", Margin, y, width - Margin * 2f, high, 12,
-                                  last ? TextAnchor.UpperLeft : TextAnchor.MiddleLeft,
-                                  UIF.QuietInk);
-                if (line != null && last)
-                {
-                    line.horizontalOverflow = HorizontalWrapMode.Wrap;
-                    line.verticalOverflow = VerticalWrapMode.Truncate;
-                    line.lineSpacing = 1.1f;
-                }
-                summary.Add(line);
-                y += high;
+                // A line apiece, all the same height: each one says one thing, and
+                // the two that can run long -- the instruments, and the notes lost
+                // past the limit -- are held to a line by the counts that end them.
+                summary.Add(Label("", Margin, y, width - Margin * 2f,
+                                  SummaryLineHeight, 12, TextAnchor.MiddleLeft,
+                                  UIF.Ink));
+                y += SummaryLineHeight;
             }
             y += RowGap;
             status = Label("", Margin, y, width - Margin * 2f, 20f, 12,
-                           TextAnchor.MiddleLeft, UIF.QuietInk);
+                           TextAnchor.MiddleLeft, UIF.Ink);
             return y + 20f + RowGap * 2f;
         }
 
@@ -524,7 +517,7 @@ namespace MusicMod
         private float BuildPrefix(float y)
         {
             Label("VARIABLE", Margin, y, LabelWidth, RowHeight, 13,
-                  TextAnchor.MiddleLeft, UIF.QuietInk);
+                  TextAnchor.MiddleLeft, UIF.Ink);
             prefixBox = Typing.On(Box(Margin + LabelWidth, y,
                                       width - Margin * 2f - LabelWidth,
                                       TextAnchor.MiddleLeft, 24,
@@ -714,6 +707,7 @@ namespace MusicMod
                 if (summary[i] != null)
                 {
                     summary[i].text = "";
+                    summary[i].color = UIF.Ink;
                 }
             }
             if (block == null)
@@ -725,65 +719,74 @@ namespace MusicMod
                 Line(0, string.IsNullOrEmpty(block.Path)
                     ? "No file chosen yet."
                     : "Nothing read from that file yet.");
-                Say(block.Trouble, block.Trouble == null ? UIF.QuietInk : Bad);
+                Say(block.Trouble, block.Trouble == null ? UIF.Ink : Bad);
                 return;
             }
 
             SongPlan plan = block.Plan;
+            // What the song is. The tempo belongs here rather than tacked onto the
+            // end of the losses: it is the third measurement of the same thing --
+            // the length above was worked out at it, and a file that says something
+            // absurd is worth catching before a thousand blocks are placed for it.
+            string beat = block.Tempo == null ? "" :
+                "     Tempo  " + block.Tempo.Value.ToString("0.#") + " bpm"
+                + (block.TempoFromFile ? " (the file's)" : " (set here)");
             Line(0, "Length  " + Clock(plan.Seconds)
-                  + "     Notes  " + plan.Notes.ToString());
-            // The count ADD puts in the machine. Saving writes one more, the
-            // starting block every machine of its own has to have.
-            Line(1, "Blocks  " + (plan.Voices + plan.Timers).ToString()
-                  + "  =  " + plan.Voices.ToString() + " instrument"
-                  + (plan.Voices == 1 ? "" : "s")
-                  + " + " + plan.Timers.ToString() + " timer"
-                  + (plan.Timers == 1 ? "" : "s")
-                  + ", +1 starting block when saved");
-            Line(2, "Parts   " + Joined(plan.Parts));
+                  + "     Notes  " + plan.Notes.ToString() + beat);
 
-            string lost = "";
+            // What it costs, in the two kinds of block it is made of, counted the
+            // way the line above counts. No mention of the starting block a save
+            // adds: it is one block, it is not optional, and it was a caveat on a
+            // number nobody is counting that closely.
+            Line(1, "Instruments  " + plan.Voices.ToString()
+                  + "     Timers  " + plan.Timers.ToString());
+
+            // What it is played on, as "Guitar (Steel) x11" a piece. No caption:
+            // the line is a list of instruments and reads as one.
+            Line(2, Joined(plan.Parts));
+
+            // The two ways notes are lost, a line each. They are not the same
+            // problem -- one is the score asking a single block for two notes at
+            // once, which nothing here can change, and the other is the limit this
+            // panel sets, so that one says where to go.
             if (plan.Crowded > 0)
             {
-                lost = plan.Crowded.ToString() + " note"
-                     + (plan.Crowded == 1 ? "" : "s")
-                     + " inside another on the same block.";
+                Line(3, plan.Crowded.ToString() + " note"
+                      + (plan.Crowded == 1 ? " was" : "s were")
+                      + " inside another on the same block.", Lost);
             }
             if (plan.Dropped > 0)
             {
-                lost += (lost.Length > 0 ? " " : "")
-                     + plan.Dropped.ToString() + " note"
-                     + (plan.Dropped == 1 ? " past the limit was dropped."
-                                          : "s past the limit were dropped.");
+                Line(4, plan.Dropped.ToString() + " note"
+                      + (plan.Dropped == 1 ? " past the limit was dropped."
+                                           : "s past the limit were dropped.")
+                      + "  (increase note limit)", Lost);
             }
-            // The key is the one setting still in Besiege's own mapper, so the
-            // panel says what it is set to rather than leaving the player to look.
-            string variable = block.KeyVariable();
-            string starts = block.OnSimulationStart
-                ? "Starts with the simulation -- no key is bound."
-                : "Starts " + block.Delay.Value.ToString("0.0") + " s after "
-                  + (variable == null
-                        ? block.KeyName() + " is pressed."
-                        : "the variable " + variable + " is raised.");
-            // Which tempo the length above was worked out at, and whose it is: a
-            // file that says something absurd is worth catching before a thousand
-            // blocks are placed for it.
-            string beat = block.Tempo == null ? "" :
-                "  --  " + block.Tempo.Value.ToString("0.#") + " bpm"
-                + (block.TempoFromFile ? " (the file's)" : " (set here)");
-            Line(3, (lost.Length > 0 ? lost : starts) + beat);
             shownFor = Fingerprint();
-            Say(block.Trouble, block.Trouble == null ? UIF.QuietInk : Bad);
+            Say(block.Trouble, block.Trouble == null ? UIF.Ink : Bad);
         }
 
         private static readonly Color Bad = new Color(0.93f, 0.45f, 0.35f, 1f);
         private static readonly Color Good = new Color(0.55f, 0.85f, 0.55f, 1f);
 
+        /// <summary>Notes that did not make it into the machine, either way they
+        /// went. Amber rather than red: the song still plays, and a summary that
+        /// says a file loaded fine in the colour of a failure is a summary that has
+        /// cried wolf by the time something has actually gone wrong -- which is
+        /// what <see cref="Bad"/> is for.</summary>
+        private static readonly Color Lost = new Color(0.96f, 0.66f, 0.23f, 1f);
+
         private void Line(int index, string text)
+        {
+            Line(index, text, UIF.Ink);
+        }
+
+        private void Line(int index, string text, Color ink)
         {
             if (index < summary.Count && summary[index] != null)
             {
                 summary[index].text = text;
+                summary[index].color = ink;
             }
         }
 
@@ -816,7 +819,7 @@ namespace MusicMod
             {
                 if (line.Length + parts[i].Length > 46)
                 {
-                    return line + " (+" + (parts.Count - i).ToString() + " more)";
+                    return line + ", +" + (parts.Count - i).ToString() + " more";
                 }
                 line += ", " + parts[i];
             }
@@ -882,7 +885,7 @@ namespace MusicMod
             string refused = Files.SetSongFolder(text);
             if (refused == null)
             {
-                Say("Listing " + Files.SongsPath(), UIF.QuietInk);
+                Say("Listing " + Files.SongsPath(), UIF.Ink);
             }
             else if (refused.Length > 0)
             {
@@ -905,7 +908,7 @@ namespace MusicMod
         {
             Files.ShowSongFolder();
             Say("Put .mid files in that folder, then press the reload arrow.",
-                UIF.QuietInk);
+                UIF.Ink);
         }
 
         /// <summary>
@@ -920,7 +923,7 @@ namespace MusicMod
             Say(files.Count == 0
                 ? "Nothing in that folder yet."
                 : files.Count.ToString() + " file"
-                  + (files.Count == 1 ? "" : "s") + " in that folder.", UIF.QuietInk);
+                  + (files.Count == 1 ? "" : "s") + " in that folder.", UIF.Ink);
         }
 
         /// <summary>

@@ -191,6 +191,62 @@
   the mod it arrived from too.
 **Changed**
 
+- **The Braids block's panel is the same panel every other block gets.** It came
+  in from a mod of its own carrying its own copy of the furniture -- its own
+  slider rows, its own value boxes, its own model chooser, its own full-width
+  LISTEN plate -- and the two copies had drifted: different fonts, different
+  column widths, a chooser drawn at 26 where the rest of the mod draws 22, and a
+  block whose settings you set by a different set of gestures from its
+  neighbour's. All of it is `DockedPanel`'s now. The rows, the value boxes and
+  the typing are the shared ones, so NOTE reads `C4` and can be typed back as
+  `C4`, `c#4` or `60` exactly as an instrument block's does. The model is drawn
+  as a `MODEL` caption and the same centred `< name >` selector the instruments
+  put their `INSTRUMENT` in. The block's toggle has come off Besiege's mapper and
+  joined the speaker on a last row, the way every instrument block already ended.
+  The trace and the two lines saying what TIMBRE and COLOR mean under the chosen
+  model are what is left of the panel's own: they are the reason the block has a
+  panel at all.
+- **The sliders that shape a sound no longer write a unit into the box.** TIMBRE,
+  COLOR, VOLUME, ATTACK, RELEASE, FINE and RANGE were written `50%`, `10 ms`,
+  `+0 cents`, `8 m` -- a number decorated with the thing it happened to be
+  measured in, in a box that then had to read its own decoration back. They are
+  plain numbers now, on one rule for the whole mod: a count is written whole and
+  everything else to two places. NOTE keeps its name, because `60` is not a
+  pitch anybody thinks in and `C4` is.
+- **The panels are written in white.** Captions, values, summaries, status lines
+  and the selector's lettering were a light grey, which beside Besiege's own
+  white menus read as a mod's approximation of them. Grey is left for the two
+  things that genuinely are not being said: a text box's ghost prompt, and a
+  synth control the model in force makes no use of. The speaker at the foot of a
+  panel is white too, and turns Besiege's red while the block is sounding, which
+  is what the game paints anything that is in force. A toggle's word stays white
+  either way: the Text Toggle paints its own plate that same red when it is on,
+  so a caption that answered the state in colour was red on red -- which is how
+  the piano's SUSTAIN came to vanish the moment it was switched on.
+- The selectors are lettered at the size of the boxes and toggles beside them
+  rather than two points under, which is what the row captions are drawn at. A
+  selector holds a name to be read -- `Upright piano`, `Triple saw` -- not a
+  column head.
+- **A synth control the model ignores is now switched off, not just greyed.** Its
+  handle will not drag and its box will not take a caret. Greying it and leaving
+  it live meant a slider that answered a drag by moving while the two lines above
+  it said nothing was listening. The value is kept -- it is the block's own
+  setting -- and comes back the moment a model that reads it is chosen.
+- **The loader's summary is a column of measurements and a list, not four
+  crammed lines.** The first two lines are counts on one pattern --
+  `Length 2:43   Notes 512   Tempo 120 bpm (the file's)` over
+  `Instruments 24   Timers 512` -- with the tempo moved up beside the length it
+  was worked out from, and the block count stripped of its arithmetic and its
+  caveat: `Blocks 536 = 24 instruments + 512 timers, +1 starting block when saved`
+  said three things to say one, and the starting block a save adds is a footnote
+  on a number nobody counts that closely. The third line is the instruments
+  themselves, uncaptioned because a list of them reads as one, and a part is
+  written `Guitar (Steel) x11` rather than `Guitar: Steel x11` so the name and the
+  type do not run together across a row of them. The two ways notes go missing get
+  a line each in amber, where they used to share a sentence with the tempo, and
+  the one the panel can do something about ends `(increase note limit)`. The
+  line saying which key starts the song is gone: it is the one setting Besiege's
+  own mapper still shows, a few inches above.
 - **The mod is called Music, not Orchestra.** It grew past the name: an FM synth
   and Braids' macro-oscillator are not orchestral instruments, and the loader
   block is not an instrument at all. The mod folder is `Music/`, its sources
@@ -211,6 +267,19 @@
 
 **Fixed**
 
+- **The marimba, the xylophone, the steel drum and the pizzicato struck twice for
+  every key press.** Ten of the mod's recordings carried loop points that spanned
+  the whole of the sample -- `4-47612` on a sample 47612 frames long -- which is
+  not a loop but how a SoundFont marks one it plays straight through, its two
+  points left at the ends rather than set. `SamplerVoice` read them as real, and
+  for a struck instrument a loop is the ring-out: so the playhead reached the end
+  of the marimba note, wrapped to frame 4, and played the whole note again on a
+  fading envelope. The four are published unlooped now and ring out on
+  `SampleBank.FindTail` instead, which is the machinery meant for exactly this
+  and which a loop was switching off. Nothing else was affected: every other
+  looped sample in the mod starts its loop hundreds of frames in, and the
+  sustaining instruments -- whose loop *is* the note -- were never in question.
+  `tools/extract-samples.py` no longer writes one.
 - **The Braids block turned its own toolbar tile into the loading texture.** It
   cleared `SkinCanBeChanged` to hide the skin picker, and `BlockPrefab.SetIcons`
   calls `VisualController.SetPrefabIcons()` only while that flag is true -- the

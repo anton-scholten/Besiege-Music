@@ -23,7 +23,10 @@
 			     instruments are. `decay` is the ring-out past the recording. -->
 			<Type name="Harp"       engine="sampler" samples="pluck_harp_34 pluck_harp_54 pluck_harp_73" loops="26188-26944 25664-26139 11424-11623" decay="3.4" />
 			<Type name="Koto"       engine="sampler" samples="pluck_koto_60 pluck_koto_78" loops="7909-8078 3804-3923" decay="1.8" />
-			<Type name="Pizzicato"  engine="sampler" samples="pluck_pizz_39 pluck_pizz_52 pluck_pizz_66" loops="5-41095 5-38537 5-30291" decay="0.6" />
+			<!-- Unlooped for the reason written out in Mallets.xml: what looked
+			     like a loop was the whole recording, and a pizzicato that plays
+			     itself twice is a pizzicato played twice. -->
+			<Type name="Pizzicato"  engine="sampler" samples="pluck_pizz_39 pluck_pizz_52 pluck_pizz_66" decay="0.6" />
 			<Type name="Banjo"      engine="sampler" samples="pluck_banjo_50 pluck_banjo_59 pluck_banjo_62" loops="35971-37012 39436-40148 35933-36527" decay="1.0" />
 			<Type name="Sitar"      engine="sampler" samples="pluck_sitar_52 pluck_sitar_60 pluck_sitar_72" loops="14499-15837 11657-14775 6693-8336" decay="2.4" />
 			</Types>

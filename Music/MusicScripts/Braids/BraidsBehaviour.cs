@@ -135,12 +135,15 @@ namespace BraidsSynth
                                          new Color(0.012f, 1f, 0.847f, 1f), false);
             PushToggle = AddToggle("Toggle", "ToggleKey", false);
 
-            // Everything but the key and the toggle belongs to the panel, which has
-            // room to say what each control means. They stay mapper settings, so the
-            // machine still saves them: DisplayInMapper is read by the mapper's own
-            // controllers and by nothing in the serialiser.
+            // Everything but the key and the note's colour belongs to the panel,
+            // which has room to say what each control means -- the toggle included,
+            // so this block finishes with the same LISTEN-and-toggle row every
+            // instrument block does. They stay mapper settings, so the machine still
+            // saves them: DisplayInMapper is read by the mapper's own controllers
+            // and by nothing in the serialiser.
             PanelOnly(ModelMenu, PitchSlider, FineSlider, Timbre, Colour,
-                      VolumeSlider, AttackSlider, ReleaseSlider, RangeSlider);
+                      VolumeSlider, AttackSlider, ReleaseSlider, RangeSlider,
+                      PushToggle);
 
             rate = AudioSettings.outputSampleRate;
             if (rate <= 0)
@@ -325,6 +328,47 @@ namespace BraidsSynth
         public MSlider Attack { get { return AttackSlider; } }
         public MSlider Release { get { return ReleaseSlider; } }
         public MSlider Range { get { return RangeSlider; } }
+
+        /// <summary>The one toggle the panel draws, at the foot beside LISTEN --
+        /// the same place every instrument block keeps its own.</summary>
+        public MToggle Latch { get { return PushToggle; } }
+
+        /// <summary>
+        /// The part of a slider's range worth dragging through, where the setting
+        /// itself accepts more than that. A gate is set in tens of milliseconds and
+        /// a swell in seconds, and nobody drags to the ten minutes ATTACK will take
+        /// or the hundred kilometres RANGE will; a handle that had to cover all of
+        /// it would be useless for the values anybody wants. Typing is not held to
+        /// this -- the panel clamps a typed value to the setting's own bounds -- so
+        /// the whole of the range is still reachable.
+        ///
+        /// True with the pair filled in, false for a slider whose whole range is
+        /// worth having under the handle. Named and shaped after
+        /// <c>InstrumentBehaviour.Comfortable</c>, which is what the shared panel
+        /// code asks both blocks.
+        /// </summary>
+        public bool Comfortable(MSlider slider, out float min, out float max)
+        {
+            min = 0f;
+            max = 0f;
+            if (slider == AttackSlider)
+            {
+                max = 2f;
+                return true;
+            }
+            if (slider == ReleaseSlider)
+            {
+                max = 4f;
+                return true;
+            }
+            if (slider == RangeSlider)
+            {
+                min = 1f;
+                max = 100f;
+                return true;
+            }
+            return false;
+        }
 
         /// <summary>True while the block is making a sound.</summary>
         public bool IsPlaying { get { return playing; } }

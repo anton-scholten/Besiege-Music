@@ -103,8 +103,8 @@ namespace MusicMod
         /// <summary>Notes past <see cref="SongOptions.Limit"/> that were dropped.</summary>
         public int Dropped;
 
-        /// <summary>Instruments used, as "Piano: Grand piano" lines, for the
-        /// summary the panel shows.</summary>
+        /// <summary>Instruments used, as "Piano (Grand piano) x11" a piece, for
+        /// the summary the panel shows.</summary>
         public readonly List<string> Parts = new List<string>();
     }
 
@@ -364,7 +364,7 @@ namespace MusicMod
 
                 plan.Parts.Add(voice.Block.Name
                     + (voice.TypeIndex < voice.Block.Types.Count
-                        ? ": " + voice.Block.Types[voice.TypeIndex] : ""));
+                        ? " (" + voice.Block.Types[voice.TypeIndex] + ")" : ""));
             }
 
             float last = 0f;

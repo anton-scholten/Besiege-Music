@@ -15,10 +15,17 @@ namespace MusicMod
     /// *measured against it*, in screen space, every frame -- which is what this
     /// does, and all it does. What goes in the window is the subclass's business.
     ///
-    /// Two panels are built on this: <see cref="MusicPanel"/>, which draws an
-    /// instrument block's settings, and <see cref="LoaderPanel"/>, which draws the
-    /// MIDI loader's. Neither can exist without UI Factory, and both fall back to
-    /// Besiege's own mapper when it is absent -- see <see cref="UIF"/>.
+    /// Three panels are built on this: <see cref="MusicPanel"/>, which draws an
+    /// instrument block's settings, <c>BraidsSynth.BraidsPanel</c>, which draws the
+    /// synth's, and <see cref="LoaderPanel"/>, which draws the MIDI loader's. None
+    /// of them can exist without UI Factory, and all fall back to Besiege's own
+    /// mapper when it is absent -- see <see cref="UIF"/>.
+    ///
+    /// The rows, the selector and the foot row -- the speaker and the block's own
+    /// toggles beside it -- are all here rather than in the panels, so an
+    /// instrument block and the synth are set the same way and look the same doing
+    /// it. A panel says which mapper control each row stands for, and adds whatever
+    /// only it has.
     /// </summary>
     public abstract class DockedPanel : MonoBehaviour
     {
@@ -32,6 +39,15 @@ namespace MusicMod
         protected const float Margin = 12f;
         protected const float RowHeight = 26f;
         protected const float RowGap = 4f;
+
+        /// <summary>How much screen is left under the panel, so it stops short of
+        /// the bottom edge rather than running into it.</summary>
+        protected const float Clearance = 56f;
+
+        /// <summary>The toggles at the foot are drawn half again as tall as a slider
+        /// row. They are the only thing on their line, and they are what a hand goes
+        /// for while the other hand is on the keys.</summary>
+        protected const float SwitchHeight = RowHeight * 1.5f;
 
         /// <summary>UI Factory authors against 1920x1080 and matches on height;
         /// anything else draws Besiege's own widgets at the wrong size beside the
@@ -70,6 +86,10 @@ namespace MusicMod
 
         /// <summary>The rows this panel drew, in the order it drew them.</summary>
         protected readonly List<Row> rows = new List<Row>();
+
+        /// <summary>How tall the rows came out, before the room under the mapper
+        /// caps them. Set by <see cref="CloseWindow"/>.</summary>
+        protected float contentHeight;
 
         /// <summary>
         /// Settings changed here that Besiege has not been told about yet.
@@ -135,13 +155,16 @@ namespace MusicMod
                                       int picked)
         {
             Label(caption, Margin, y, LabelWidth, RowHeight, 13,
-                  TextAnchor.MiddleLeft, UIF.QuietInk);
+                  TextAnchor.MiddleLeft, UIF.Ink);
             // Centred on the slider column and the number beside it together,
             // rather than started where the sliders start: it is the odd row out.
             float span = width - Margin * 2f - LabelWidth;
+            // Lettered at the size of the boxes and the toggles rather than the
+            // size of the captions: this is a name to be read, not a column head.
             return Chooser.Make(host, transform,
                                 Margin + LabelWidth + (span - SelectorWidth) / 2f, y,
-                                SelectorWidth, RowHeight, choices, picked);
+                                SelectorWidth, RowHeight, choices, picked, true,
+                                FieldFont);
         }
 
         /// <summary>
@@ -171,7 +194,7 @@ namespace MusicMod
                                   bool whole)
         {
             Text label = Label(caption, Margin, y, LabelWidth, RowHeight, 13,
-                               TextAnchor.MiddleLeft, UIF.QuietInk);
+                               TextAnchor.MiddleLeft, UIF.Ink);
 
             GameObject go = UIF.Spawn(UIF.SliderPrefab, host);
             if (go == null)
@@ -226,7 +249,7 @@ namespace MusicMod
             if (go == null)
             {
                 row.Value = Label("", x, y, ValueWidth, RowHeight, 13,
-                                  TextAnchor.MiddleRight, Color.white);
+                                  TextAnchor.MiddleRight, UIF.Ink);
                 return;
             }
             Place(go, x, y, ValueWidth, RowHeight);
@@ -243,7 +266,7 @@ namespace MusicMod
             }
 
             row.Box = field;
-            row.Value = Style(field.textComponent, TextAnchor.MiddleRight, Color.white);
+            row.Value = Style(field.textComponent, TextAnchor.MiddleRight, UIF.Ink);
             // The prefab's placeholder is a word in whatever language the game is in;
             // an empty box that says nothing is what a number wants.
             Text ghost = field.placeholder as Text;
@@ -387,6 +410,211 @@ namespace MusicMod
                 return note.ToString();
             }
             return names[note % 12] + (note / 12 - 1);
+        }
+
+
+        // ---- the foot row ----------------------------------------------------
+
+        /// <summary>One of the block's toggles, drawn as a word that lights.</summary>
+        protected class Switch
+        {
+            public GameObject Button;
+            public UnityEngine.UI.Toggle Control;
+            public Text Caption;
+            public MToggle Bound;
+        }
+
+        /// <summary>The toggles this panel drew, in the order it drew them.</summary>
+        protected readonly List<Switch> switches = new List<Switch>();
+
+        /// <summary>The picture on the speaker button, red while it sounds.</summary>
+        private Image listenFace;
+
+        /// <summary>What the speaker does, for a panel that has one.</summary>
+        protected virtual void Listen()
+        {
+        }
+
+        /// <summary>Whether the block is making the sound the speaker started.</summary>
+        protected virtual bool Sounding
+        {
+            get { return false; }
+        }
+
+        /// <summary>What a control is called, as a panel writes it.</summary>
+        protected static string Caption(MapperType control)
+        {
+            return control == null ? "" : control.DisplayName.ToUpper();
+        }
+
+        /// <summary>
+        /// The foot of the panel: the speaker at the left, and the block's own
+        /// toggles sharing what is left of the line, equally, however many there
+        /// are.
+        ///
+        /// One line, because this is the last thing in the window: the button
+        /// belongs at a corner and the toggles belong beside it. Both panels that
+        /// have a block to listen to draw this, so an instrument and the synth
+        /// finish the same way.
+        /// </summary>
+        protected float BuildFoot(float y, List<MToggle> all)
+        {
+            float listen = SwitchHeight;
+            BuildListen(Margin, y, listen);
+            float rest = width - Margin * 2f - listen - RowGap;
+            float cell = all.Count > 0
+                ? (rest - RowGap * (all.Count - 1)) / all.Count : rest;
+            float left = Margin + listen + RowGap;
+            for (int i = 0; i < all.Count; i++)
+            {
+                // UI Factory's Text Toggle is Besiege's own, so the tick and its
+                // states come from the game rather than being painted here.
+                GameObject go = UIF.Spawn(UIF.TogglePrefab, host);
+                if (go == null)
+                {
+                    continue;
+                }
+                Place(go, left + i * (cell + RowGap), y, cell, SwitchHeight);
+                UIF.NoSwell(go);
+
+                Switch item = new Switch();
+                item.Button = go;
+                item.Control = go.GetComponent<UnityEngine.UI.Toggle>();
+                if (item.Control == null)
+                {
+                    item.Control = go.GetComponentInChildren<UnityEngine.UI.Toggle>(true);
+                }
+                item.Caption = go.GetComponentInChildren<Text>(true);
+                item.Bound = all[i];
+                if (item.Caption != null)
+                {
+                    UIF.Untranslate(item.Caption);
+                    // The same size as the text boxes: a toggle's word is read at a
+                    // glance across the panel, and the prefab's own size is small
+                    // for that.
+                    item.Caption.fontSize = FieldFont;
+                    item.Caption.resizeTextForBestFit = false;
+                    UIF.EnsureFont(item.Caption);
+                    // The lettering grows under the pointer, and the row does not:
+                    // the same answer the selectors give, and the reason the
+                    // prefab's own swell comes off -- that one grows the whole
+                    // toggle, which on a full-width row carries its words out of
+                    // the window.
+                    Swell swell = go.AddComponent<Swell>();
+                    swell.grows = item.Caption.transform;
+                    swell.grown = 1.15f;
+                }
+                if (item.Control != null)
+                {
+                    Switch captured = item;
+                    item.Control.onValueChanged.AddListener(
+                        delegate(bool on) { Flip(captured, on); });
+                }
+                switches.Add(item);
+            }
+            // No closing gap of its own: the extra height the toggles took came out
+            // of the space that was under them, so the window is the height it was.
+            return y + SwitchHeight + RowGap;
+        }
+
+        /// <summary>
+        /// The speaker at the foot of the panel: plays the block as it is set, so an
+        /// instrument or a model can be chosen by ear while the machine is being
+        /// built.
+        ///
+        /// UI Factory's Icon Button, the control Besiege's own window corners are
+        /// made of, drawn square at the height of the toggles it sits beside. The
+        /// picture is drawn rather than asked for: UI Factory's sprite set cannot be
+        /// listed, so naming a speaker in it would be a guess.
+        /// </summary>
+        private void BuildListen(float x, float y, float side)
+        {
+            GameObject button = UIF.Spawn(UIF.IconButtonPrefab, host);
+            if (button == null)
+            {
+                return;
+            }
+            button.name = "Listen";
+            Place(button, x, y, side, side);
+            // The prefab's own swell is left on: this is a button the size of a
+            // button, and growing 15% under the pointer is what the rest of
+            // Besiege's interface does. It comes off the toggles beside it, where
+            // growing a full-width row carries its lettering out of the window.
+
+            Transform icon = button.transform.FindChild("Icon");
+            listenFace = icon == null ? null : icon.GetComponent<Image>();
+            if (listenFace == null)
+            {
+                listenFace = button.GetComponentInChildren<Image>(true);
+            }
+            if (listenFace != null)
+            {
+                listenFace.sprite = IconArt.Speaker();
+                listenFace.color = UIF.Ink;
+                // The drawing is inset within its own square, so the picture is the
+                // right size while the whole button stays the thing that is clicked.
+                listenFace.preserveAspect = false;
+            }
+
+            Button click = button.GetComponent<Button>();
+            if (click != null)
+            {
+                click.onClick.AddListener(Listen);
+            }
+        }
+
+        /// <summary>White, and Besiege's red while the block is sounding -- the
+        /// colour the game paints anything that is in force.</summary>
+        protected void ShowListen()
+        {
+            if (listenFace != null)
+            {
+                listenFace.color = Sounding ? UIF.Selected : UIF.Ink;
+            }
+        }
+
+        /// <summary>
+        /// Puts a toggle's state on the toggle, and writes its name beside it.
+        ///
+        /// White whichever way the toggle is set. The prefab paints its own plate
+        /// in Besiege's red when it is on, so a caption that answered the state in
+        /// colour would be red lettering on a red ground -- which is how SUSTAIN
+        /// came to disappear the moment it was switched on. The plate is the cue;
+        /// the word only has to be readable over both of them.
+        /// </summary>
+        protected void Paint(Switch item)
+        {
+            if (item == null || item.Bound == null)
+            {
+                return;
+            }
+            if (item.Control != null)
+            {
+                item.Control.isOn = item.Bound.IsActive;
+            }
+            if (item.Caption != null)
+            {
+                // Rewritten rather than set once when the row was made: a window is
+                // kept for the next block with the same shape, and that block calls
+                // its toggles something else.
+                item.Caption.text = Caption(item.Bound);
+                item.Caption.color = UIF.Ink;
+            }
+        }
+
+        /// <summary>A toggle was clicked.</summary>
+        protected void Flip(Switch item, bool on)
+        {
+            // Also raised while the panel is filling itself in, which would write
+            // the block's own value straight back at it and queue a needless commit.
+            if (item == null || item.Bound == null || filling
+                || item.Bound.IsActive == on)
+            {
+                return;
+            }
+            item.Bound.IsActive = on;
+            Paint(item);
+            Queue(item.Bound);
         }
 
 
@@ -556,6 +784,7 @@ namespace MusicMod
         /// <summary>Sizes the window to the rows that were built into it.</summary>
         protected void CloseWindow(float height)
         {
+            contentHeight = height;
             if (content != null)
             {
                 content.sizeDelta = new Vector2(content.sizeDelta.x, height);
@@ -575,6 +804,8 @@ namespace MusicMod
             // leave a rebuilt panel writing into destroyed controls, and a second
             // set of rows appended to the first.
             rows.Clear();
+            switches.Clear();
+            listenFace = null;
             host = null;
             content = null;
             if (window != null)
@@ -639,11 +870,18 @@ namespace MusicMod
             }
 
             float scale = Scale();
-            Vector2 size = windowRect.sizeDelta;
+            // As tall as the rows, or as tall as the room under the mapper,
+            // whichever is less: a window drawn past the bottom of the screen has
+            // its last rows nowhere to be, and the scroll view the prefab ships
+            // with takes up the difference.
+            float room = frame.yMin * scale - Clearance;
+            float tall = Mathf.Max(RowHeight * 4f, Mathf.Min(contentHeight, room));
+            windowRect.sizeDelta = new Vector2(width, tall);
+
             float left = (frame.xMin - Screen.width * 0.5f) * scale;
             float bottom = (frame.yMin - Screen.height * 0.5f) * scale;
             windowRect.anchoredPosition =
-                new Vector2(left + size.x * 0.5f, bottom - size.y * 0.5f);
+                new Vector2(left + width * 0.5f, bottom - tall * 0.5f);
         }
 
         /// <summary>

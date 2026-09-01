@@ -10,7 +10,8 @@ namespace MusicMod
     // it was written for the same reason and works. Keep it in step with that copy
     // rather than letting the two drift. Braids brought a second copy of this file
     // when it became a block here; the two were the same but for the row height and
-    // the lettering, which are the caller's now.
+    // the lettering, which are the caller's now -- and every panel in this mod now
+    // asks for the same pair, through DockedPanel.AddSelector.
     //
     // Built out of plain uGUI rather than a UI Factory prefab. The prefab
     // drop-down had two faults in parts a mod cannot reach: its list drew through
@@ -25,15 +26,15 @@ namespace MusicMod
         public const float ArrowWidth = 30f;
         public const float ArrowGap = 2f;
 
-        /// <summary>How tall a row is. The caller's, because the two panels this
-        /// serves are different widths: the mapper-width one draws 22 and the
-        /// Braids panel, which came with a copy of this file, drew 26.</summary>
+        /// <summary>How tall a row is. The caller's, because the copy of this in
+        /// Special Effects draws its own; every selector in this mod takes the
+        /// default.</summary>
         private float itemHeight = 22f;
         private const float MaxListHeight = 264f;
         private const float BarWidth = 8f;
 
         // The lettering, which the caller sets: a mapper-width panel draws its rows
-        // at 13, where the panels this came from had room for 20.
+        // at 13, where the panel this came from had room for 20.
         private int size = 13;
 
         // The arrows answer the pointer harder than the name does: they are small,
@@ -44,7 +45,7 @@ namespace MusicMod
         private static readonly Color FaceInk = new Color(0.07f, 0.09f, 0.12f, 0.90f);
         private static readonly Color Sheet = new Color(0.06f, 0.08f, 0.11f, 1f);
         private static readonly Color Edge = new Color(0.24f, 0.29f, 0.35f, 1f);
-        private static readonly Color Ink = new Color(0.88f, 0.90f, 0.92f, 1f);
+        private static readonly Color Ink = Color.white;
         private static readonly Color Clear = new Color(1f, 1f, 1f, 0f);
         private static readonly Color Lit = new Color(0.35f, 0.55f, 0.75f, 0.55f);
         private static readonly Color Held = new Color(0.45f, 0.65f, 0.85f, 0.75f);

@@ -147,6 +147,12 @@ GEN_SAMPLEID = 53
 GEN_ROOTKEY = 58
 
 
+# How near an end a loop point has to be for the pair to count as "the whole
+# sample". The fonts seen here leave 4 to 8 frames at each end; a real loop in
+# the same fonts starts hundreds of frames in at the very least.
+WholeSampleSlack = 32
+
+
 def chunks(data, start, end):
     i = start
     while i + 8 <= end:
@@ -369,10 +375,20 @@ def one(font, stem, preset, note, bank, publish, already):
     loop = None
     ls = header["loop_start"] - header["start"]
     le = header["loop_end"] - header["start"]
+    # A loop spanning the whole sample is not a loop: it is how a font marks one
+    # it plays straight through, the points left at the two ends rather than set.
+    # Taken at face value it is the recording played a second time -- which is
+    # what the marimba, the xylophone, the steel drum and the pizzicato were
+    # doing, each striking twice for every key press. Published unlooped, they
+    # ring out on their own tail instead, which is what SampleBank.FindTail is
+    # for. `sampleModes` would say this outright, but it can be inherited from a
+    # zone this reader does not walk, and reading it wrongly would unloop every
+    # violin in the font; the two ends are a fact about the sample itself.
+    whole = ls <= WholeSampleSlack and le >= len(frames) - WholeSampleSlack
     # A drum is a one-shot: the font loops some of them, and a looped cymbal is a
-    # cymbal that never stops. Percussion is published unlooped and rings out on
-    # the recording's own tail, which is what SampleBank.FindTail is for.
-    if publish is None and 0 <= ls < le <= len(frames):
+    # cymbal that never stops. Percussion is published unlooped for that reason
+    # as well as this one.
+    if publish is None and 0 <= ls < le <= len(frames) and not whole:
         keep = le
         loop = (int(ls * scale), int(le * scale))
     else:
