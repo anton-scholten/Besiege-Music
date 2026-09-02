@@ -73,7 +73,7 @@
 		<Texture name="FMSynth_texture" path="Instruments\FMSynth.png" />
 		<Texture name="SynthBlock_texture" path="SynthBlock\SynthBlock.png" />
 		<Texture name="Loader_texture" path="Instruments\Loader.png" />
-		<Texture name="Music_icon" path="Music.png" />
+		<Texture name="Music_icon" path="Thumbnail.png" />
 
 		<!-- Every instrument's recordings, cut by tools/extract-samples.py from
 		     a General MIDI SoundFont; see docs/SAMPLES.md. The trailing number is

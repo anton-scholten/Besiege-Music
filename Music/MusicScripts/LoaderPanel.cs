@@ -45,27 +45,22 @@ namespace MusicMod
         /// <summary>The line under the path saying what the folder holds.</summary>
         private const float NoteHeight = 18f;
 
-        /// <summary>What START AT's handle covers while no song is loaded: five
-        /// minutes, which is longer than most of what anybody feeds this. The box
-        /// reaches the rest, as it does on every row.</summary>
+        /// <summary>What START AT's handle covers with no song loaded. The box
+        /// reaches the rest, as on every row.</summary>
         private const float NoSongSpan = 300f;
 
         /// <summary>See <see cref="SongSeconds"/>.</summary>
         private float songSeconds;
         private string songSecondsFor;
 
-        /// <summary>
-        /// The caption column this panel writes in, wider than the 96 the instrument
-        /// panel uses: every slider here names its unit, and TRANSPOSE (semitones)
-        /// is a caption no one-word column holds. The sliders lose the difference
-        /// from their left end; the boxes at their right end do not move, so the
-        /// numbers stay in one column down the whole panel.
-        /// </summary>
+        /// <summary>The caption column, wider than the instrument panel's 96: every
+        /// slider here names its unit, and TRANSPOSE (semitones) fits no one-word
+        /// column. The sliders lose the difference from their left end, so the boxes
+        /// at their right stay in one column down the panel.</summary>
         private const float Captions = 150f;
 
-        /// <summary>FILE's own, and short: it is a four-letter word in front of the
-        /// one control here whose contents run long, and every pixel the caption
-        /// does not take is a pixel of file name that fits.</summary>
+        /// <summary>FILE's own, and short: four letters in front of the one control
+        /// here whose contents run long.</summary>
         private const float FileCaption = 42f;
 
         /// <summary>
@@ -74,9 +69,8 @@ namespace MusicMod
         /// chosen.
         ///
         /// One thing per line: what the song is, what it costs, what it is played
-        /// on, and a line each for the two ways notes are lost -- which are
-        /// separate lines because they are separate problems with separate
-        /// answers, and are coloured apart from the rest.
+        /// on, and a line each for the two ways notes are lost -- separate problems
+        /// with separate answers, coloured apart from the rest.
         /// </summary>
         private const int SummaryLines = 5;
 
@@ -106,10 +100,9 @@ namespace MusicMod
         private InputField folderBox;
         private Text folderPath;
 
-        /// <summary>What that folder holds, written under the path it is at: the
-        /// answer to "is my file in there?", which belongs beside the folder rather
-        /// than at the foot of the window with the results of pressing things.
-        /// </summary>
+        /// <summary>What that folder holds, written under its path: the answer to
+        /// "is my file in there?" belongs beside the folder, not at the foot of the
+        /// window with the results of pressing things.</summary>
         private Text folderNote;
 
 
@@ -361,10 +354,10 @@ namespace MusicMod
             }
 
             float at = width - Margin - side * 2f - RowGap;
-            Icon(IconArt.Folder(), "Open folder", at, y, side,
-                 new UnityEngine.Events.UnityAction(OpenFolder));
-            Icon(IconArt.Reload(), "Reload", at + side + RowGap, y, side,
-                 new UnityEngine.Events.UnityAction(Refresh));
+            IconButton(IconArt.Folder(), "Open folder", at, y, side,
+                       new UnityEngine.Events.UnityAction(OpenFolder));
+            IconButton(IconArt.Reload(), "Reload", at + side + RowGap, y, side,
+                       new UnityEngine.Events.UnityAction(Refresh));
 
             // Where that folder actually is, said in full and not typed into: the
             // box holds the name because that is the part anybody would change,
@@ -383,9 +376,8 @@ namespace MusicMod
                 folderPath.lineSpacing = PathLines;
             }
 
-            // And what is in it, under the path rather than at the foot of the
-            // window: it is the answer to a question about the folder, and it was
-            // being read three inches away from the folder it was about.
+            // And what is in it, under the path: it answers a question about the
+            // folder, and was being read three inches away from it.
             y += PathHeight;
             folderNote = Label("", Margin, y, width - Margin * 2f, NoteHeight, 13,
                                TextAnchor.MiddleLeft, UIF.Ink);
@@ -510,36 +502,6 @@ namespace MusicMod
             base.Span(bound, out min, out max);
         }
 
-        /// <summary>One of UI Factory's square picture buttons, with a drawn
-        /// glyph on it.</summary>
-        private void Icon(Sprite glyph, string name, float x, float y, float side,
-                          UnityEngine.Events.UnityAction done)
-        {
-            GameObject button = UIF.Spawn(UIF.IconButtonPrefab, host);
-            if (button == null)
-            {
-                return;
-            }
-            button.name = name;
-            Place(button, x, y, side, side);
-            Transform icon = button.transform.FindChild("Icon");
-            Image face = icon == null
-                ? button.GetComponentInChildren<Image>(true) : icon.GetComponent<Image>();
-            if (face != null)
-            {
-                face.sprite = glyph;
-                face.color = UIF.Ink;
-                // The drawing is inset within its own square, so the picture is the
-                // right size while the whole button stays the thing that is clicked.
-                face.preserveAspect = false;
-            }
-            Button click = button.GetComponent<Button>();
-            if (click != null)
-            {
-                click.onClick.AddListener(done);
-            }
-        }
-
         private float BuildSummary(float y)
         {
             for (int i = 0; i < SummaryLines; i++)
@@ -561,13 +523,11 @@ namespace MusicMod
         /// <summary>The two things that can be done with a converted song, side by
         /// side: into the machine being built, or out to a machine of its own.</summary>
         /// <summary>
-        /// Where in the song to begin.
-        ///
-        /// Always drawn, like every other row here: a value set for one song is a
-        /// value worth keeping when the next is chosen, and a row that came and
-        /// went with the file would take the setting off the screen at exactly the
-        /// moment it was being compared against another song. Without one loaded
-        /// the handle covers <see cref="NoSongSpan"/> and the box takes the rest.
+        /// Where in the song to begin. Always drawn, like every other row here: a
+        /// position set for one song is worth keeping when the next is chosen, and a
+        /// row that came and went with the file would vanish at exactly the moment
+        /// two songs were being compared. With none loaded the handle covers
+        /// <see cref="NoSongSpan"/> and the box takes the rest.
         /// </summary>
         private float BuildStart(float y)
         {
@@ -757,22 +717,9 @@ namespace MusicMod
         /// </summary>
         private void ShowSliders()
         {
-            bool was = filling;
-            filling = true;
-            for (int i = 0; i < rows.Count; i++)
-            {
-                Row row = rows[i];
-                if (row.Control != null && row.Bound != null)
-                {
-                    float low, high;
-                    Span(row.Bound, out low, out high);
-                    row.Control.minValue = low;
-                    row.Control.maxValue = high;
-                    row.Control.value = row.Bound.Value;
-                }
-                Write(row);
-            }
-            filling = was;
+            // Not recaptioned: these rows are named here, with the unit each
+            // number is counted in, and the settings know nothing about that.
+            ReadRows(false);
         }
 
         /// <summary>
@@ -809,20 +756,18 @@ namespace MusicMod
             SongPlan plan = block.Plan;
             songSeconds = plan.SourceSeconds;
             songSecondsFor = block.Path;
-            // What the song is. The tempo belongs here rather than tacked onto the
-            // end of the losses: it is the third measurement of the same thing --
-            // the length above was worked out at it, and a file that says something
-            // absurd is worth catching before a thousand blocks are placed for it.
+            // What the song is. The tempo belongs with the length it was worked
+            // out from, and a file claiming something absurd is worth catching
+            // before a thousand blocks are placed for it.
             string beat = block.Tempo == null ? "" :
                 "     Tempo  " + block.Tempo.Value.ToString("0.#") + " bpm"
                 + (block.TempoFromFile ? " (the file's)" : " (set here)");
             Line(0, "Length  " + Clock(plan.Seconds)
                   + "     Notes  " + plan.Notes.ToString() + beat);
 
-            // What it costs, in the two kinds of block it is made of, counted the
-            // way the line above counts. No mention of the starting block a save
-            // adds: it is one block, it is not optional, and it was a caveat on a
-            // number nobody is counting that closely.
+            // What it costs, counted the way the line above counts. No mention of
+            // the starting block a save adds: one block, not optional, and a caveat
+            // on a number nobody counts that closely.
             Line(1, "Instruments  " + plan.Voices.ToString()
                   + "     Timers  " + plan.Timers.ToString());
 
@@ -830,10 +775,9 @@ namespace MusicMod
             // the line is a list of instruments and reads as one.
             Line(2, Joined(plan.Parts));
 
-            // The two ways notes are lost, a line each. They are not the same
-            // problem -- one is the score asking a single block for two notes at
-            // once, which nothing here can change, and the other is the limit this
-            // panel sets, so that one says where to go.
+            // The two ways notes are lost, a line each: the score asking one block
+            // for two notes at once, which nothing here can change, and the limit
+            // this panel sets -- so that one says where to go.
             if (plan.Crowded > 0)
             {
                 Line(3, plan.Crowded.ToString() + " note"
@@ -854,11 +798,10 @@ namespace MusicMod
         private static readonly Color Bad = new Color(0.93f, 0.45f, 0.35f, 1f);
         private static readonly Color Good = new Color(0.55f, 0.85f, 0.55f, 1f);
 
-        /// <summary>Notes that did not make it into the machine, either way they
-        /// went. Amber rather than red: the song still plays, and a summary that
-        /// says a file loaded fine in the colour of a failure is a summary that has
-        /// cried wolf by the time something has actually gone wrong -- which is
-        /// what <see cref="Bad"/> is for.</summary>
+        /// <summary>Notes that did not reach the machine, either way they went.
+        /// Amber rather than red: the song still plays, and a panel that cries wolf
+        /// has nothing left for a real failure -- which is <see cref="Bad"/>.
+        /// </summary>
         private static readonly Color Lost = new Color(0.96f, 0.66f, 0.23f, 1f);
 
         private void Line(int index, string text)
@@ -876,14 +819,13 @@ namespace MusicMod
         }
 
         /// <summary>
-        /// How long the song that is loaded runs, for START AT's handle to cover.
+        /// How long the loaded song runs, for START AT's handle to cover.
         ///
-        /// Remembered rather than read off the plan, because the plan is the thing
-        /// this setting can destroy: dragged past the end of the score there is no
-        /// plan at all, and a handle that fell back to the no-song span in that
-        /// moment would jump out from under the hand that put it there. Kept
-        /// against the file it was measured from, so the next song does not inherit
-        /// the last one's length.
+        /// Remembered rather than read off the plan, because the plan is what this
+        /// setting can destroy: dragged past the end of the score there is no plan,
+        /// and a handle falling back to the no-song span would jump out from under
+        /// the hand that put it there. Kept against the file it was measured from,
+        /// so the next song does not inherit the last one's length.
         /// </summary>
         private float SongSeconds()
         {
@@ -1203,13 +1145,11 @@ namespace MusicMod
                 // whole score every frame, and a long one takes long enough to be
                 // felt. The drag settles into one read when the button comes up.
                 //
-                // On a file rather than on a plan: a setting can be moved to
-                // somewhere the score cannot be read at -- START AT past the end of
-                // it is the one that is easy to reach -- and a plan is what that
-                // leaves behind. Gated on one, the panel took the setting that
-                // broke it and then never looked again, so moving the handle back
-                // changed nothing and the red line stood there for the rest of the
-                // session.
+                // On a file rather than on a plan: a setting can be moved to where
+                // the score cannot be read -- START AT past the end of it is the
+                // easy one -- and the plan is what that destroys. Gated on the plan,
+                // the panel never looked again, so moving the handle back changed
+                // nothing and the red line stood for the rest of the session.
                 if (!string.IsNullOrEmpty(block.Path) && !Input.GetMouseButton(0)
                     && Fingerprint() != shownFor)
                 {

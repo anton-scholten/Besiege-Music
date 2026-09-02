@@ -80,12 +80,6 @@ namespace BraidsSynth
             "nothing"
         };
 
-        /// <summary>Where the raw waveforms start; everything before is a Braids model.</summary>
-        public static int WaveformsFrom
-        {
-            get { return MacroOscillator.BraidsModelCount; }
-        }
-
         public static int Count
         {
             get { return names.Length; }

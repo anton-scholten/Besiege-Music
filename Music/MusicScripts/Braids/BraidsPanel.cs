@@ -18,14 +18,11 @@ namespace BraidsSynth
     /// in the one that is chosen, draws the wave coming out, and will play it while
     /// the machine is still being built -- so a model can be chosen by ear.
     ///
-    /// What it does *not* do any more is draw its own furniture. The rows, the
-    /// selector, the speaker and the toggle beside it are
-    /// <see cref="MusicMod.DockedPanel"/>'s, the same ones an instrument block's
-    /// panel is made of: this panel says which mapper control each row stands for
-    /// and adds the two things only it has -- the trace at the top, and the pair of
-    /// lines under the selector saying what TIMBRE and COLOR mean in the model in
-    /// force. The synth had its own copy of all of it while it was a mod of its own,
-    /// and the two drifted.
+    /// The furniture is <see cref="MusicMod.DockedPanel"/>'s, the same an instrument
+    /// block's panel is made of: this one says which mapper control each row stands
+    /// for and adds the two things only it has -- the trace, and the pair of lines
+    /// saying what TIMBRE and COLOR mean under the model in force. It carried its
+    /// own copy of the rest while it was a mod of its own, and the two drifted.
     ///
     /// UI Factory is a soft dependency. Everything here goes through
     /// <see cref="UIF"/>, and if it is not installed the panel never appears; the
@@ -43,8 +40,8 @@ namespace BraidsSynth
 
         private const int MeaningFontSize = 15;
 
-        /// <summary>Lettering for a control the chosen model makes no use of. The
-        /// only grey left in the panel, and it is grey for a reason.</summary>
+        /// <summary>Lettering for a control the chosen model makes no use of: the
+        /// only grey left in the panel, and grey for a reason.</summary>
         private static readonly Color Idle = new Color(0.45f, 0.45f, 0.48f, 1f);
 
         private BraidsBehaviour block;
@@ -52,7 +49,6 @@ namespace BraidsSynth
         private bool built;
         private bool failed;
 
-        private RawImage scopeImage;
         private Scope scope;
         private float[] samples;
         private float nextScope;
@@ -250,7 +246,6 @@ namespace BraidsSynth
             colourMeaning = null;
             timbre = null;
             colour = null;
-            scopeImage = null;
             shownModel = -1;
             if (scope != null)
             {
@@ -287,22 +282,18 @@ namespace BraidsSynth
             go.transform.SetParent(host, false);
             Place(go, Margin, y, width - Margin * 2f, ScopeHeight);
 
-            scopeImage = go.AddComponent<RawImage>();
             scope = new Scope(Mathf.RoundToInt(width - Margin * 2f),
                               Mathf.RoundToInt(ScopeHeight));
-            scopeImage.texture = scope.Texture;
-            scopeImage.raycastTarget = true;
+            RawImage face = go.AddComponent<RawImage>();
+            face.texture = scope.Texture;
             samples = new float[BraidsBehaviour.ScopeSize];
 
             return y + ScopeHeight + Margin;
         }
 
-        /// <summary>
-        /// The model, drawn as the instrument blocks draw their INSTRUMENT: a
-        /// caption in the left column and a `&lt; name &gt;` selector centred on the
-        /// rest of the row, whose middle opens the whole list rather than stepping
-        /// through twenty-three models one press at a time.
-        /// </summary>
+        /// <summary>The model, drawn as the instrument blocks draw their
+        /// INSTRUMENT. Its middle opens the whole list rather than stepping through
+        /// twenty-three models one press at a time.</summary>
         private float BuildModel(float y)
         {
             modelPicker = AddSelector("MODEL", y, modelNames,
@@ -310,16 +301,13 @@ namespace BraidsSynth
             return y + RowHeight + RowGap * 2f;
         }
 
-        /// <summary>
-        /// What TIMBRE and COLOR do in the model in force. Two lines of prose, which
-        /// is the whole reason this block has a panel at all.
-        /// </summary>
+        /// <summary>What TIMBRE and COLOR do under the model in force: two lines of
+        /// prose, and the whole reason this block has a panel.</summary>
         private float BuildMeanings(float y)
         {
-            // A larger face on an 18-unit pitch: the two lines are read once each
-            // time the model changes, and the panel has no room to spend on giving
-            // them more height. The labels overflow vertically, so the box stays 16
-            // and the glyphs draw past it.
+            // A larger face on an 18-unit pitch: read once per model change, and
+            // the panel has no height to spare. The labels overflow vertically, so
+            // the box stays 16 and the glyphs draw past it.
             timbreMeaning = Label("", Margin, y, width - Margin * 2f, 16f,
                                   MeaningFontSize, TextAnchor.MiddleLeft, UIF.Ink);
             y += 18f;
@@ -328,19 +316,15 @@ namespace BraidsSynth
             return y + 18f + Margin;
         }
 
-        /// <summary>
-        /// The eight sliders, in the shared rows every other block's settings are
-        /// drawn in. Each row's caption is its control's own name, which is what
-        /// keeps the panel and Besiege's mapper calling the same setting the same
-        /// thing.
-        /// </summary>
+        /// <summary>The eight sliders, in the shared rows. Each caption is its
+        /// control's own name, so the panel and Besiege's mapper call the same
+        /// setting the same thing.</summary>
         private float BuildSliders(float y)
         {
-            // NOTE is the one row written as something other than a number: a pitch
-            // reads as C4 and means nothing as 60.
+            // NOTE is the one row not written as a number: a pitch reads as C4 and
+            // means nothing as 60.
             AddDial(ref y, block.Note, true, false);
-            // Cents, which are counted -- a third of a cent is not a tuning anybody
-            // meant, and the in-between pitches are what this slider is *for*.
+            // Cents are counted: a third of a cent is not a tuning anybody meant.
             AddDial(ref y, block.Fine, false, true);
             timbre = AddDial(ref y, block.TimbreSlider, false, false);
             colour = AddDial(ref y, block.ColourSlider, false, false);
@@ -351,11 +335,9 @@ namespace BraidsSynth
             return y + RowGap;
         }
 
-        /// <summary>
-        /// Adds a slider and hands back the row it made, so the two rows the model
-        /// can render meaningless are known later. Null where the prefab did not
-        /// come, which is a panel missing a row rather than a panel that throws.
-        /// </summary>
+        /// <summary>Adds a slider and hands back its row, so the two the model can
+        /// render meaningless are known later. Null where the prefab did not come:
+        /// a panel missing a row, not a panel that throws.</summary>
         private Row AddDial(ref float y, MSlider bound, bool isNote, bool whole)
         {
             int at = rows.Count;
@@ -397,11 +379,9 @@ namespace BraidsSynth
 
         // ---- binding and reading ------------------------------------------------
 
-        /// <summary>
-        /// Points the rows at this block's settings. The window is built once and
-        /// reused for whichever synth block the mapper opens on next, so what it is
-        /// bound to has to be set every time it is shown -- otherwise every synth
-        /// block on the machine drives the first one.
+        /// <summary>Points the rows at this block's settings. One window serves
+        /// whichever synth block opens next, so this runs every time it is shown --
+        /// without it every synth block on the machine drives the first one.
         /// </summary>
         private void Rebind()
         {
@@ -427,34 +407,7 @@ namespace BraidsSynth
             {
                 return;
             }
-            filling = true;
-
-            for (int i = 0; i < rows.Count; i++)
-            {
-                Row row = rows[i];
-                if (row.Bound == null)
-                {
-                    continue;
-                }
-                if (row.Caption != null)
-                {
-                    row.Caption.text = Caption(row.Bound);
-                }
-                if (row.Control != null)
-                {
-                    float low, high;
-                    Span(row.Bound, out low, out high);
-                    row.Control.minValue = low;
-                    row.Control.maxValue = high;
-                    row.Control.value = row.Bound.Value;
-                }
-                Write(row);
-            }
-
-            for (int i = 0; i < switches.Count; i++)
-            {
-                Paint(switches[i]);
-            }
+            ReadRows(true);
 
             if (block.Model != null)
             {
@@ -464,9 +417,6 @@ namespace BraidsSynth
                 }
                 ShowModel(block.Model.Value);
             }
-
-            ShowListen();
-            filling = false;
         }
 
         /// <summary>
@@ -496,16 +446,11 @@ namespace BraidsSynth
         }
 
         /// <summary>
-        /// Greys a row out, and takes it out of use with the colour: the handle
-        /// will not drag and the box will not take a caret.
-        ///
-        /// It used to be left working, on the grounds that the value is still the
-        /// block's and the model can be changed back over it. But a control that
-        /// does nothing is a control that answers a drag by not moving, and a
-        /// panel that lets you set a thing you are being told is not set by
-        /// anything is a panel arguing with itself. The value survives: it is the
-        /// block's own setting either way, and it comes back the moment a model
-        /// that reads it is chosen.
+        /// Greys a row out and takes it out of use with the colour: the handle will
+        /// not drag and the box will not take a caret. A panel that lets you set
+        /// what it is telling you nothing reads is a panel arguing with itself. The
+        /// value survives -- it is the block's setting either way -- and comes back
+        /// with the next model that reads it.
         /// </summary>
         private static void Dim(Row row, bool live)
         {
@@ -536,13 +481,10 @@ namespace BraidsSynth
 
         // ---- input --------------------------------------------------------------
 
-        /// <summary>
-        /// Notices the player working the MODEL selector.
-        ///
-        /// Polled rather than subscribed, for the reason the instrument panel polls
-        /// its own: reading one integer while the panel is open is cheaper than
-        /// binding to a signature that could change beneath the mod.
-        /// </summary>
+        /// <summary>Notices the player working the MODEL selector. Polled rather
+        /// than subscribed, as the instrument panel polls its own: one integer a
+        /// frame is cheaper than binding to a signature that could change beneath
+        /// the mod.</summary>
         private void WatchModel()
         {
             int index = modelPicker == null ? -1 : modelPicker.Index;

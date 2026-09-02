@@ -21,14 +21,10 @@ namespace MusicMod
         /// pressed is a song started.</summary>
         public float Offset = 0f;
 
-        /// <summary>Seconds into the score to begin at, measured from its first
-        /// note. Everything before it is left out and the clock is zeroed on the
-        /// first note that survived, so the key still plays a note rather than
-        /// waiting out the remainder. Nought is the whole song, which is where the
-        /// loader block's START AT sits until it is moved.
-        ///
-        /// The block's slider and `tools/make-song.py --from` are the same
-        /// setting; keep the two doing the same thing.</summary>
+        /// <summary>Seconds into the score to begin at, from its first note.
+        /// Everything before goes and the clock is zeroed on the first note that
+        /// survived, so the key still plays a note. The loader's START AT slider and
+        /// `tools/make-song.py --from` are this setting; keep them in step.</summary>
         public float Start = 0f;
 
         /// <summary>Silence left between two notes on one block. An emulated key is
@@ -283,10 +279,9 @@ namespace MusicMod
                 notes[i].Start -= first;
             }
 
-            // How long the score runs before anything is trimmed off it. Kept
-            // because it is the range START AT is worth dragging through, and the
-            // length the plan ends up with is not: that one shrinks as the handle
-            // moves, so a slider held to it could never reach the end of the song.
+            // How long the score runs untrimmed, which is the range START AT is
+            // worth dragging through. The plan's own length is not: it shrinks as
+            // the handle moves, so a slider held to it never reaches the end.
             float whole = 0f;
             for (int i = 0; i < notes.Count; i++)
             {
@@ -296,12 +291,10 @@ namespace MusicMod
                 }
             }
 
-            // START AT. Everything before it goes and what is left moves back, so
-            // the key still plays the first block the machine holds -- which is the
-            // point of it: the note limit takes a long song from the front, and
-            // this is how the rest of it is reached. A note already sounding at
-            // that moment goes with them: what would be placed is a block struck
-            // where the note was cut, which is not the note anybody wrote.
+            // START AT: the note limit takes a long song from the front, and this
+            // is how the rest of it is reached. A note already sounding at that
+            // moment goes with the ones before it -- a block struck where a note was
+            // cut is not the note anybody wrote.
             if (options.Start > 0f)
             {
                 List<MidiNote> after = new List<MidiNote>();
@@ -317,10 +310,9 @@ namespace MusicMod
                     throw new Exception("Nothing to load, song is "
                         + whole.ToString("0.#") + " s long.");
                 }
-                // Zeroed on the first note that survived rather than on the
-                // setting, which is what `tools/make-song.py --from` does and the
-                // difference between a key that plays a note and a key that waits
-                // however far the handle landed from one.
+                // Zeroed on the first surviving note rather than on the setting,
+                // as `--from` does: the difference between a key that plays a note
+                // and a key that waits out however far the handle landed from one.
                 float from = after[0].Start;
                 for (int i = 0; i < after.Count; i++)
                 {

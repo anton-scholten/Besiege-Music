@@ -3,7 +3,7 @@
 Twelve instrument blocks, and a thirteenth that turns a MIDI file into a machine that
 plays them, in [Besiege](https://store.steampowered.com/app/346010/Besiege/).
 
-![The nine blocks: piano, electric guitar, acoustic bass, violin, trumpet, saxophone, xylophone, drum and cymbal](Promo_1.jpg)
+![The mod's blocks in a level: violin, saxophone, acoustic guitar, a music note, a record, trumpet, xylophone, electric bass, synthesiser, the MIDI loader's download arrow, drum, grand piano and harp](Promo_1.jpg)
 
 Piano, guitar, bass, strings, brass, woodwind, plucked, mallets, drums, cymbals,
 an FM synth and Braids. Each
@@ -82,6 +82,8 @@ Sliders are clipped but out-of-range values can be typed.
 
 ## The panel
 
+![The Piano block's panel docked under Besiege's block mapper, its INSTRUMENT selector open on Grand piano, Upright piano, Electric piano and Honky-tonk, with NOTE reading C4 and a SUSTAIN toggle beside the speaker](Promo_3.jpg)
+
 With UI Factory installed, opening a block brings up a panel docked to the bottom
 edge of the block mapper, the same width, following it as you drag it. The
 instrument sits in the game's own `< Grand piano >` selector, the note is shown as
@@ -97,7 +99,17 @@ too many, and rebinding needs Besiege's own key capture. Without UI Factory the
 mapper keeps everything, which is what makes it a fallback rather than a second
 copy.
 
+Every block is set the same way, the Braids synth included — the same rows, the
+same selector, the same speaker and toggle at the foot. What it adds is its own:
+a trace of the wave coming out, and a line for each of TIMBRE and COLOR saying
+what they do under the model in force, because they do something different under
+each of the twenty-three.
+
+![The Braids block's panel: an oscilloscope trace of a triple saw, a MODEL selector, lines reading "TIMBRE detune of the second saw" and "COLOR detune of the third saw", and rows for NOTE, FINE, TIMBRE, COLOR, VOLUME, ATTACK, RELEASE and RANGE](Promo_2.jpg)
+
 ## Playing a song, from inside the game
+
+![The loader block's panel beside the machine it just wrote: several hundred timer and piano blocks laid out in a field, with the panel showing the song's length, note count, tempo, and the instruments it will be played on](Promo_4.jpg)
 
 Place the **Loader** block — the download arrow in the toolbar — and click it.
 Besiege's menu above keeps **the key and nothing else**: every timer the block

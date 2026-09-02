@@ -69,20 +69,12 @@ namespace MusicMod
 
         public int Index { get { return index; } }
 
-        public static Chooser Make(Transform host, Transform root, float x, float y,
-            float w, float h, List<string> choices, int picked)
-        {
-            return Make(host, root, x, y, w, h, choices, picked, true, 13);
-        }
-
-        public static Chooser Make(Transform host, Transform root, float x, float y,
-            float w, float h, List<string> choices, int picked, bool arrows)
-        {
-            return Make(host, root, x, y, w, h, choices, picked, arrows, 13);
-        }
-
-        // `arrows` off leaves the face alone: three of these across one row have no
-        // width to spare for stepping, and the list is still one click away.
+        // `arrows` off leaves the face alone: the loader's file list has no width
+        // to spare for stepping, and the whole list is still one click away.
+        //
+        // The two shorter overloads this had -- defaulting `arrows` and `size` --
+        // went when every panel started asking for both through
+        // DockedPanel.AddSelector. Special Effects' copy still carries them.
         public static Chooser Make(Transform host, Transform root, float x, float y,
             float w, float h, List<string> choices, int picked, bool arrows, int size)
         {

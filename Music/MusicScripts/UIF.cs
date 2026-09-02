@@ -48,20 +48,15 @@ namespace MusicMod
         /// game's hotkeys firing at whatever is being typed into it.</summary>
         public const string InputPrefab = "Input Field";
 
-        /// <summary>
-        /// The lettering the panels are written in.
-        ///
-        /// White, and not the grey this used to be: a panel is a window of
-        /// controls, and the caption beside a slider is as much a part of the
-        /// answer as the number at the end of it. Grey is left for the one thing
-        /// that genuinely is not being said -- see <see cref="QuietInk"/>.
-        /// </summary>
+        /// <summary>The lettering the panels are written in. White, not the grey
+        /// this was: a caption beside a slider is as much the answer as the number
+        /// at the end of it. Grey is left for <see cref="QuietInk"/>.</summary>
         public static readonly Color Ink = Color.white;
 
-        /// <summary>The lettering for text that is not an answer: a box's ghost
-        /// prompt, which is there to be typed over. Kept here rather than read from
-        /// <c>Besiege.UI.Consts</c> so that the panel's colours are not another
-        /// thing that has to resolve before it can draw.</summary>
+        /// <summary>For text that is not an answer: a box's ghost prompt, there to
+        /// be typed over. Kept here rather than read from <c>Besiege.UI.Consts</c>,
+        /// so a panel's colours are not another thing that has to resolve first.
+        /// </summary>
         public static readonly Color QuietInk = new Color(0.72f, 0.72f, 0.74f, 1f);
 
         /// <summary>
@@ -70,9 +65,6 @@ namespace MusicMod
         /// colours are not another thing that has to resolve before it can draw.
         /// </summary>
         public static readonly Color Selected = new Color(0.92f, 0.13f, 0.29f, 1f);
-
-        /// <summary>The game's panel black, at the alpha it uses.</summary>
-        public static readonly Color PanelBlack = new Color(0.03f, 0.03f, 0.044f, 0.2f);
 
         /// <summary>The cyan Besiege uses for a reset, and here for the trace.</summary>
         public static readonly Color Trace = new Color(0.012f, 1f, 0.847f, 1f);
@@ -228,32 +220,6 @@ namespace MusicMod
             catch (Exception)
             {
                 // An older UI Factory without that behaviour simply never swelled.
-            }
-        }
-
-
-        /// <summary>
-        /// Makes any rect a drag handle for <paramref name="target"/>. UI Factory
-        /// puts one of these on the window's top bar and nowhere else.
-        ///
-        /// Target is set in the same breath as the component, because Drag.Start
-        /// fills a null one in with its own transform -- which would drag the handle
-        /// out of the window rather than moving the window.
-        /// </summary>
-        public static void Draggable(GameObject handle, RectTransform target)
-        {
-            if (handle == null || target == null)
-            {
-                return;
-            }
-            try
-            {
-                Besiege.UI.Bridge.Drag drag = handle.AddComponent<Besiege.UI.Bridge.Drag>();
-                drag.Target = target;
-            }
-            catch (Exception)
-            {
-                // Without it the window simply stays where it is put.
             }
         }
     }

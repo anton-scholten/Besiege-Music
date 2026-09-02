@@ -177,13 +177,10 @@ namespace MusicMod
             // ask for rather than a thing to be given.
             DelaySlider = AddSlider("Delay", "LeadKey", 0f, 0f, 10f);
 
-            // Where in the score to begin, in seconds from its first note. Notes
-            // before it are not placed, and what is left moves back so the key
-            // still plays the first block written -- which is what makes this
-            // worth having: the note limit takes a long song from the front, and
-            // this is how the rest of it is reached. Declared wide enough for any
-            // score; the panel holds the handle to the length of the one chosen,
-            // which is the only part of the range that means anything.
+            // Where in the score to begin, in seconds from its first note. The
+            // note limit takes a long song from the front, and this is how the rest
+            // is reached. Declared wide enough for any score; the panel holds the
+            // handle to the length of the one chosen.
             StartSlider = AddSlider("Start at", "StartAtKey", 0f, 0f, 3600f);
 
             // Beats per minute. Set to whatever the file says as soon as one is
@@ -403,13 +400,6 @@ namespace MusicMod
             options.StartKey = KeyName();
             options.StartVariable = KeyVariable();
             return options;
-        }
-
-        /// <summary>Whether the song starts with the simulation rather than on a
-        /// keypress, which is what an unbound key comes to.</summary>
-        public bool OnSimulationStart
-        {
-            get { return KeyName() == null && KeyVariable() == null; }
         }
 
         /// <summary>

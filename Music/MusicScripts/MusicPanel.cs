@@ -329,47 +329,13 @@ namespace MusicMod
             {
                 return;
             }
-            filling = true;
-
-            for (int i = 0; i < rows.Count; i++)
-            {
-                Row row = rows[i];
-                if (row.Bound == null)
-                {
-                    continue;
-                }
-                if (row.Caption != null)
-                {
-                    // Written every time, not once when the row was made: a window
-                    // is kept for the next block with the same shape, and that block
-                    // calls its extras something else -- which is how a piano came to
-                    // have a PALM MUTE where its SUSTAIN is.
-                    row.Caption.text = Caption(row.Bound);
-                }
-                if (row.Control != null)
-                {
-                    float low, high;
-                    Span(row.Bound, out low, out high);
-                    row.Control.minValue = low;
-                    row.Control.maxValue = high;
-                    row.Control.value = row.Bound.Value;
-                }
-                Write(row);
-            }
-
-            for (int i = 0; i < switches.Count; i++)
-            {
-                Paint(switches[i]);
-            }
+            ReadRows(true);
 
             shownType = block.SelectedType;
             if (typeOption != null)
             {
                 typeOption.Set(Choices(), shownType);
             }
-
-            ShowListen();
-            filling = false;
         }
 
         // ---- input -----------------------------------------------------------
