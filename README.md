@@ -1,9 +1,9 @@
 # Besiege Music
 
+<img src="Music/Resources/Thumbnail.png" alt="thumbnail" width="200" align="right">
+
 Twelve instrument blocks, and a thirteenth that turns a MIDI file into a machine that
 plays them, in [Besiege](https://store.steampowered.com/app/346010/Besiege/).
-
-![The mod's blocks in a level: violin, saxophone, acoustic guitar, a music note, a record, trumpet, xylophone, electric bass, synthesiser, the MIDI loader's download arrow, drum, grand piano and harp](Promo_1.jpg)
 
 Piano, guitar, bass, strings, brass, woodwind, plucked, mallets, drums, cymbals,
 an FM synth and Braids. Each
@@ -258,6 +258,8 @@ anything in its library. See [docs/SONGS.md](docs/SONGS.md) for the rest — the
 percussion mapping, why repeated notes need a gap, and what to expect in game.
 
 ## One block, one note
+
+![The mod's blocks in a level: violin, saxophone, acoustic guitar, a music note, a record, trumpet, xylophone, electric bass, synthesiser, the MIDI loader's download arrow, drum, grand piano and harp](Promo_1.jpg)
 
 A block plays a single note, and a tune is a row of blocks each triggered by its
 own variable. That is not a shortcut — Besiege binds automation variables to keys
