@@ -296,6 +296,19 @@
 
 **Fixed**
 
+- **Tab now takes the panels with it.** `StatMaster.hudHidden` is the flag the
+  game's own interface answers, and a window docked under the block mapper is
+  part of what Tab is pressed to be rid of -- so the mod was leaving half an
+  interface hanging over an empty screenshot. All three panels follow it now.
+  The **canvas** goes off rather than the window: switching the window off is
+  what hands a block back to the stock mapper, and coming out of Tab would have
+  found the panel closed. It also takes an open selector list down, that list
+  hanging off the same canvas.
+- **The click shield stayed up under a hidden panel.** It keeps the game deaf to
+  the mouse while the pointer is inside the panel, and asked
+  `activeInHierarchy` -- which a disabled canvas does not change. Pressing Tab
+  and moving the mouse over where the panel had been made the game unclickable
+  for as long as the pointer stayed there. It now stands down with the canvas.
 - **The marimba, the xylophone, the steel drum and the pizzicato struck twice for
   every key press.** Ten of the mod's recordings carried loop points that spanned
   the whole of the sample -- `4-47612` on a sample 47612 frames long -- which is

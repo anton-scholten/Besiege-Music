@@ -54,6 +54,10 @@ namespace MusicMod
         /// the two are one window with a seam.</summary>
         protected float width = DefaultWidth;
 
+        /// <summary>The canvas the window is drawn on. Held so Tab can switch it
+        /// off -- see <see cref="FollowHud"/>.</summary>
+        protected Canvas canvas;
+
         protected GameObject window;
         protected RectTransform windowRect;
 
@@ -751,7 +755,7 @@ namespace MusicMod
         /// </summary>
         protected void OpenWindow(string name)
         {
-            Canvas canvas = gameObject.GetComponent<Canvas>();
+            canvas = gameObject.GetComponent<Canvas>();
             if (canvas == null)
             {
                 canvas = gameObject.AddComponent<Canvas>();
@@ -851,6 +855,8 @@ namespace MusicMod
             listenFace = null;
             host = null;
             content = null;
+            // The canvas is this object's own and outlives the window, so it is not
+            // cleared here: FollowHud keeps reconciling it either way.
             if (window != null)
             {
                 Destroy(window);
@@ -879,6 +885,48 @@ namespace MusicMod
         /// placed; returning false abandons the placement for this frame.
         /// </summary>
         protected abstract bool Rebuild();
+
+        /// <summary>
+        /// Takes the panel off the screen while the player has the game's interface
+        /// hidden, and puts it back after.
+        ///
+        /// `StatMaster.hudHidden` is the flag Tab sets, and a panel docked under the
+        /// block mapper is part of what Tab is pressed to be rid of. Read every
+        /// frame rather than answered as a keypress: Tab is not the only thing that
+        /// sets it.
+        ///
+        /// The **canvas** goes off, not the window. Switching the window off is what
+        /// <see cref="MusicPanel.Hide"/> and its like do to hand a block back to the
+        /// stock mapper, and coming out of Tab would find the panel closed. A
+        /// disabled canvas draws nothing, leaves everything under it as it was, and
+        /// takes an open <see cref="Chooser"/> list with it -- that list hangs off
+        /// this canvas rather than off the window.
+        ///
+        /// Called from each panel's own LateUpdate, before it decides whether it has
+        /// anything to draw: the canvas has to come back whether or not the panel is
+        /// open at the moment Tab is let go.
+        /// </summary>
+        protected void FollowHud()
+        {
+            if (canvas == null)
+            {
+                return;
+            }
+            bool hidden;
+            try
+            {
+                hidden = StatMaster.hudHidden;
+            }
+            catch (Exception)
+            {
+                // A game that will not say is a game whose interface is up.
+                hidden = false;
+            }
+            if (canvas.enabled == hidden)
+            {
+                canvas.enabled = !hidden;
+            }
+        }
 
         /// <summary>
         /// Puts the panel against the bottom edge of the mapper. Called from

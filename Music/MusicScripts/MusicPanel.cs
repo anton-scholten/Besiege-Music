@@ -383,6 +383,9 @@ namespace MusicMod
         /// </summary>
         private void LateUpdate()
         {
+            // Before the gate: Tab has to take the panel away and give it back
+            // whether or not there is a block open at that moment.
+            FollowHud();
             if (block != null && built)
             {
                 Dock();

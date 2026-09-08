@@ -16,10 +16,10 @@ namespace MusicMod
     /// deaf to the mouse. This holds every camera's mask down while the pointer is
     /// inside the panel and puts each one back the moment it leaves.
     ///
-    /// Two things it has to get right: gather the cameras every frame, since one
-    /// built while the shield is up would otherwise be the hole in it, and release
-    /// from OnDisable as well -- a shield left up is a game whose own buttons have
-    /// stopped answering.
+    /// Three things it has to get right: gather the cameras every frame, since one
+    /// built while the shield is up would otherwise be the hole in it; release from
+    /// OnDisable as well -- a shield left up is a game whose own buttons have
+    /// stopped answering; and stand down with the canvas, not just with the window.
     /// </summary>
     public class ClickShield : MonoBehaviour
     {
@@ -27,6 +27,12 @@ namespace MusicMod
         private readonly List<int> masks = new List<int>();
         private RectTransform guarded;
         private bool up;
+
+        /// <summary>The canvas the guarded rect is drawn on. Tab switches that off
+        /// and leaves the window under it active, so `activeInHierarchy` alone would
+        /// hold the shield up over a panel nobody can see -- a game gone deaf to the
+        /// mouse for no visible reason.</summary>
+        private Canvas drawnOn;
 
         /// <summary>The rect the pointer has to be inside for the shield to go up.</summary>
         public void Guard(RectTransform rect)
@@ -38,6 +44,7 @@ namespace MusicMod
         {
             bool wanted = guarded != null
                        && guarded.gameObject.activeInHierarchy
+                       && Drawn()
                        && RectTransformUtility.RectangleContainsScreenPoint(
                               guarded, Input.mousePosition, null);
             if (wanted)
@@ -58,6 +65,17 @@ namespace MusicMod
         private void OnDestroy()
         {
             Lower();
+        }
+
+        /// <summary>Whether the panel is being drawn at all. True where there is no
+        /// canvas to ask, which is what this did before there was one to ask.</summary>
+        private bool Drawn()
+        {
+            if (drawnOn == null)
+            {
+                drawnOn = guarded.GetComponentInParent<Canvas>();
+            }
+            return drawnOn == null || drawnOn.enabled;
         }
 
         private void Raise()
