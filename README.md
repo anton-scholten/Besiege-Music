@@ -156,11 +156,19 @@ else is in the panel docked underneath:
 8. The summary says how long the song is, how many notes survived, and what it
    will cost in blocks — an instrument block per distinct voice, a timer per note
    — before you commit to any of it.
-9. **START AT** is where in the score to begin, in seconds. The note limit takes a
-   long song from the front, so this is how the rest of it is reached: set it a
-   minute in and the machine is built from there, with the key still playing the
-   first note it holds. The handle covers the length of whichever song is loaded;
-   the box takes anything past it.
+9. **PIN BLOCKS**, beside the two buttons, puts one of Besiege's own Pin blocks
+   inside every block the song writes, so the machine stands where it was laid
+   out instead of falling over the moment the run starts. Nothing in one of these
+   machines is connected to anything, which is what makes them load well and what
+   made them fall. It costs a block per block — a 700-note song goes from about
+   760 blocks to about 1520 — so turn it off if you would rather brace the field
+   yourself. The pins carry no key and their visuals are hidden, so you see the
+   instruments and not them.
+10. **START AT** is where in the score to begin, in seconds. The note limit takes
+    a long song from the front, so this is how the rest of it is reached: set it a
+    minute in and the machine is built from there, with the key still playing the
+    first note it holds. The handle covers the length of whichever song is loaded;
+    the box takes anything past it.
 
 Every slider says what its number is counted in — `RANGE (m)`, `TEMPO (bpm)`,
 `TRANSPOSE (semitones)` — because none of them is a number you could tell the unit

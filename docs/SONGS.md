@@ -24,8 +24,8 @@ every timer the block writes waits for that key, so binding it there binds the
 whole song, and rebinding is the mapper's own business. Everything else is in the
 panel docked underneath: the folder, the file, the two selectors (which block, and
 which instrument within it), volume, range, transpose and delay, the summary,
-START AT, and the two buttons. With no key bound the timers start with the
-simulation instead.
+START AT, PIN BLOCKS, and the two buttons. With no key bound the timers start
+with the simulation instead.
 
 The file list is a dropdown rather than the game's `< choice >` stepper -- a
 folder of thirty files is thirty presses of an arrow. Its open list is shortened
@@ -167,6 +167,30 @@ score is not something to do sixty times a second.
 Notes past the limit are dropped from the end, after everything else has been
 worked out, so a truncated song is the beginning of the piece rather than a thinned
 version of the whole of it.
+
+### Pinning the machine down
+
+Nothing in one of these machines is connected to anything — see *One block, one
+note* — which is what makes a field of six hundred blocks load and behave, and
+also what makes it fall over the instant the simulation starts. **PIN BLOCKS**,
+on by default, writes one of Besiege's own Pin blocks inside every instrument and
+every timer, so each stays where it was put.
+
+`BlockType.Pin` is **57**. Its mapper controls, from `PinBlockController.Awake`:
+
+| Key | Type | Written as |
+| --- | --- | --- |
+| `unpin` | `MKey` | `bmt-unpin`, an **empty** array — no key, so nothing a player presses lets the song go |
+| `hide-visual` | `MToggle` | `bmt-hide-visual`, true |
+| `pin-all-hit` | `MToggle` | left at its default |
+
+The pin goes at the same position and rotation as the block it holds.
+`PinBlockKinematic` looks for what overlaps it and, with `pin-all-hit` off, takes
+the nearest — which at no distance at all is the block it is inside.
+
+It costs a block per block: a 700-note song goes from about 760 blocks to about
+1520, and the summary says so on the line with the instrument and timer counts.
+`tools/make-song.py --no-pin` and the panel's toggle are the same setting.
 
 ### Starting somewhere else in the score
 

@@ -34,6 +34,7 @@ namespace MusicMod
         /// sent over multiplayer with it, as every other setting here is; hidden
         /// from Besiege's mapper with the rest while the panel is up.</summary>
         private MToggle TempoSetToggle;
+        private MToggle PinToggle;
 
         /// <summary>
         /// The TEMPO slider is showing the file's own tempo and should follow it.
@@ -192,6 +193,13 @@ namespace MusicMod
             TempoSlider = AddSlider("Tempo", "TempoKey", 120f, 5f, 999f);
             TempoSetToggle = AddToggle("Tempo set by hand", "TempoSetKey", false);
 
+            // A pin inside every block the song writes, so the machine stands where
+            // it was laid out. On by default: nothing in a converted song is
+            // connected to anything, and without pins the whole field falls over at
+            // the start of the run -- which is what everyone hit before this, and
+            // what nobody wants often enough for it to be the default.
+            PinToggle = AddToggle("Pin blocks", "PinKey", true);
+
             // Most notes to place. A timer apiece, so this is most of the block
             // count and most of what a long song costs to run. It does not follow
             // the file: the number that matters is how many blocks this machine
@@ -305,6 +313,7 @@ namespace MusicMod
             PrefixText.DisplayInMapper = show;
             TempoSlider.DisplayInMapper = show;
             TempoSetToggle.DisplayInMapper = show;
+            PinToggle.DisplayInMapper = show;
             LimitSlider.DisplayInMapper = show;
             // StartKeyBinding is deliberately untouched: the panel shows no key,
             // and Besiege's own key capture is the only thing that can rebind one.
@@ -345,6 +354,9 @@ namespace MusicMod
         /// <summary>Seconds into the score the machine starts from.</summary>
         public MSlider Start { get { return StartSlider; } }
 
+        /// <summary>Whether the song's blocks are written with a pin inside.</summary>
+        public MToggle Pin { get { return PinToggle; } }
+
         /// <summary>The instrument every pitched part goes to, as the converter
         /// wants it: the block, and the instrument within it after a colon.</summary>
         public string Instrument
@@ -384,6 +396,7 @@ namespace MusicMod
                 ? 0 : Mathf.RoundToInt(TransposeSlider.Value);
             options.Offset = DelaySlider == null ? 0f : DelaySlider.Value;
             options.Start = StartSlider == null ? 0f : StartSlider.Value;
+            options.Pin = PinToggle == null || PinToggle.IsActive;
             // Nought means "follow the file", which is not the same as asking for
             // the tempo the file starts at: a score that changes tempo part way
             // through keeps every one of its changes, where a number here flattens

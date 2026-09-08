@@ -27,6 +27,14 @@ namespace MusicMod
         /// `tools/make-song.py --from` are this setting; keep them in step.</summary>
         public float Start = 0f;
 
+        /// <summary>Put a Pin block inside every block written, so the machine
+        /// stands where it is laid out instead of falling the moment a simulation
+        /// starts. Nothing is connected to anything -- a field of blocks is what
+        /// loads and falls best -- and a pin apiece is what turns "falls best" into
+        /// "does not fall". Costs a block per block: a 700-note song goes from
+        /// about 760 blocks to about 1520.</summary>
+        public bool Pin = true;
+
         /// <summary>Silence left between two notes on one block. An emulated key is
         /// reference counted, so a repeat that arrives while the name is still held
         /// raises no press at all; the score is separated instead.</summary>
@@ -92,6 +100,11 @@ namespace MusicMod
         public int Notes;
         public int Voices;          // instrument blocks
         public int Timers;
+
+        /// <summary>Pin blocks written, one per block above, or nought where the
+        /// setting is off.</summary>
+        public int Pins;
+
         public float Seconds;
 
         /// <summary>The tempo the file itself starts at, whatever this was
@@ -136,6 +149,10 @@ namespace MusicMod
         /// <summary>Besiege's own timer block.</summary>
         public const int TimerBlock = 66;
 
+        /// <summary>Besiege's own pin block, which holds whatever it is inside
+        /// where it stands. `BlockType.Pin`, read out of the game.</summary>
+        public const int PinBlock = 57;
+
         /// <summary>The starting block every saved machine has one of.</summary>
         public const int StartingBlock = 0;
 
@@ -146,6 +163,12 @@ namespace MusicMod
         /// -- an instrument on its feet rather than on its side.</summary>
         public static readonly Quaternion FaceUp =
             new Quaternion(-0.7071068f, 0f, 0f, 0.7071068f);
+
+        // The pin's own mapper keys, from PinBlockController.Awake. `pin-all-hit`
+        // is left at its default: one pin holds the one block it is inside, and a
+        // pin that took the neighbours too would hold them twice over.
+        private const string PinUnpin = "bmt-unpin";
+        private const string PinHide = "bmt-hide-visual";
 
         // The timer's own mapper keys, from TimerBlock.Awake.
         private const string TimerWait = "bmt-wait";
@@ -416,6 +439,11 @@ namespace MusicMod
                     block.Data.Write(new XSingle("bmt-RangeKey", options.Range));
                 }
 
+                if (options.Pin)
+                {
+                    Pin(plan, block);
+                }
+
                 plan.Parts.Add(voice.Block.Name
                     + (voice.TypeIndex < voice.Block.Types.Count
                         ? " (" + voice.Block.Types[voice.TypeIndex] + ")" : ""));
@@ -458,6 +486,10 @@ namespace MusicMod
                 block.Data.Write(new XSingle(TimerHold, Mathf.Max(0.05f, note.Length)));
                 VariableKey(block.Data, TimerEmulate,
                             Variable(options.Prefix, keptOn[i].Index), "C");
+                if (options.Pin)
+                {
+                    Pin(plan, block);
+                }
                 last = Mathf.Max(last, note.End);
             }
 
@@ -477,6 +509,33 @@ namespace MusicMod
         /// spread over the ground instead of stacked into a wall, and so nothing
         /// has far to fall -- none of it is attached to anything.
         /// </summary>
+        /// <summary>
+        /// Puts a pin inside a block that has just been laid out, so it stays there
+        /// when the simulation starts.
+        ///
+        /// Same position and rotation as the block it holds: the pin looks for what
+        /// overlaps it and takes the nearest, which at no distance at all is the
+        /// block it is in. Written with **no key** -- `unpin` is an empty array,
+        /// which is what a key nobody has bound looks like -- so nothing the player
+        /// presses lets a song's blocks go; and with `hide-visual` on, because a
+        /// machine of seven hundred notes should look like seven hundred
+        /// instruments rather than fourteen hundred blocks.
+        /// </summary>
+        private static void Pin(SongPlan plan, SongBlock holding)
+        {
+            SongBlock pin = new SongBlock();
+            pin.Type = PinBlock;
+            pin.LocalId = 0;
+            pin.Position = holding.Position;
+            pin.Rotation = holding.Rotation;
+            pin.Data = new XDataHolder();
+            pin.Data.Write(new XInteger("bmt-version", 1));
+            pin.Data.Write(new XStringArray(PinUnpin, new string[0]));
+            pin.Data.Write(new XBoolean(PinHide, true));
+            plan.Blocks.Add(pin);
+            plan.Pins++;
+        }
+
         private static SongBlock Place(SongPlan plan, int type, int localId, int index,
                                        int columns, float spacing, int total)
         {

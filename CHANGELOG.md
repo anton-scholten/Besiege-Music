@@ -4,6 +4,19 @@
 
 **Added**
 
+- **PIN BLOCKS**, a toggle beside the loader's two buttons, on by default. A
+  converted song is a field of blocks connected to nothing -- which is what makes
+  six hundred of them load and behave, and also what made the whole field fall
+  over the instant the simulation started. This writes one of Besiege's own Pin
+  blocks (`BlockType.Pin`, 57) inside every instrument and every timer, at the
+  same position and rotation, so each stays where it was laid out. Each pin is
+  written with **no key** -- `bmt-unpin` as an empty array, which is what an
+  unbound key looks like, so nothing a player presses lets the song go -- and
+  with `bmt-hide-visual` on, so a machine of seven hundred notes looks like seven
+  hundred instruments rather than fourteen hundred blocks. It costs a block per
+  block, and the summary counts them on the line with the instruments and the
+  timers. `tools/make-song.py --no-pin` is the same setting off.
+
 - **The Braids Synth mod is now a block in this one.** Mutable Instruments'
   macro-oscillator, twenty-three models and its own panel, moved in whole: the
   sources sit under `Music/MusicScripts/Braids/` unchanged from the mod

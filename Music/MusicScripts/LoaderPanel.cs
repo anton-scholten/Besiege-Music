@@ -587,13 +587,26 @@ namespace MusicMod
             Reread();
         }
 
+        /// <summary>
+        /// The foot of the panel: what the machine is written with, and the two ways
+        /// of writing it. Three across, a third apiece.
+        ///
+        /// PIN BLOCKS is a setting rather than an action, and it sits with the
+        /// buttons rather than up among the sliders because it is the last thing
+        /// decided before pressing one -- and because it is the one setting that
+        /// changes what the machine *is* rather than what it plays.
+        /// </summary>
         private float BuildButtons(float y)
         {
-            float cell = (width - Margin * 2f - RowGap) / 2f;
-            Press("ADD TO MACHINE", Margin, y, cell, ButtonHeight,
+            float cell = (width - Margin * 2f - RowGap * 2f) / 3f;
+            if (block != null && block.Pin != null)
+            {
+                AddSwitch(block.Pin, Margin, y, cell, ButtonHeight);
+            }
+            Press("ADD TO MACHINE", Margin + cell + RowGap, y, cell, ButtonHeight,
                   new UnityEngine.Events.UnityAction(Add));
-            Press("SAVE AS MACHINE", Margin + cell + RowGap, y, cell, ButtonHeight,
-                  new UnityEngine.Events.UnityAction(Save));
+            Press("SAVE AS MACHINE", Margin + (cell + RowGap) * 2f, y, cell,
+                  ButtonHeight, new UnityEngine.Events.UnityAction(Save));
             return y + ButtonHeight + RowGap * 2f;
         }
 
@@ -768,8 +781,11 @@ namespace MusicMod
             // What it costs, counted the way the line above counts. No mention of
             // the starting block a save adds: one block, not optional, and a caveat
             // on a number nobody counts that closely.
+            // The pins go in this line rather than being left to be discovered as
+            // a machine twice the size it was described as.
             Line(1, "Instruments  " + plan.Voices.ToString()
-                  + "     Timers  " + plan.Timers.ToString());
+                  + "     Timers  " + plan.Timers.ToString()
+                  + (plan.Pins > 0 ? "     Pins  " + plan.Pins.ToString() : ""));
 
             // What it is played on, as "Guitar (Steel) x11" a piece. No caption:
             // the line is a list of instruments and reads as one.
@@ -1231,6 +1247,7 @@ namespace MusicMod
                  + block.Transpose.Value.ToString("0.###") + "|"
                  + block.Delay.Value.ToString("0.###") + "|"
                  + block.Start.Value.ToString("0.###") + "|"
+                 + (block.Pin != null && block.Pin.IsActive ? "pin" : "-") + "|"
                  + block.Tempo.Value.ToString("0.###") + "|"
                  + (block.TempoFromFile ? "file" : "set") + "|"
                  + block.Limit.Value.ToString("0") + "|"

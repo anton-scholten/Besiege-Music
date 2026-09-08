@@ -472,52 +472,63 @@ namespace MusicMod
             float left = Margin + listen + RowGap;
             for (int i = 0; i < all.Count; i++)
             {
-                // UI Factory's Text Toggle is Besiege's own, tick and states
-                // included, so none of that is painted here.
-                GameObject go = UIF.Spawn(UIF.TogglePrefab, host);
-                if (go == null)
-                {
-                    continue;
-                }
-                Place(go, left + i * (cell + RowGap), y, cell, SwitchHeight);
-                UIF.NoSwell(go);
-
-                Switch item = new Switch();
-                item.Button = go;
-                item.Control = go.GetComponent<UnityEngine.UI.Toggle>();
-                if (item.Control == null)
-                {
-                    item.Control = go.GetComponentInChildren<UnityEngine.UI.Toggle>(true);
-                }
-                item.Caption = go.GetComponentInChildren<Text>(true);
-                item.Bound = all[i];
-                if (item.Caption != null)
-                {
-                    UIF.Untranslate(item.Caption);
-                    // The size of the text boxes: a toggle's word is read at a
-                    // glance across the panel, and the prefab's own size is small
-                    // for that.
-                    item.Caption.fontSize = FieldFont;
-                    item.Caption.resizeTextForBestFit = false;
-                    UIF.EnsureFont(item.Caption);
-                    // The lettering grows under the pointer, not the row: the
-                    // prefab's own swell grows the whole toggle, which on a
-                    // full-width row carries its words out of the window.
-                    Swell swell = go.AddComponent<Swell>();
-                    swell.grows = item.Caption.transform;
-                    swell.grown = 1.15f;
-                }
-                if (item.Control != null)
-                {
-                    Switch captured = item;
-                    item.Control.onValueChanged.AddListener(
-                        delegate(bool on) { Flip(captured, on); });
-                }
-                switches.Add(item);
+                AddSwitch(all[i], left + i * (cell + RowGap), y, cell, SwitchHeight);
             }
             // No closing gap of its own: the extra height the toggles took came out
             // of the space that was under them, so the window is the height it was.
             return y + SwitchHeight + RowGap;
+        }
+
+        /// <summary>
+        /// One of the block's toggles, drawn as a lit word. UI Factory's Text Toggle
+        /// is Besiege's own, tick and states included, so none of that is painted
+        /// here.
+        ///
+        /// Its own method because not every toggle is in the foot row: the loader
+        /// stands one beside its buttons, and it should look like the rest.
+        /// </summary>
+        protected Switch AddSwitch(MToggle bound, float x, float y, float w, float h)
+        {
+            GameObject go = UIF.Spawn(UIF.TogglePrefab, host);
+            if (go == null)
+            {
+                return null;
+            }
+            Place(go, x, y, w, h);
+            UIF.NoSwell(go);
+
+            Switch item = new Switch();
+            item.Button = go;
+            item.Control = go.GetComponent<UnityEngine.UI.Toggle>();
+            if (item.Control == null)
+            {
+                item.Control = go.GetComponentInChildren<UnityEngine.UI.Toggle>(true);
+            }
+            item.Caption = go.GetComponentInChildren<Text>(true);
+            item.Bound = bound;
+            if (item.Caption != null)
+            {
+                UIF.Untranslate(item.Caption);
+                // The size of the text boxes: a toggle's word is read at a glance
+                // across the panel, and the prefab's own size is small for that.
+                item.Caption.fontSize = FieldFont;
+                item.Caption.resizeTextForBestFit = false;
+                UIF.EnsureFont(item.Caption);
+                // The lettering grows under the pointer, not the row: the prefab's
+                // own swell grows the whole toggle, which on a full-width row
+                // carries its words out of the window.
+                Swell swell = go.AddComponent<Swell>();
+                swell.grows = item.Caption.transform;
+                swell.grown = 1.15f;
+            }
+            if (item.Control != null)
+            {
+                Switch captured = item;
+                item.Control.onValueChanged.AddListener(
+                    delegate(bool on) { Flip(captured, on); });
+            }
+            switches.Add(item);
+            return item;
         }
 
         /// <summary>

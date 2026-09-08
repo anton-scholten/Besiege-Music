@@ -52,6 +52,9 @@ class SongCheck
 
         SongOptions options = new SongOptions();
         options.Instrument = "Piano";
+        // Unpinned, so every count below is the machine itself rather than the
+        // machine plus its pins. The pins get a check of their own at the end.
+        options.Pin = false;
         SongPlan plan = Song.Plan(notes, options);
 
         // Eight distinct pitches in the scale; middle C is struck three times and
@@ -62,6 +65,8 @@ class SongCheck
            plan.Crowded + " note(s) crowded out");
         Is(plan.Blocks.Count == 18, "18 blocks laid out",
            plan.Blocks.Count + " blocks laid out");
+        Is(plan.Pins == 0, "no pins where the setting is off",
+           plan.Pins + " pin(s) where the setting is off");
 
         string text = Bsg.Write(plan, "Self test");
         XmlDocument doc = new XmlDocument();
@@ -337,6 +342,63 @@ class SongCheck
         Is(third.SelectNodes("//Boolean[@key='bmt-automatic']").Count == 0,
            "no timer on a variable starts itself as well",
            "a timer on a variable is automatic too");
+
+        // PIN BLOCKS: a pin inside every block the song writes, so the machine
+        // stands where it was laid out instead of falling when the run starts.
+        options = new SongOptions();
+        options.Instrument = "Piano";
+        SongPlan pinned = Song.Plan(new Midi(file).Notes(0f), options);
+        Is(options.Pin, "pinning is on unless it is turned off",
+           "pinning is off by default");
+        Is(pinned.Pins == pinned.Voices + pinned.Timers,
+           "a pin for every instrument block and every timer",
+           pinned.Pins + " pins for " + (pinned.Voices + pinned.Timers) + " blocks");
+        Is(pinned.Blocks.Count == 36, "36 blocks laid out, pins included",
+           pinned.Blocks.Count + " blocks laid out");
+
+        XmlDocument pinDoc = new XmlDocument();
+        pinDoc.LoadXml(Bsg.Write(pinned, "Self test"));
+        XmlNodeList pins = pinDoc.SelectNodes(
+            "/Machine/Blocks/Block[@id='" + Song.PinBlock + "']");
+        Is(pins.Count == 18, "18 pins written", pins.Count + " pins written");
+        Is(pinDoc.SelectNodes(
+               "/Machine/Blocks/Block[@id='" + Song.PinBlock
+               + "']/Data/Boolean[@key='bmt-hide-visual']").Count == 18,
+           "every pin hides its visuals", "a pin is left visible");
+        // No key at all: an empty array is what a key nobody has bound looks like,
+        // and it is what keeps a keypress from letting a song's blocks go.
+        bool bound = false;
+        XmlNodeList unpin = pinDoc.SelectNodes(
+            "/Machine/Blocks/Block[@id='" + Song.PinBlock
+            + "']/Data/StringArray[@key='bmt-unpin']");
+        for (int i = 0; i < unpin.Count; i++)
+        {
+            if (unpin[i].SelectNodes("String").Count > 0) { bound = true; }
+        }
+        Is(unpin.Count == 18 && !bound, "every pin is written with no key",
+           "a pin carries a key");
+
+        // A pin sits inside the block it holds, not beside it.
+        XmlNodeList all = pinDoc.SelectNodes("/Machine/Blocks/Block");
+        int paired = 0;
+        foreach (XmlElement one in all)
+        {
+            if (one.GetAttribute("id") != Song.PinBlock.ToString()) { continue; }
+            XmlNode at = one.SelectSingleNode("Transform/Position");
+            foreach (XmlElement other in all)
+            {
+                if (other == one || other.GetAttribute("id")
+                        == Song.PinBlock.ToString()) { continue; }
+                XmlNode there = other.SelectSingleNode("Transform/Position");
+                if (at != null && there != null && at.OuterXml == there.OuterXml)
+                {
+                    paired++;
+                    break;
+                }
+            }
+        }
+        Is(paired == 18, "every pin stands where a block of the song stands",
+           paired + " of 18 pins are inside a block");
 
         return Done();
     }

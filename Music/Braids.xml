@@ -42,7 +42,7 @@
 	<Icon>
 		<Position x="0.0" y="0.0" z="-1.5" />
 		<Rotation x="-65.0" y="210.0" z="115.0" />
-		<Scale x="0.40" y="0.40" z="0.40" />
+		<Scale x="0.35" y="0.35" z="0.35" />
 	</Icon>
 
 	<FireInteraction burnDuration="5" igniteOnStart="false">

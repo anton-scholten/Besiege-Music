@@ -44,6 +44,7 @@ BLOCKS = os.path.join(REPO, "Music")
 # Besiege's own block ids, from the game's BlockType enum.
 STARTING_BLOCK = 0
 TIMER = 66
+PIN = 57
 
 # What a missing Music block shows instead, as the game itself writes: a ballast.
 FALLBACK = 35
@@ -53,6 +54,11 @@ FALLBACK = 35
 # stands on, and the one a timer's dial faces along -- to world up, so a field of
 # these is a field of instruments standing up rather than lying on their sides.
 FACE_UP = (-0.7071068, 0.0, 0.0, 0.7071068)
+
+# The pin's own mapper keys (PinBlockController.Awake). `pin-all-hit` is left
+# at its default: one pin holds the one block it is inside.
+PIN_UNPIN = "bmt-unpin"
+PIN_HIDE = "bmt-hide-visual"
 
 # The mapper keys the timer block declares (TimerBlock.Awake).
 TIMER_WAIT = "bmt-wait"
@@ -522,11 +528,36 @@ def build(notes, options, families):
 
     blocks = ET.SubElement(machine, "Blocks")
     placed = [0]                        # a counter the closures can advance
+    last = [None]                       # where the last block went, for its pin
 
     def place(block_id, mod=None, local=None, facing=FACE_UP):
         spot = grid(placed[0], options.columns, options.spacing)
         placed[0] += 1
+        last[0] = spot
         return block(blocks, block_id, spot, mod, local, facing)
+
+    def pin():
+        """A pin inside the block just placed, so it stays where it was put.
+
+        Nothing in one of these machines is connected to anything -- a field of
+        blocks loads best -- and unconnected blocks fall the moment the
+        simulation starts. Same position as the block it holds: the pin takes
+        whatever overlaps it and prefers the nearest, which at no distance at
+        all is the block it is in.
+
+        No key at all, so nothing a player presses lets the song go; the
+        StringArray is written empty, which is what an unbound key looks like.
+        Visuals hidden, because a machine of seven hundred notes should look
+        like seven hundred instruments and not fourteen hundred blocks.
+        """
+        if not options.pin or last[0] is None:
+            return
+        data = block(blocks, PIN, last[0])
+        ET.SubElement(data, "StringArray", {"key": PIN_UNPIN})
+        value(data, "Boolean", PIN_HIDE, "True")
+        pinned[0] += 1
+
+    pinned = [0]
 
     # Every machine has one of these, and the game is happier when it is first.
     # Left in the orientation Besiege gives it: it is the machine's root, not one
@@ -579,6 +610,7 @@ def build(notes, options, families):
             value(data, "Single", "bmt-ReleaseKey",
                   "0.6" if type_index >= 2 else "0.12")
             value(data, "Single", "bmt-RangeKey", str(options.range))
+            pin()
             continue
 
         _, local, _, _ = families[family.lower()]
@@ -591,6 +623,7 @@ def build(notes, options, families):
         value(data, "Single", "bmt-NoteKey", str(pitch))
         value(data, "Single", "bmt-VolumeKey", "%.3f" % level)
         value(data, "Single", "bmt-RangeKey", str(options.range))
+        pin()
 
     # One entry, written inline as the game does. The Braids block was another
     # mod's once, and a machine holding it named two; it is one of this mod's now.
@@ -620,8 +653,9 @@ def build(notes, options, families):
         # C is the timer's own default for this key, kept for the same reason.
         variable_key(data, TIMER_EMULATE,
                      "%s%03d" % (named(options.prefix), voices[voice]), "C")
+        pin()
 
-    return machine, len(voices), placed[0]
+    return machine, len(voices), placed[0] + pinned[0]
 
 
 def separate(notes, options, families):
@@ -874,6 +908,12 @@ def main():
                         help="the variable every timer waits for, instead of the "
                              "keyboard -- what the loader block does when its own "
                              "key is set to a variable rather than a key")
+    parser.add_argument("--pin", action="store_true", default=True,
+                        help="put a pin inside every block written, so the "
+                             "machine stands where it is laid out (the default, "
+                             "and the loader block's PIN BLOCKS)")
+    parser.add_argument("--no-pin", dest="pin", action="store_false",
+                        help="write the blocks unpinned, and let them fall")
     parser.add_argument("--no-drums", action="store_true",
                         help="treat channel 10 as pitched, not as a kit")
     parser.add_argument("--install", action="store_true",
@@ -1004,6 +1044,8 @@ def self_test(options):
         "a repeat runs into the next: ends %.3f, next starts %.3f" \
         % (middle[1][0] + middle[1][1], middle[2][0])
 
+    # Unpinned first, so the counts below are the machine itself.
+    options.pin = False
     machine, voices, blocks = build(notes, options, families)
     assert voices == 8, "expected 8 instrument blocks, got %d" % voices
     assert blocks == 1 + 8 + 10, "expected 19 blocks, got %d" % blocks
@@ -1043,6 +1085,30 @@ def self_test(options):
                for t in timers), "a timer does not start with the simulation"
     # A variable in place of the keyboard: the timers listen to the name, and the
     # keycode has to be there to be counted -- see variable_key.
+    # PIN BLOCKS: a pin inside every instrument and every timer, none inside the
+    # starting block, each with no key and its visuals hidden.
+    options.pin = True
+    machine_pinned, _, pinned_blocks = build(notes, options, families)
+    assert pinned_blocks == 1 + (8 + 10) * 2, \
+        "expected 37 blocks with pins, got %d" % pinned_blocks
+    pins = [b for b in machine_pinned.iter("Block") if b.get("id") == str(PIN)]
+    assert len(pins) == 18, "expected 18 pins, got %d" % len(pins)
+    assert all(p.find("Data/Boolean[@key='%s']" % PIN_HIDE) is not None
+               for p in pins), "a pin is left visible"
+    assert all(len(p.find("Data/StringArray[@key='%s']" % PIN_UNPIN)) == 0
+               for p in pins), "a pin carries a key"
+    spots = set()
+    for b in machine_pinned.iter("Block"):
+        if b.get("id") == str(PIN):
+            continue
+        for spot in b.iter("Position"):
+            spots.add((spot.get("x"), spot.get("y"), spot.get("z")))
+    for p in pins:
+        for spot in p.iter("Position"):
+            assert (spot.get("x"), spot.get("y"), spot.get("z")) in spots, \
+                "a pin stands where no block of the song does"
+    options.pin = False
+
     options.key = keycode("M")
     options.variable = "start-me"
     varied, _, _ = build(notes, options, families)
