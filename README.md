@@ -14,6 +14,12 @@ The **MIDI loader** block — the download arrow — reads a score off your disk
 writes the machine that plays it, either straight into what you are building or
 out to a saved machine of its own.
 
+If you have the **[Node Editor](https://github.com/anton-scholten/Besiege-Node-Editor)**
+mod installed, the loader writes its **Timer Plus** block instead of Besiege's
+timers: one block holds up to 1024 of them as rows in a table, so a 700-note song
+is a couple of blocks rather than seven hundred. Nothing else about the machine
+changes, and without that mod you get the stock timers exactly as before.
+
 **[UI Factory](https://steamcommunity.com/sharedfiles/filedetails/?id=2913469777)**
 (another Besiege mod which enables the nice UI, see workshop item `2913469777`) is
 optional here. With it the blocks get a panel docked under the block mapper;
@@ -137,7 +143,7 @@ else is in the panel docked underneath:
    tempo changes; set by hand it plays the whole thing at one speed.
 4. **NOTE LIMIT** is how many notes it will place, and so most of how many blocks
    the machine has — a timer apiece. 700 by default, up to 10000 typed into the
-   box; the handle covers the first 5000. Let go of it and the summary says how
+   box; the handle covers the first 2000. Let go of it and the summary says how
    many notes the new number leaves behind.
 5. **FOLDER** is where MIDI files go:
    `Besiege_Data/Mods/Data/Music_<id>/Songs`. It can be typed into, to point

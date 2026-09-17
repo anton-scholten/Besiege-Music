@@ -49,6 +49,19 @@ namespace MusicMod
         /// reaches the rest, as on every row.</summary>
         private const float NoSongSpan = 300f;
 
+        /// <summary>
+        /// Notes past which a song is worth calling large, and worth saying that
+        /// another mod would make it a smaller machine.
+        ///
+        /// Counted over the notes that will be placed rather than over the blocks
+        /// they come to: a block count moves with PIN BLOCKS, so the same song
+        /// would be large with the pins on and ordinary without them. The notes are
+        /// the song either way. It also means nothing says this until NOTE LIMIT is
+        /// raised past here -- which is the point, Timer Plus being what makes
+        /// raising it cheap.
+        /// </summary>
+        private const int BigSong = 1000;
+
         /// <summary>See <see cref="SongSeconds"/>.</summary>
         private float songSeconds;
         private string songSecondsFor;
@@ -70,12 +83,22 @@ namespace MusicMod
         ///
         /// One thing per line: what the song is, what it costs, what it is played
         /// on, and a line each for the two ways notes are lost -- separate problems
-        /// with separate answers, coloured apart from the rest.
+        /// with separate answers, coloured apart from the rest. The sixth is what
+        /// would make a machine this size smaller, which is not a setting on this
+        /// panel.
         /// </summary>
-        private const int SummaryLines = 5;
+        private const int SummaryLines = 6;
 
         /// <summary>How tall one of them is.</summary>
         private const float SummaryLineHeight = 18f;
+
+        /// <summary>The last line is drawn half again the size of the others: it is
+        /// the one thing in this summary the player is meant to act on before
+        /// building the machine. Half again rather than twice, which is as large as
+        /// its one sentence goes before it is wider than the panel -- and a line
+        /// that wraps costs the summary a fixed two lines of height whether it is
+        /// showing or not.</summary>
+        private const int BigWarnFont = 18;
 
 
         /// <summary>
@@ -491,12 +514,15 @@ namespace MusicMod
             }
             if (block != null && bound != null && bound == block.Limit)
             {
-                // Every score anybody is likely to feed this is inside the first
-                // five thousand -- the longest of the files this was written
-                // against is 5601 notes, and that is a machine of 5600 timers. The
-                // box takes the rest, up to ten thousand.
+                // What is worth dragging through, which is not what the setting
+                // takes. Two thousand notes is already a machine of four thousand
+                // blocks with the pins in it, and the handle is 200 units long: a
+                // travel of five thousand put every number anybody actually wants
+                // into its first fifth. The box still reaches the setting's own
+                // ten thousand, and the handle rests against this stop when it is
+                // past it.
                 min = 50f;
-                max = 5000f;
+                max = 2000f;
                 return;
             }
             base.Span(bound, out min, out max);
@@ -509,9 +535,15 @@ namespace MusicMod
                 // A line apiece, all the same height: each one says one thing, and
                 // the two that can run long -- the instruments, and the notes lost
                 // past the limit -- are held to a line by the counts that end them.
+                //
+                // The last is drawn larger than the rest, which is the point of
+                // it, and in the same row height as the rest, so the summary is the
+                // block of lines it always was. Its glyphs stand a little proud of
+                // that row and overflow as every line here does.
+                bool loud = i == SummaryLines - 1;
                 summary.Add(Label("", Margin, y, width - Margin * 2f,
-                                  SummaryLineHeight, 12, TextAnchor.MiddleLeft,
-                                  UIF.Ink));
+                                  SummaryLineHeight, loud ? BigWarnFont : 12,
+                                  TextAnchor.MiddleLeft, UIF.Ink));
                 y += SummaryLineHeight;
             }
             y += RowGap;
@@ -782,9 +814,13 @@ namespace MusicMod
             // the starting block a save adds: one block, not optional, and a caveat
             // on a number nobody counts that closely.
             // The pins go in this line rather than being left to be discovered as
-            // a machine twice the size it was described as.
+            // a machine twice the size it was described as. So does the number of
+            // Timer Plus blocks the timers went into, which is the difference
+            // between a machine of seven hundred blocks and one of two.
             Line(1, "Instruments  " + plan.Voices.ToString()
                   + "     Timers  " + plan.Timers.ToString()
+                  + (plan.Tables > 0
+                        ? " in " + plan.Tables.ToString() + " Timer Plus" : "")
                   + (plan.Pins > 0 ? "     Pins  " + plan.Pins.ToString() : ""));
 
             // What it is played on, as "Guitar (Steel) x11" a piece. No caption:
@@ -806,6 +842,16 @@ namespace MusicMod
                       + (plan.Dropped == 1 ? " past the limit was dropped."
                                            : "s past the limit were dropped.")
                       + "  (increase note limit)", Lost);
+            }
+
+            // Said on size rather than on loss, and only to somebody who has not
+            // already taken the way out: with Node Editor installed the timers go
+            // into Timer Plus tables, a thousand to a block, so a song this long is
+            // a machine a fraction of the size. Red, because at this many notes it
+            // is not advice about the sound -- it is what the level will run at.
+            if (!TimerPlus.Available && plan.Notes > BigSong)
+            {
+                Line(5, "Use the 'Node Editor' mod for large songs !", Bad);
             }
             shownFor = Fingerprint();
             Say(block.Trouble, block.Trouble == null ? UIF.Ink : Bad);

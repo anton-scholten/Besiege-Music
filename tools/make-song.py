@@ -46,6 +46,23 @@ STARTING_BLOCK = 0
 TIMER = 66
 PIN = 57
 
+# The Node Editor mod's Timer Plus block: its <ID> and the <ID> of its
+# TimerPlus.xml, from that mod's own manifest. One of these holds up to
+# TIMER_PLUS_ROWS timers as rows in a table, so a song that would be seven hundred
+# timer blocks is one block instead. The game decides for itself whether the mod
+# is installed; out here it has to be asked for, with --timer-plus.
+TIMER_PLUS_MOD = "5e4cf293-3cb4-494d-8009-fce53ade8e4a"
+TIMER_PLUS_NAME = "Node Editor"
+TIMER_PLUS_LOCAL = 1
+TIMER_PLUS_ROWS = 1024
+
+# Its mapper keys (TimerPlusBehaviour.SafeAwake), and the header Table.Load
+# refuses a table without.
+TIMER_PLUS_ACTIVATE = "bmt-Activate"
+TIMER_PLUS_AUTO = "bmt-AutomaticKey"
+TIMER_PLUS_TABLE = "bmt-TimersKey"
+TIMER_PLUS_HEADER = "timers 1"
+
 # What a missing Music block shows instead, as the game itself writes: a ballast.
 FALLBACK = 35
 
@@ -67,17 +84,52 @@ TIMER_AUTO = "bmt-automatic"
 TIMER_EMULATE = "bmt-emulate"
 TIMER_START = "bmt-activate"
 
-# General MIDI percussion, mapped onto the three struck families. Only the
-# common half of the kit; anything else falls back to the snare.
+# General MIDI percussion, mapped onto the two struck families. Anything not
+# named here falls back to the snare, which is the right answer for a noise and
+# the wrong one for a cymbal -- so everything the kit blocks can actually play is
+# named, and the fallback is left for what they cannot.
+#
+# The blocks carry ten pieces between them and this reached six of them for a
+# long time: a hand clap came out as a snare though the Drums block has a Clap, a
+# side stick came out as a snare though it has a Rim, and a ride bell and a splash
+# -- both cymbals -- came out as a snare on the drum block next door. Across the
+# songs that ship with the mod that was 6271 notes on the wrong piece.
+#
+# Song.cs carries the same table, as three parallel arrays.
 DRUM_MAP = {
+    # The kit proper, by General MIDI's own names for these notes.
     35: ("Drums", "Kick"), 36: ("Drums", "Kick"),
-    38: ("Drums", "Snare"), 40: ("Drums", "Snare"), 37: ("Drums", "Snare"),
+    38: ("Drums", "Snare"), 40: ("Drums", "Snare"),
+    25: ("Drums", "Snare"),                         # snare roll
+    37: ("Drums", "Rim"),                           # side stick
+    39: ("Drums", "Clap"),                          # hand clap
     41: ("Drums", "Tom"), 43: ("Drums", "Tom"), 45: ("Drums", "Tom"),
     47: ("Drums", "Tom"), 48: ("Drums", "Tom"), 50: ("Drums", "Tom"),
     42: ("Cymbals", "Hi-hat"), 44: ("Cymbals", "Hi-hat"), 46: ("Cymbals", "Hi-hat"),
     49: ("Cymbals", "Crash"), 57: ("Cymbals", "Crash"),
     51: ("Cymbals", "Ride"), 59: ("Cymbals", "Ride"),
+    53: ("Cymbals", "Ride"),                        # ride bell
+    55: ("Cymbals", "Splash"),                      # splash cymbal
+
+    # The nearest piece rather than the same one. A china is a crash; a snap is a
+    # clap made by one hand; sticks, claves, blocks and castanets are all the dry
+    # wooden click the Rim is; and the shaken metal -- tambourine, cabasa,
+    # maracas, shaker, triangle, jingles -- is far nearer a closed hi-hat than a
+    # snare, which is where all of it used to go.
+    52: ("Cymbals", "Crash"),                       # chinese cymbal
+    26: ("Drums", "Clap"),                          # finger snap
+    31: ("Drums", "Rim"), 75: ("Drums", "Rim"),     # sticks, claves
+    76: ("Drums", "Rim"), 77: ("Drums", "Rim"),     # wood blocks
+    56: ("Drums", "Rim"), 85: ("Drums", "Rim"),     # cowbell, castanets
+    58: ("Drums", "Rim"),                           # vibraslap
+    54: ("Cymbals", "Hi-hat"),                      # tambourine
+    69: ("Cymbals", "Hi-hat"), 70: ("Cymbals", "Hi-hat"),
+    82: ("Cymbals", "Hi-hat"), 83: ("Cymbals", "Hi-hat"),
+    80: ("Cymbals", "Hi-hat"), 81: ("Cymbals", "Hi-hat"),
 }
+
+# The Cymbals block's Gong is deliberately not in that table: General MIDI has no
+# gong, and nothing in the kit is one. It is a piece to be chosen by hand.
 
 # The note a drum block is asked for, per kit piece. Sixty for all of them,
 # because a kit block plays a recording and sixty is the note it was published
@@ -85,8 +137,8 @@ DRUM_MAP = {
 # synthesised once, and a synthesised kick wants to be lower than a synthesised
 # tom, which is where 36 and 78 came from; against a recording those are two
 # octaves down and an octave and a half up. Song.cs carries the same table.
-DRUM_NOTE = {"Kick": 60, "Snare": 60, "Tom": 60,
-             "Hi-hat": 60, "Crash": 60, "Ride": 60}
+DRUM_NOTE = {"Kick": 60, "Snare": 60, "Tom": 60, "Rim": 60, "Clap": 60,
+             "Hi-hat": 60, "Crash": 60, "Ride": 60, "Splash": 60}
 
 # Where the toms sit around that, by their General MIDI note. A kit really is
 # tuned: General MIDI's six toms run low to high, they all come to one block
@@ -425,6 +477,21 @@ def mod_details():
         (root.findtext("Name") or "Music").strip()
 
 
+def timer_plus_version():
+    """The Node Editor mod's version, if its repo is beside this one.
+
+    Only a `requiredMods` entry wants it, and only to be compared: an empty
+    version is a machine that names the mod without claiming which build of it,
+    which is better than naming a build the player does not have.
+    """
+    beside = os.path.join(os.path.dirname(REPO), "Besiege-Node-Editor",
+                          "NodeEditor", "Mod.xml")
+    try:
+        return (ET.parse(beside).getroot().findtext("Version") or "").strip()
+    except Exception:
+        return ""
+
+
 def pick_type(types, wanted, fallback=0):
     """The index of a named type, matched loosely, or the block's own default."""
     if not wanted:
@@ -445,16 +512,19 @@ def element(parent, tag, **attrs):
     return ET.SubElement(parent, tag, dict((k, str(v)) for k, v in attrs.items()))
 
 
-def block(blocks, block_id, position, mod=None, local=None, facing=FACE_UP):
+def block(blocks, block_id, position, mod=None, local=None, facing=FACE_UP,
+          fallback=FALLBACK):
     """One block at a grid position, with the transform Besiege expects."""
     attrs = {"id": str(block_id), "guid": str(uuid.uuid4())}
     if mod is not None:
         # The loader resolves a modded block by modId and localId -- the id
         # above is recomputed on load (XmlLoader.HandleMod), and fallback is
-        # what stands in when the mod is absent.
+        # what stands in when the mod is absent. A ballast for an instrument;
+        # Besiege's own timer for a Timer Plus, which is the nearest thing there
+        # is to it.
         attrs["modId"] = mod
         attrs["localId"] = str(local)
-        attrs["fallback"] = str(FALLBACK)
+        attrs["fallback"] = str(fallback)
     node = ET.SubElement(blocks, "Block", attrs)
     transform = ET.SubElement(node, "Transform")
     element(transform, "Position", x=position[0], y=position[1], z=position[2])
@@ -530,11 +600,11 @@ def build(notes, options, families):
     placed = [0]                        # a counter the closures can advance
     last = [None]                       # where the last block went, for its pin
 
-    def place(block_id, mod=None, local=None, facing=FACE_UP):
+    def place(block_id, mod=None, local=None, facing=FACE_UP, fallback=FALLBACK):
         spot = grid(placed[0], options.columns, options.spacing)
         placed[0] += 1
         last[0] = spot
-        return block(blocks, block_id, spot, mod, local, facing)
+        return block(blocks, block_id, spot, mod, local, facing, fallback)
 
     def pin():
         """A pin inside the block just placed, so it stays where it was put.
@@ -625,9 +695,55 @@ def build(notes, options, families):
         value(data, "Single", "bmt-RangeKey", str(options.range))
         pin()
 
-    # One entry, written inline as the game does. The Braids block was another
-    # mod's once, and a machine holding it named two; it is one of this mod's now.
-    required.text = "%s~L~%s~%s" % (mod_id, version, mod_name)
+    # The Braids block was another mod's once, and a machine holding it named
+    # two; it is one of this mod's now. Timer Plus still is another mod's, so a
+    # machine whose timers went into its tables names it as well. One entry is
+    # written inline, as the game does; two are spelled out.
+    #
+    # The version is the one that mod's manifest says, read where the repo is
+    # beside this one. `ModList.Compare` matches the entries by guid and then
+    # compares versions, so a number guessed at is a machine that warns about a
+    # mismatch the player does not have -- better to leave it empty than wrong.
+    entries = ["%s~L~%s~%s" % (mod_id, version, mod_name)]
+    if options.timer_plus:
+        entries.append("%s~L~%s~%s"
+                       % (TIMER_PLUS_MOD, timer_plus_version(), TIMER_PLUS_NAME))
+    if len(entries) == 1:
+        required.text = entries[0]
+    else:
+        for one in entries:
+            ET.SubElement(required, "String").text = one
+
+    if options.timer_plus:
+        # The same timers, as rows in Timer Plus tables: one block per 1024 of
+        # them, in the order they are played. Every row says what a stock timer's
+        # settings say -- when to fire, how long to hold, which variable to press
+        # -- and the key that starts the song moves from every timer to every
+        # *block*, there being so few of them.
+        rows = []
+        for start, length, pitch, velocity, channel, track, program in notes:
+            voice = assign(pitch, channel, track, families, options, program)
+            rows.append(("%s %s --- v %s%03d"
+                         % (repr(float(start + options.offset)),
+                            repr(float(max(0.05, length))),
+                            named(options.prefix), voices[voice])))
+        for at in range(0, len(rows), TIMER_PLUS_ROWS):
+            data = place(TIMER_PLUS_LOCAL + 1004, TIMER_PLUS_MOD,
+                         TIMER_PLUS_LOCAL, fallback=TIMER)
+            if getattr(options, "variable", None):
+                variable_key(data, TIMER_PLUS_ACTIVATE, options.variable,
+                             options.key or "B")
+            elif options.key:
+                keyed = ET.SubElement(data, "StringArray",
+                                      {"key": TIMER_PLUS_ACTIVATE})
+                ET.SubElement(keyed, "String").text = options.key
+            else:
+                value(data, "Boolean", TIMER_PLUS_AUTO, "True")
+            value(data, "String", TIMER_PLUS_TABLE,
+                  TIMER_PLUS_HEADER + "\n"
+                  + "".join(line + "\n" for line in rows[at:at + TIMER_PLUS_ROWS]))
+            pin()
+        return machine, len(voices), placed[0] + pinned[0]
 
     # One timer per note in the score.
     for start, length, pitch, velocity, channel, track, program in notes:
@@ -908,6 +1024,11 @@ def main():
                         help="the variable every timer waits for, instead of the "
                              "keyboard -- what the loader block does when its own "
                              "key is set to a variable rather than a key")
+    parser.add_argument("--timer-plus", dest="timer_plus", action="store_true",
+                        help="write the timers as rows in the Node Editor mod's "
+                             "Timer Plus blocks, 1024 to a block, instead of one "
+                             "Besiege timer each (the loader block does this by "
+                             "itself when that mod is installed)")
     parser.add_argument("--pin", action="store_true", default=True,
                         help="put a pin inside every block written, so the "
                              "machine stands where it is laid out (the default, "
@@ -1108,6 +1229,34 @@ def self_test(options):
             assert (spot.get("x"), spot.get("y"), spot.get("z")) in spots, \
                 "a pin stands where no block of the song does"
     options.pin = False
+
+    # Timer Plus: the same ten timers as ten rows of one block's table.
+    options.timer_plus = True
+    tabled, _, tabled_blocks = build(notes, options, families)
+    assert tabled_blocks == 1 + 8 + 1, \
+        "expected 10 blocks with Timer Plus, got %d" % tabled_blocks
+    tables = [b for b in tabled.iter("Block") if b.get("modId") == TIMER_PLUS_MOD]
+    assert len(tables) == 1, "expected 1 Timer Plus block, got %d" % len(tables)
+    assert tables[0].get("fallback") == str(TIMER), \
+        "a Timer Plus should fall back to Besiege's own timer"
+    saved = tables[0].find("Data/String[@key='%s']" % TIMER_PLUS_TABLE)
+    assert saved is not None, "the Timer Plus block has no table"
+    lines = [l for l in saved.text.split("\n") if l]
+    assert lines[0] == TIMER_PLUS_HEADER, \
+        "the table starts %r, not the header Table.Load wants" % lines[0]
+    assert len(lines) == 11, "expected 10 rows, got %d" % (len(lines) - 1)
+    for line in lines[1:]:
+        parts = line.split(" ")
+        assert len(parts) == 5 and parts[2] == "---" and parts[3] == "v" \
+            and parts[4].startswith(named(options.prefix)), \
+            "a row is not shaped as Table.Load reads one: %r" % line
+        float(parts[0]), float(parts[1])         # both have to parse
+    # Two mods named, not one: the machine holds another mod's block now.
+    needs = [b for b in tabled.iter("StringArray")
+             if b.get("key") == "requiredMods"]
+    assert len(needs) == 1 and len(needs[0]) == 2, \
+        "a machine with a Timer Plus in it names both mods"
+    options.timer_plus = False
 
     options.key = keycode("M")
     options.variable = "start-me"

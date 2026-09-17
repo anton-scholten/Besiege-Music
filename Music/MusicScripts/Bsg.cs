@@ -50,10 +50,24 @@ namespace MusicMod
             {
                 mods.Add(Catalogue.RequiredMods);
             }
-            // The Braids block used to be another mod's, and a machine holding it
-            // had to name that mod too or the game would swap it for the fallback
-            // without saying so. It is one of these blocks now, so this mod's own
-            // entry covers it and there is nothing else to name.
+            // A machine holding another mod's block has to name that mod too, or
+            // the game swaps the block for its fallback without saying so. The
+            // Braids block used to be one of those and is one of these now; the
+            // Timer Plus block still is, where a song's timers went into its
+            // tables.
+            for (int i = 0; i < plan.Blocks.Count; i++)
+            {
+                if (plan.Blocks[i].ModId != TimerPlus.ModGuid)
+                {
+                    continue;
+                }
+                string named = TimerPlus.RequiredMods;
+                if (named != null && !mods.Contains(named))
+                {
+                    mods.Add(named);
+                }
+                break;
+            }
             if (mods.Count > 0)
             {
                 out_.Append("    <Data>\n");
@@ -83,12 +97,13 @@ namespace MusicMod
             // Every machine has one of these and the game is happier when it is
             // first. Left in the orientation Besiege gives it: it is the machine's
             // root, not one of the instruments.
-            Block(out_, Song.StartingBlock, 0, Vector3.zero, Quaternion.identity, null);
+            Block(out_, Song.StartingBlock, 0, null, Song.Fallback, Vector3.zero,
+                  Quaternion.identity, null);
             for (int i = 0; i < plan.Blocks.Count; i++)
             {
                 SongBlock block = plan.Blocks[i];
-                Block(out_, block.Type, block.LocalId, block.Position, block.Rotation,
-                      block.Data);
+                Block(out_, block.Type, block.LocalId, block.ModId, block.Fallback,
+                      block.Position, block.Rotation, block.Data);
             }
             out_.Append("    </Blocks>\n");
             out_.Append("</Machine>\n");
@@ -96,7 +111,8 @@ namespace MusicMod
         }
 
         private static void Block(StringBuilder out_, int type, int localId,
-                                  Vector3 at, Quaternion facing, XDataHolder data)
+                                  string modId, int fallback, Vector3 at,
+                                  Quaternion facing, XDataHolder data)
         {
             out_.Append("        <Block id=\"").Append(type)
                 .Append("\" guid=\"").Append(Guid.NewGuid().ToString()).Append("\"");
@@ -105,9 +121,12 @@ namespace MusicMod
                 // A modded block is resolved by modId and localId --
                 // `XmlLoader.HandleMod` recomputes the numeric id from those two --
                 // and `fallback` is the vanilla block shown when the mod is absent.
-                out_.Append(" modId=\"").Append(Catalogue.ModId)
+                // The mod is this one unless the block says otherwise, which only
+                // the Timer Plus block does.
+                out_.Append(" modId=\"")
+                    .Append(string.IsNullOrEmpty(modId) ? Catalogue.ModId : modId)
                     .Append("\" localId=\"").Append(localId)
-                    .Append("\" fallback=\"").Append(Song.Fallback).Append("\"");
+                    .Append("\" fallback=\"").Append(fallback).Append("\"");
             }
             out_.Append(">\n");
 

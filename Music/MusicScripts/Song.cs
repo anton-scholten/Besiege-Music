@@ -27,6 +27,18 @@ namespace MusicMod
         /// `tools/make-song.py --from` are this setting; keep them in step.</summary>
         public float Start = 0f;
 
+        /// <summary>
+        /// Write the song's timers as rows in the Node Editor mod's Timer Plus
+        /// blocks rather than as one of Besiege's timers apiece.
+        ///
+        /// Set from whether that mod is installed -- see
+        /// <see cref="TimerPlus.Available"/> -- so a player who has it gets a
+        /// machine of a dozen blocks where one who has not gets the same song in
+        /// seven hundred. The tool asks for it with `--timer-plus`, having no game
+        /// to ask.
+        /// </summary>
+        public bool TimerPlus = false;
+
         /// <summary>Put a Pin block inside every block written, so the machine
         /// stands where it is laid out instead of falling the moment a simulation
         /// starts. Nothing is connected to anything -- a field of blocks is what
@@ -85,6 +97,16 @@ namespace MusicMod
     {
         public int Type;
         public int LocalId;         // 0 for one of Besiege's own blocks
+
+        /// <summary>Which mod owns it, or null for this one's. Only a saved
+        /// machine cares: dropping into the machine being built goes by
+        /// <see cref="Type"/>, which is already the id this game resolved.</summary>
+        public string ModId;
+
+        /// <summary>The vanilla block shown in its place where that mod is absent.
+        /// A ballast for an instrument; Besiege's own timer for a Timer Plus, which
+        /// is the nearest thing there is.</summary>
+        public int Fallback = Song.Fallback;
         public Vector3 Position;
         public Quaternion Rotation;
         public XDataHolder Data;
@@ -104,6 +126,11 @@ namespace MusicMod
         /// <summary>Pin blocks written, one per block above, or nought where the
         /// setting is off.</summary>
         public int Pins;
+
+        /// <summary>Timer Plus blocks written, each holding up to
+        /// <see cref="MusicMod.TimerPlus.MaxRows"/> of the timers counted above.
+        /// Nought where the timers are Besiege's own.</summary>
+        public int Tables;
 
         public float Seconds;
 
@@ -177,36 +204,77 @@ namespace MusicMod
         private const string TimerEmulate = "bmt-emulate";
         private const string TimerStart = "bmt-activate";
 
-        /// <summary>General MIDI percussion, mapped onto the struck families. Only
-        /// the common half of the kit; anything else is a snare.</summary>
+        /// <summary>
+        /// General MIDI percussion, mapped onto the two struck families. Anything
+        /// not named here falls back to the snare, which is the right answer for a
+        /// noise and the wrong one for a cymbal -- so everything the kit blocks can
+        /// play is named, and the fallback is left for what they cannot.
+        ///
+        /// The blocks carry ten pieces between them and this reached six of them
+        /// for a long time: a hand clap came out as a snare though the Drums block
+        /// has a Clap, a side stick came out as a snare though it has a Rim, and a
+        /// ride bell and a splash -- both cymbals -- came out as a snare on the
+        /// drum block next door. Across the songs that ship with the mod that was
+        /// 6271 notes on the wrong piece.
+        ///
+        /// The second group is the nearest piece rather than the same one: a china
+        /// is a crash, a snap is a clap made by one hand, sticks and claves and
+        /// blocks are the dry wooden click the Rim is, and the shaken metal is far
+        /// nearer a closed hi-hat than a snare. The Cymbals block's Gong is in
+        /// neither: General MIDI has no gong, and it is a piece to be chosen by
+        /// hand. `tools/make-song.py` carries the same table as a dictionary.
+        /// </summary>
         private static readonly int[] DrumNotes =
         {
             35, 36,                             // kick
-            37, 38, 40,                         // snare
+            38, 40, 25,                         // snare, and the snare roll
+            37,                                 // side stick -> rim
+            39,                                 // hand clap
             41, 43, 45, 47, 48, 50,             // toms
             42, 44, 46,                         // hi-hat
             49, 57,                             // crash
-            51, 59                              // ride
+            51, 59, 53,                         // ride, and the ride bell
+            55,                                 // splash
+            52,                                 // chinese cymbal -> crash
+            26,                                 // finger snap -> clap
+            31, 75, 76, 77, 56, 85, 58,         // dry clicks -> rim
+            54, 69, 70, 82, 83, 80, 81          // shaken metal -> hi-hat
         };
 
         private static readonly string[] DrumFamilies =
         {
             "Drums", "Drums",
             "Drums", "Drums", "Drums",
+            "Drums",
+            "Drums",
             "Drums", "Drums", "Drums", "Drums", "Drums", "Drums",
             "Cymbals", "Cymbals", "Cymbals",
             "Cymbals", "Cymbals",
-            "Cymbals", "Cymbals"
+            "Cymbals", "Cymbals", "Cymbals",
+            "Cymbals",
+            "Cymbals",
+            "Drums",
+            "Drums", "Drums", "Drums", "Drums", "Drums", "Drums", "Drums",
+            "Cymbals", "Cymbals", "Cymbals", "Cymbals", "Cymbals", "Cymbals",
+            "Cymbals"
         };
 
         private static readonly string[] DrumPieces =
         {
             "Kick", "Kick",
             "Snare", "Snare", "Snare",
+            "Rim",
+            "Clap",
             "Tom", "Tom", "Tom", "Tom", "Tom", "Tom",
             "Hi-hat", "Hi-hat", "Hi-hat",
             "Crash", "Crash",
-            "Ride", "Ride"
+            "Ride", "Ride", "Ride",
+            "Splash",
+            "Crash",
+            "Clap",
+            "Rim", "Rim", "Rim", "Rim", "Rim", "Rim", "Rim",
+            "Hi-hat", "Hi-hat", "Hi-hat", "Hi-hat", "Hi-hat", "Hi-hat",
+            "Hi-hat"
         };
 
         /// <summary>
@@ -221,8 +289,10 @@ namespace MusicMod
         /// kick that arrives late and a hi-hat that whistles.
         /// </summary>
         private static readonly string[] PieceNames =
-        { "Kick", "Snare", "Tom", "Hi-hat", "Crash", "Ride" };
-        private static readonly int[] PieceNotes = { 60, 60, 60, 60, 60, 60 };
+        { "Kick", "Snare", "Tom", "Rim", "Clap",
+          "Hi-hat", "Crash", "Ride", "Splash" };
+        private static readonly int[] PieceNotes =
+        { 60, 60, 60, 60, 60, 60, 60, 60, 60 };
 
         /// <summary>
         /// Where the toms sit around that, by their General MIDI note. A kit really
@@ -395,11 +465,17 @@ namespace MusicMod
                 voice.Hits++;
             }
 
+            // How many blocks the timers come to: one apiece, or a table's worth
+            // at a time where Timer Plus is there to hold them.
+            int clocks = options.TimerPlus
+                ? Mathf.CeilToInt(kept.Count / (float)TimerPlus.MaxRows)
+                : kept.Count;
+            int total = playing.Count + clocks;
+
             int columns = options.Columns;
             if (columns <= 0)
             {
-                columns = Mathf.Max(1, Mathf.CeilToInt(
-                    Mathf.Sqrt(kept.Count + playing.Count + 1)));
+                columns = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(total + 1)));
             }
             float spacing = options.Spacing > 0f ? options.Spacing : 1f;
             int placed = 0;
@@ -408,8 +484,7 @@ namespace MusicMod
             {
                 Voice voice = playing[i];
                 SongBlock block = Place(plan, voice.Block.BlockType, voice.Block.LocalId,
-                                        placed++, columns, spacing,
-                                        playing.Count + kept.Count);
+                                        placed++, columns, spacing, total);
                 // One block, one note, one loudness: a block cannot be struck
                 // harder, so the velocities sent to it are averaged. Onto a third
                 // of the way up and no further than full -- a passage set to its
@@ -450,11 +525,22 @@ namespace MusicMod
             }
 
             float last = 0f;
+            if (options.TimerPlus)
+            {
+                last = Tables(plan, options, kept, keptOn,
+                              ref placed, columns, spacing, total);
+                plan.Notes = kept.Count;
+                plan.Voices = playing.Count;
+                plan.Timers = kept.Count;
+                plan.Seconds = last + options.Offset;
+                Tidy(plan.Parts);
+                return plan;
+            }
             for (int i = 0; i < kept.Count; i++)
             {
                 MidiNote note = kept[i];
                 SongBlock block = Place(plan, TimerBlock, 0, placed++, columns, spacing,
-                                        playing.Count + kept.Count);
+                                        total);
                 if (!string.IsNullOrEmpty(options.StartVariable))
                 {
                     // The block's own key listens to a variable rather than to the
@@ -509,6 +595,60 @@ namespace MusicMod
         /// spread over the ground instead of stacked into a wall, and so nothing
         /// has far to fall -- none of it is attached to anything.
         /// </summary>
+        /// <summary>
+        /// The same timers, as rows in Timer Plus tables rather than as a block
+        /// apiece.
+        ///
+        /// One block per <see cref="MusicMod.TimerPlus.MaxRows"/> notes, in the
+        /// order the notes are in, which is the order they are played. The rows say
+        /// the same three things the stock timers' settings do -- when to fire, how
+        /// long to hold, which variable to press -- and the key that starts the song
+        /// moves from every timer to every *block*, there being so few of them.
+        ///
+        /// Returns when the last note ends, which is the one thing the caller wanted
+        /// out of the loop this replaces.
+        /// </summary>
+        private static float Tables(SongPlan plan, SongOptions options,
+                                    List<MidiNote> kept, List<Voice> keptOn,
+                                    ref int placed, int columns, float spacing,
+                                    int total)
+        {
+            float last = 0f;
+            int at = 0;
+            while (at < kept.Count)
+            {
+                int many = Mathf.Min(TimerPlus.MaxRows, kept.Count - at);
+                List<TimerPlus.RowData> rows = new List<TimerPlus.RowData>(many);
+                for (int i = at; i < at + many; i++)
+                {
+                    MidiNote note = kept[i];
+                    TimerPlus.RowData row = new TimerPlus.RowData();
+                    row.Wait = note.Start + options.Offset;
+                    row.Duration = Mathf.Max(0.05f, note.Length);
+                    row.Variable = Variable(options.Prefix, keptOn[i].Index);
+                    rows.Add(row);
+                    last = Mathf.Max(last, note.End);
+                }
+
+                SongBlock block = Place(plan, TimerPlus.BlockType, TimerPlus.LocalId,
+                                        placed++, columns, spacing, total);
+                block.ModId = TimerPlus.ModGuid;
+                // Besiege's own timer, which is what that block falls back to and
+                // the nearest thing there is to it: one row of the table rather
+                // than all of them.
+                block.Fallback = TimerBlock;
+                TimerPlus.Fill(block.Data, rows, options.StartKey,
+                               options.StartVariable);
+                if (options.Pin)
+                {
+                    Pin(plan, block);
+                }
+                plan.Tables++;
+                at += many;
+            }
+            return last;
+        }
+
         /// <summary>
         /// Puts a pin inside a block that has just been laid out, so it stays there
         /// when the simulation starts.

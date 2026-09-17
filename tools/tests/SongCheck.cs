@@ -400,6 +400,87 @@ class SongCheck
         Is(paired == 18, "every pin stands where a block of the song stands",
            paired + " of 18 pins are inside a block");
 
+        // Timer Plus: the same ten timers as ten rows of one block's table rather
+        // than as ten blocks. `TimerPlus.Available` is false outside the game --
+        // there is no prefab table to ask -- so the option is set by hand, which is
+        // also what `tools/make-song.py --timer-plus` does.
+        options = new SongOptions();
+        options.Instrument = "Piano";
+        options.Pin = false;
+        options.TimerPlus = true;
+        SongPlan tabled = Song.Plan(new Midi(file).Notes(0f), options);
+        Is(tabled.Timers == 10, "10 timers still", tabled.Timers + " timers");
+        Is(tabled.Tables == 1, "in one Timer Plus block",
+           tabled.Tables + " Timer Plus blocks");
+        Is(tabled.Blocks.Count == 9, "9 blocks laid out: 8 instruments and a table",
+           tabled.Blocks.Count + " blocks laid out");
+
+        XmlDocument tableDoc = new XmlDocument();
+        tableDoc.LoadXml(Bsg.Write(tabled, "Self test"));
+        XmlNodeList tables = tableDoc.SelectNodes(
+            "/Machine/Blocks/Block[@modId='" + TimerPlus.ModGuid + "']");
+        Is(tables.Count == 1, "one block belongs to the other mod",
+           tables.Count + " blocks belong to the other mod");
+        if (tables.Count == 1)
+        {
+            XmlElement one = (XmlElement)tables[0];
+            Is(one.GetAttribute("localId") == TimerPlus.LocalId.ToString(),
+               "the table is written with that mod's own localId",
+               "localId is '" + one.GetAttribute("localId") + "'");
+            // Not a ballast: without the mod, the nearest thing to a Timer Plus is
+            // Besiege's own timer, which is what its block XML falls back to.
+            Is(one.GetAttribute("fallback") == Song.TimerBlock.ToString(),
+               "and falls back to Besiege's own timer",
+               "it falls back to '" + one.GetAttribute("fallback") + "'");
+
+            XmlNode saved = one.SelectSingleNode("Data/String[@key='bmt-TimersKey']");
+            string written = saved == null ? "" : saved.InnerText;
+            string[] lines = written.Replace("\r", "").Split('\n');
+            Is(lines.Length > 0 && lines[0] == "timers 1",
+               "the table carries the header Table.Load looks for",
+               "the table starts '" + (lines.Length > 0 ? lines[0] : "") + "'");
+            int rows = 0;
+            bool shaped = true;
+            for (int i = 1; i < lines.Length; i++)
+            {
+                if (lines[i].Length == 0) { continue; }
+                rows++;
+                // <wait> <duration> <hold><stop><loop> v <variable>
+                string[] parts = lines[i].Split(' ');
+                if (parts.Length != 5 || parts[2] != "---" || parts[3] != "v"
+                    || !parts[4].StartsWith(SongOptions.DefaultPrefix))
+                {
+                    shaped = false;
+                }
+            }
+            Is(rows == 10, "ten rows, one per note", rows + " rows");
+            Is(shaped, "each row is wait, duration, three dashes, and a variable",
+               "a row is not shaped as Table.Load reads one");
+            // The song still starts the same two ways, decided once for the block
+            // rather than once per note.
+            Is(one.SelectSingleNode("Data/Boolean[@key='bmt-AutomaticKey']") != null,
+               "with no key bound the table starts with the simulation",
+               "the table does not start with the simulation");
+        }
+
+        // A key: the block waits for it, and every row waits its own time from it.
+        options.StartKey = "Space";
+        SongPlan keyedTable = Song.Plan(new Midi(file).Notes(0f), options);
+        XmlDocument keyedDoc = new XmlDocument();
+        keyedDoc.LoadXml(Bsg.Write(keyedTable, "Self test"));
+        // Scoped to the table: the instrument blocks carry a `bmt-Activate` of
+        // their own, which is the variable the timers press rather than the key
+        // that starts the song.
+        string itsKey = "/Machine/Blocks/Block[@modId='" + TimerPlus.ModGuid
+                      + "']/Data/StringArray[@key='bmt-Activate']";
+        XmlNodeList startedBy = keyedDoc.SelectNodes(itsKey);
+        Is(startedBy.Count == 1 && startedBy[0].InnerXml.Contains("<String>Space</String>"),
+           "the table startedBy for the key",
+           "the keyed table reads " + (startedBy.Count == 0 ? "nothing"
+                                                       : startedBy[0].InnerXml));
+        Is(keyedDoc.SelectNodes("//Boolean[@key='bmt-AutomaticKey']").Count == 0,
+           "and does not start itself as well", "a keyed table is automatic too");
+
         return Done();
     }
 

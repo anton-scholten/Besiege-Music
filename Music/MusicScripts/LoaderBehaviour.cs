@@ -397,6 +397,9 @@ namespace MusicMod
             options.Offset = DelaySlider == null ? 0f : DelaySlider.Value;
             options.Start = StartSlider == null ? 0f : StartSlider.Value;
             options.Pin = PinToggle == null || PinToggle.IsActive;
+            // Not a setting: whether the player has the mod whose block holds a
+            // song's timers by the thousand instead of one apiece.
+            options.TimerPlus = TimerPlus.Available;
             // Nought means "follow the file", which is not the same as asking for
             // the tempo the file starts at: a score that changes tempo part way
             // through keeps every one of its changes, where a number here flattens

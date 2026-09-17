@@ -4,6 +4,22 @@
 
 **Added**
 
+- **The loader writes Timer Plus blocks where the Node Editor mod is installed.**
+  A timer per note is most of what a song costs -- 700 notes is 700 timer blocks
+  -- and that mod's Timer Plus keeps its timers as rows in a table instead, up to
+  1024 to a block. So the same song is a couple of blocks rather than seven
+  hundred: a 1500-note score came out as 1542 blocks and now comes out as 44.
+  Not a setting: `Modding.Mods.IsModLoaded` is asked whether the player has the
+  mod, the prefab table is asked for the block id, and without both the stock
+  timers are written exactly as before. Nothing else about the machine changes --
+  same instrument blocks, same variables, same pins. The key that starts the song
+  moves from every timer to every *block*, each row waiting its own time from the
+  moment it is pressed; with nothing bound, `AutomaticKey` starts them with the
+  simulation as `automatic` does on a stock timer. A machine holding one names
+  both mods in `requiredMods`, with the installed mod's own version, and falls
+  back to Besiege's own timer without it. `tools/make-song.py --timer-plus` is
+  the same thing asked for by hand.
+
 - **PIN BLOCKS**, a toggle beside the loader's two buttons, on by default. A
   converted song is a field of blocks connected to nothing -- which is what makes
   six hundred of them load and behave, and also what made the whole field fall
@@ -254,6 +270,22 @@
   takes an hour, which no handle could cover: the panel holds it to the length of
   whichever song is loaded, and to five minutes while none is, with the box
   reaching the rest as on every other row.
+- The loader says **"Use the 'Node Editor' mod for large songs !"**, in red, when
+  a chosen song places more than 1000 notes and the player has not got that mod:
+  with it the timers go into Timer Plus tables a thousand to a block, so the same
+  song is a machine a fraction of the size. Counted in notes rather than blocks,
+  a block count moving with PIN BLOCKS -- and so nothing says it until NOTE LIMIT
+  is raised past a thousand, which is the point, that mod being what makes
+  raising it cheap. Drawn half again the size of the
+  rest of the summary, in the same row height as the rest -- half again rather
+  than twice being as large as that sentence goes before it is wider than the
+  panel.
+- **NOTE LIMIT's handle covers the first 2000** rather than the first 5000. Two
+  thousand notes is already four thousand blocks with the pins in, and over a
+  200-unit handle a travel of five thousand put every number anybody actually
+  wants into its first fifth. The setting is unchanged at 50 to 10000, so the box
+  still reaches the whole of it and the handle rests against the stop when it is
+  past 2000.
 - **Every slider on the loader names its unit** -- `VOLUME (0-1)`, `RANGE (m)`,
   `TRANSPOSE (semitones)`, `DELAY (s)`, `TEMPO (bpm)`, `NOTE LIMIT (notes)`,
   `START AT (s)`. Not one of them was a number you could tell the unit of by
@@ -308,6 +340,23 @@
   half turn, and the toolbar tile follows it.
 
 **Fixed**
+
+- **Four kit pieces the mod ships could never be chosen by a song.** The Drums
+  block declares Kick, Snare, Tom, **Rim** and **Clap**; the Cymbals block Crash,
+  Ride, Hi-hat, **Splash** and Gong. The converter's General MIDI table reached
+  six of the ten, so a hand clap (GM 39) came out as a snare though there is a
+  Clap, a side stick (37) came out as a snare though there is a Rim, and a ride
+  bell (53) and a splash cymbal (55) -- both cymbals -- came out as a snare, on
+  the drum block next door. Across the songs that ship with the mod that was
+  **6271 notes on the wrong piece**; it is now 1148, all of them GM2 extensions
+  below the standard kit with no home in it (a vinyl scratch, a metronome bell)
+  where a snare is a fair stand-in. The table also names the nearest piece for
+  the percussion the blocks do not have -- a china as a crash, a finger snap as a
+  clap, sticks and claves and wood blocks as the rim, and the shaken metal
+  (tambourine, cabasa, maracas, shaker, triangle, jingles) as a closed hi-hat
+  rather than, as before, a snare. The Cymbals block's **Gong** stays out of it:
+  General MIDI has no gong, so it is a piece to be chosen by hand. Both
+  converters carry the change.
 
 - **Tab now takes the panels with it.** `StatMaster.hudHidden` is the flag the
   game's own interface answers, and a window docked under the block mapper is

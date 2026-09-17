@@ -166,7 +166,91 @@ score is not something to do sixty times a second.
 
 Notes past the limit are dropped from the end, after everything else has been
 worked out, so a truncated song is the beginning of the piece rather than a thinned
-version of the whole of it.
+version of the whole of it, and the summary says so.
+
+The handle covers the first 2000 of it — two thousand notes is four thousand
+blocks with the pins in, and a longer travel puts every useful number in the
+first inch of it. Type into the box for anything past that.
+
+Raising it is what Timer Plus is for, and the panel says so: a song that places
+more than 1000 notes puts a red line in the summary suggesting the Node Editor
+mod, and only to a player who has not already got it. Counted in notes, not
+blocks — a block count moves with PIN BLOCKS and the notes are the song either
+way — so nothing says it until the limit is raised past a thousand.
+
+### Timer Plus, where the player has it
+
+A timer per note is most of what a song costs: 700 notes is 700 timer blocks. The
+**Node Editor** mod's **Timer Plus** block keeps its timers as *rows in a table*
+rather than as blocks — up to 1024, each with the same wait, duration and emulate
+one of Besiege's own carries — so the same song is one block instead of seven
+hundred.
+
+The loader uses it **when that mod is installed, and only then**. It is not a
+setting: there is nothing to decide, and a machine written for a block the player
+has not got is a machine that loads as a row of stock timers with no table in
+them. `Modding.Mods.IsModLoaded(guid)` is the public answer to "has the player got
+that mod" — `InternalModding` is blacklisted, so it is the only one — and the
+prefab table gives the block id, named `<mod guid>-<local id>` as every registered
+modded prefab is. Both are asked, because a mod that loaded but whose block failed
+to register would otherwise be written into a machine as block 0.
+
+Nothing else about the machine changes. The instrument blocks, the variables they
+listen to and the pins are the same either way. What moves is the *key*: every
+stock timer carries the one that starts the song, and a Timer Plus carries it once
+for the whole table, every row waiting its own time from the moment it is pressed.
+With nothing bound, `AutomaticKey` starts the rows with the simulation, exactly as
+`automatic` does on a stock timer.
+
+The table is one text setting, `bmt-TimersKey`, written as `Table.Save` writes it:
+
+```
+timers 1
+<wait> <duration> <hold><stop><loop> v <variable>
+```
+
+None of the three toggles is wanted — a note is pressed once, for as long as it
+lasts — so they are three dashes. The numbers are round-tripping and invariant: a
+comma for a decimal point is a table that loads as nonsense in one locale and fine
+in another.
+
+A machine holding one of these names **both** mods in `requiredMods`, with the
+installed mod's own version rather than one written here: `ModList.Compare` matches
+the entries by guid and then compares the version strings, so a number guessed at
+is a machine that warns about a mismatch the player does not have. Without the mod
+the block falls back to Besiege's own timer, which is the nearest thing there is to
+it — one row of the table rather than all of them.
+
+`tools/make-song.py --timer-plus` asks for the same thing, having no game to ask.
+
+### The kit
+
+Percussion is General MIDI's channel 10, where the note number picks a drum
+rather than a pitch, so it goes to the Drums and Cymbals blocks whatever the
+INSTRUMENT selector says. The mapping is in `DRUM_MAP` in `tools/make-song.py`
+and in the three parallel arrays in `Song.cs`; **keep the two the same.**
+
+Between them those blocks have ten pieces, and every one General MIDI has a name
+for is reachable:
+
+| Piece | From |
+| --- | --- |
+| Kick | 35, 36 |
+| Snare | 38, 40, and 25 (snare roll) |
+| Rim | 37 side stick; and the dry clicks — 31 sticks, 75 claves, 76/77 wood blocks, 56 cowbell, 85 castanets, 58 vibraslap |
+| Clap | 39 hand clap, 26 finger snap |
+| Tom | 41, 43, 45, 47, 48, 50 — kept apart by note, `TOM_ROOT` being the middle one |
+| Hi-hat | 42, 44, 46 (46 is the open one); and the shaken metal — 54 tambourine, 69 cabasa, 70 maracas, 82 shaker, 83 jingles, 80/81 triangle |
+| Crash | 49, 57, and 52 chinese cymbal |
+| Ride | 51, 59, and 53 ride bell |
+| Splash | 55 |
+| **Gong** | nothing — General MIDI has no gong, so it is chosen by hand |
+
+Anything else falls back to the snare, which is right for a noise and wrong for a
+cymbal — which is why every cymbal the blocks can play is named rather than left
+to it. What is left over is General MIDI 2's extensions below note 35: a vinyl
+scratch, a metronome bell, a slap. A snare is a fair stand-in for those and there
+is nothing better in a rock kit.
 
 ### Pinning the machine down
 
